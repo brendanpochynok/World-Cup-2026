@@ -1,10 +1,10 @@
 'use client';
 
-import { Group, getGroupMatches, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
+import { Group, GroupMatch, getGroupMatches, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
 
 interface GroupOverviewProps {
   groups: Group[];
-  matchPicks: Record<string, string>; // matchId -> "home"|"draw"|"away"
+  matchPicks: Record<string, string>;
   onSelectGroup: (groupId: string) => void;
 }
 
@@ -21,6 +21,41 @@ function shortenName(name: string): string {
   return map[name] ?? (name.length > 12 ? name.slice(0, 11) + '…' : name);
 }
 
+interface Standing {
+  team: string;
+  p: number;
+  w: number;
+  d: number;
+  l: number;
+  pts: number;
+}
+
+function computeStandings(
+  teams: string[],
+  matches: GroupMatch[],
+  picks: Record<string, string>
+): Standing[] {
+  const table: Record<string, Standing> = {};
+  for (const t of teams) table[t] = { team: t, p: 0, w: 0, d: 0, l: 0, pts: 0 };
+  for (const m of matches) {
+    const pick = picks[m.matchId];
+    if (!pick) continue;
+    table[m.home].p++;
+    table[m.away].p++;
+    if (pick === 'home') {
+      table[m.home].w++; table[m.home].pts += 3; table[m.away].l++;
+    } else if (pick === 'away') {
+      table[m.away].w++; table[m.away].pts += 3; table[m.home].l++;
+    } else {
+      table[m.home].d++; table[m.home].pts++;
+      table[m.away].d++; table[m.away].pts++;
+    }
+  }
+  return teams
+    .map((t) => table[t])
+    .sort((a, b) => b.pts - a.pts || b.w - a.w || a.team.localeCompare(b.team));
+}
+
 interface GroupMiniCardProps {
   group: Group;
   matchPicks: Record<string, string>;
@@ -33,6 +68,10 @@ function GroupMiniCard({ group, matchPicks, onClick }: GroupMiniCardProps) {
   const total = matches.length;
   const complete = pickedCount === total;
   const started = pickedCount > 0;
+
+  const standings = started
+    ? computeStandings(group.teams, matches, matchPicks)
+    : null;
 
   return (
     <div
@@ -57,26 +96,55 @@ function GroupMiniCard({ group, matchPicks, onClick }: GroupMiniCardProps) {
 
       <div className="border-t border-green-800 mb-2" />
 
-      {/* Team rows */}
-      <div className="space-y-1">
-        {group.teams.map((team) => {
-          const meta = getTeamMeta(team);
-          return (
-            <div key={team} className="flex items-center gap-1.5 min-w-0">
-              <img
-                src={getFlagUrl(meta.flag)}
-                alt={team}
-                className="w-6 h-4 object-cover rounded-sm flex-shrink-0"
-                loading="lazy"
-              />
-              <span className="text-xs text-white truncate flex-1 min-w-0">{shortenName(team)}</span>
-              <span className="text-[10px] text-green-600 flex-shrink-0 font-mono">#{meta.fifaRank}</span>
-            </div>
-          );
-        })}
-      </div>
+      {started && standings ? (
+        /* Standings table */
+        <div className="space-y-1">
+          {standings.map((row, i) => {
+            const meta = getTeamMeta(row.team);
+            const advances = i < 2;
+            return (
+              <div key={row.team} className="flex items-center gap-1.5 min-w-0">
+                <span className={`text-[10px] font-bold w-3 flex-shrink-0 ${advances ? 'text-yellow-400' : 'text-green-600'}`}>
+                  {i + 1}
+                </span>
+                <img
+                  src={getFlagUrl(meta.flag)}
+                  alt={row.team}
+                  className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
+                  loading="lazy"
+                />
+                <span className={`text-xs truncate flex-1 min-w-0 ${advances ? 'text-white font-medium' : 'text-green-400'}`}>
+                  {shortenName(row.team)}
+                </span>
+                <span className={`text-[11px] font-bold flex-shrink-0 ${advances ? 'text-yellow-400' : 'text-green-600'}`}>
+                  {row.pts}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Plain team list — no picks yet */
+        <div className="space-y-1">
+          {group.teams.map((team) => {
+            const meta = getTeamMeta(team);
+            return (
+              <div key={team} className="flex items-center gap-1.5 min-w-0">
+                <img
+                  src={getFlagUrl(meta.flag)}
+                  alt={team}
+                  className="w-6 h-4 object-cover rounded-sm flex-shrink-0"
+                  loading="lazy"
+                />
+                <span className="text-xs text-white truncate flex-1 min-w-0">{shortenName(team)}</span>
+                <span className="text-[10px] text-green-600 flex-shrink-0 font-mono">#{meta.fifaRank}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Progress bar */}
+      {/* Progress bar / CTA */}
       <div className="mt-2.5 pt-2 border-t border-green-800/60">
         {started ? (
           <div className="space-y-1">
