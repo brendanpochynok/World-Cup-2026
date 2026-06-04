@@ -26,6 +26,14 @@ export async function GET() {
   return NextResponse.json({ picks });
 }
 
+// DELETE: clear all bracket picks for current user
+export async function DELETE() {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  await prisma.bracketPick.deleteMany({ where: { userId: user.userId } });
+  return NextResponse.json({ ok: true });
+}
+
 // POST: save/update a single bracket pick
 // Body: { round: string, slot: number, team: string }
 export async function POST(request: NextRequest) {

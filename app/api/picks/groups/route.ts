@@ -17,6 +17,14 @@ export async function GET() {
   return NextResponse.json({ picks: result });
 }
 
+// DELETE: clear all group picks for current user
+export async function DELETE() {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  await prisma.matchPick.deleteMany({ where: { userId: user.userId } });
+  return NextResponse.json({ ok: true });
+}
+
 // POST: upsert a single match pick
 // Body: { matchId: "A1", pick: "home"|"draw"|"away" }
 export async function POST(request: NextRequest) {
