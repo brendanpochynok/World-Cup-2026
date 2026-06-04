@@ -7,6 +7,7 @@ interface KnockoutBracketProps {
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
   allTeams: string[];
+  r32Teams?: Record<number, [string, string]>; // slot → [team1, team2] from group picks
 }
 
 // Rounds in left-to-right progression order for left half
@@ -42,6 +43,7 @@ interface MatchSlotProps {
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
   allTeams: string[];
+  r32Teams?: Record<number, [string, string]>;
   showConnectorRight?: boolean;
   showConnectorLeft?: boolean;
 }
@@ -53,6 +55,7 @@ function MatchSlot({
   onChange,
   locked,
   allTeams,
+  r32Teams,
   showConnectorRight,
   showConnectorLeft,
 }: MatchSlotProps) {
@@ -60,11 +63,8 @@ function MatchSlot({
   const selected = picks[key] ?? null;
   const label = getSlotLabel(round, slot);
 
-  // For R32 slots: two sub-slots, one per "team" in the matchup.
-  // For later rounds: one slot that receives the winner from two child slots.
-  // We model it as: each slot has ONE winner pick. The label shows the matchup.
-
   const flag = selected ? (TEAM_FLAGS[selected] ?? '🏳') : null;
+  const knownTeams = round === 'R32' && r32Teams ? r32Teams[slot] : null;
 
   function handleSelect(team: string) {
     if (locked) return;
@@ -89,13 +89,33 @@ function MatchSlot({
           {label}
         </div>
 
-        {/* Team select */}
+        {/* Team buttons (R32 with known group qualifiers) or dropdown */}
         {locked ? (
           <div className="px-2 py-1.5 flex items-center gap-1.5">
             {flag && <span>{flag}</span>}
             <span className={selected ? 'text-wc-gold-300 font-semibold' : 'text-wc-green-500'}>
               {selected ?? 'Locked'}
             </span>
+          </div>
+        ) : knownTeams ? (
+          <div className="flex gap-1 px-1.5 py-1.5">
+            {knownTeams.map((team) => {
+              const isSelected = selected === team;
+              return (
+                <button
+                  key={team}
+                  onClick={() => handleSelect(team)}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1 px-1 rounded text-[11px] font-semibold transition-colors truncate ${
+                    isSelected
+                      ? 'bg-yellow-500 text-black'
+                      : 'bg-green-800 hover:bg-green-700 text-white'
+                  }`}
+                >
+                  <span>{TEAM_FLAGS[team] ?? '🏳'}</span>
+                  <span className="truncate">{team.length > 8 ? team.slice(0, 8) + '…' : team}</span>
+                </button>
+              );
+            })}
           </div>
         ) : (
           <div className="px-2 py-1">
@@ -132,9 +152,10 @@ interface HalfBracketProps {
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
   allTeams: string[];
+  r32Teams?: Record<number, [string, string]>;
 }
 
-function HalfBracket({ side, picks, onChange, locked, allTeams }: HalfBracketProps) {
+function HalfBracket({ side, picks, onChange, locked, allTeams, r32Teams }: HalfBracketProps) {
   const halfMap = side === 'left' ? LEFT_HALF : RIGHT_HALF;
   const rounds = side === 'left'
     ? (['R32', 'R16', 'QF', 'SF'] as const)
@@ -169,6 +190,7 @@ function HalfBracket({ side, picks, onChange, locked, allTeams }: HalfBracketPro
                   onChange={onChange}
                   locked={locked}
                   allTeams={allTeams}
+                  r32Teams={r32Teams}
                   showConnectorRight={side === 'left' && round !== 'SF'}
                   showConnectorLeft={side === 'right' && round !== 'SF'}
                 />
@@ -181,7 +203,7 @@ function HalfBracket({ side, picks, onChange, locked, allTeams }: HalfBracketPro
   );
 }
 
-export default function KnockoutBracket({ picks, onChange, locked, allTeams }: KnockoutBracketProps) {
+export default function KnockoutBracket({ picks, onChange, locked, allTeams, r32Teams }: KnockoutBracketProps) {
   const finalist1 = picks['SF-0'] ?? null;
   const finalist2 = picks['SF-1'] ?? null;
   const champion = picks['Final-0'] ?? null;
@@ -212,6 +234,7 @@ export default function KnockoutBracket({ picks, onChange, locked, allTeams }: K
             onChange={onChange}
             locked={locked}
             allTeams={allTeams}
+            r32Teams={r32Teams}
           />
 
           {/* Center: Final */}
@@ -320,6 +343,7 @@ export default function KnockoutBracket({ picks, onChange, locked, allTeams }: K
             onChange={onChange}
             locked={locked}
             allTeams={allTeams}
+            r32Teams={r32Teams}
           />
         </div>
 

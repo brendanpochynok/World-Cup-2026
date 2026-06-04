@@ -1026,66 +1026,66 @@ export interface TeamMeta {
 }
 
 export const TEAM_META: Record<string, TeamMeta> = {
-  // GROUP A
-  'Mexico':           { flag: 'mx', fifaRank: 16, odds: '50/1',  players: [{ name: 'Hirving Lozano', position: 'FW' }, { name: 'Raúl Jiménez', position: 'FW' }, { name: 'Edson Álvarez', position: 'MF' }] },
-  'South Africa':     { flag: 'za', fifaRank: 60, odds: '300/1', players: [{ name: 'Percy Tau', position: 'FW' }, { name: 'Ronwen Williams', position: 'GK' }, { name: 'Themba Zwane', position: 'MF' }] },
-  'South Korea':      { flag: 'kr', fifaRank: 22, odds: '80/1',  players: [{ name: 'Son Heung-min', position: 'FW' }, { name: 'Kim Min-jae', position: 'DF' }, { name: 'Hwang Hee-chan', position: 'FW' }] },
-  'Czechia':          { flag: 'cz', fifaRank: 35, odds: '250/1', players: [{ name: 'Patrik Schick', position: 'FW' }, { name: 'Vladimír Coufal', position: 'DF' }, { name: 'Tomáš Souček', position: 'MF' }] },
-  // GROUP B
-  'Canada':           { flag: 'ca', fifaRank: 47, odds: '80/1',  players: [{ name: 'Alphonso Davies', position: 'DF' }, { name: 'Jonathan David', position: 'FW' }, { name: 'Tajon Buchanan', position: 'MF' }] },
-  'Bosnia and Herzegovina': { flag: 'ba', fifaRank: 50, odds: '250/1', players: [{ name: 'Edin Džeko', position: 'FW' }, { name: 'Miralem Pjanić', position: 'MF' }, { name: 'Sandro Kulenović', position: 'FW' }] },
-  'Qatar':            { flag: 'qa', fifaRank: 37, odds: '250/1', players: [{ name: 'Akram Afif', position: 'FW' }, { name: 'Almoez Ali', position: 'FW' }, { name: 'Hassan Al-Haydos', position: 'MF' }] },
+  // GROUP A — Mexico 15, S.Africa 65, S.Korea 23, Czechia 32
+  'Mexico':           { flag: 'mx', fifaRank: 15, odds: '50/1',  players: [{ name: 'Hirving Lozano', position: 'FW' }, { name: 'Raúl Jiménez', position: 'FW' }, { name: 'Edson Álvarez', position: 'MF' }] },
+  'South Africa':     { flag: 'za', fifaRank: 65, odds: '300/1', players: [{ name: 'Percy Tau', position: 'FW' }, { name: 'Ronwen Williams', position: 'GK' }, { name: 'Themba Zwane', position: 'MF' }] },
+  'South Korea':      { flag: 'kr', fifaRank: 23, odds: '80/1',  players: [{ name: 'Son Heung-min', position: 'FW' }, { name: 'Kim Min-jae', position: 'DF' }, { name: 'Hwang Hee-chan', position: 'FW' }] },
+  'Czechia':          { flag: 'cz', fifaRank: 32, odds: '250/1', players: [{ name: 'Patrik Schick', position: 'FW' }, { name: 'Vladimír Coufal', position: 'DF' }, { name: 'Tomáš Souček', position: 'MF' }] },
+  // GROUP B — Canada 44, Switzerland 19, Qatar 50, Bosnia 60
+  'Canada':           { flag: 'ca', fifaRank: 44, odds: '80/1',  players: [{ name: 'Alphonso Davies', position: 'DF' }, { name: 'Jonathan David', position: 'FW' }, { name: 'Tajon Buchanan', position: 'MF' }] },
+  'Bosnia and Herzegovina': { flag: 'ba', fifaRank: 60, odds: '250/1', players: [{ name: 'Edin Džeko', position: 'FW' }, { name: 'Miralem Pjanić', position: 'MF' }, { name: 'Sandro Kulenović', position: 'FW' }] },
+  'Qatar':            { flag: 'qa', fifaRank: 50, odds: '250/1', players: [{ name: 'Akram Afif', position: 'FW' }, { name: 'Almoez Ali', position: 'FW' }, { name: 'Hassan Al-Haydos', position: 'MF' }] },
   'Switzerland':      { flag: 'ch', fifaRank: 19, odds: '66/1',  players: [{ name: 'Granit Xhaka', position: 'MF' }, { name: 'Xherdan Shaqiri', position: 'MF' }, { name: 'Yann Sommer', position: 'GK' }] },
-  // GROUP C
-  'Brazil':           { flag: 'br', fifaRank: 5,  odds: '6/1',   players: [{ name: 'Vinícius Jr.', position: 'FW' }, { name: 'Rodrygo', position: 'FW' }, { name: 'Alisson', position: 'GK' }] },
-  'Morocco':          { flag: 'ma', fifaRank: 14, odds: '40/1',  players: [{ name: 'Achraf Hakimi', position: 'DF' }, { name: 'Sofyan Amrabat', position: 'MF' }, { name: 'Youssef En-Nesyri', position: 'FW' }] },
-  'Haiti':            { flag: 'ht', fifaRank: 84, odds: '500/1', players: [{ name: 'Duckens Nazon', position: 'FW' }, { name: 'Frantzdy Pierrot', position: 'FW' }, { name: 'Derrick Etienne', position: 'MF' }] },
-  'Scotland':         { flag: 'gb-sct', fifaRank: 30, odds: '200/1', players: [{ name: 'Andrew Robertson', position: 'DF' }, { name: 'Scott McTominay', position: 'MF' }, { name: 'Kieran Tierney', position: 'DF' }] },
-  // GROUP D
-  'United States':    { flag: 'us', fifaRank: 11, odds: '40/1',  players: [{ name: 'Christian Pulisic', position: 'FW' }, { name: 'Gio Reyna', position: 'MF' }, { name: 'Tyler Adams', position: 'MF' }] },
-  'Paraguay':         { flag: 'py', fifaRank: 55, odds: '250/1', players: [{ name: 'Miguel Almirón', position: 'MF' }, { name: 'Gustavo Gómez', position: 'DF' }, { name: 'Antonio Sanabria', position: 'FW' }] },
-  'Australia':        { flag: 'au', fifaRank: 23, odds: '100/1', players: [{ name: 'Mathew Ryan', position: 'GK' }, { name: 'Ajdin Hrustic', position: 'MF' }, { name: 'Mitchell Duke', position: 'FW' }] },
-  'Turkey':           { flag: 'tr', fifaRank: 27, odds: '125/1', players: [{ name: 'Hakan Çalhanoğlu', position: 'MF' }, { name: 'Arda Güler', position: 'MF' }, { name: 'Zeki Çelik', position: 'DF' }] },
-  // GROUP E
-  'Germany':          { flag: 'de', fifaRank: 12, odds: '12/1',  players: [{ name: 'Jamal Musiala', position: 'MF' }, { name: 'Florian Wirtz', position: 'MF' }, { name: 'Manuel Neuer', position: 'GK' }] },
-  'Curacao':          { flag: 'cw', fifaRank: 95, odds: '750/1', players: [{ name: 'Cuco Martina', position: 'DF' }, { name: 'Leandro Bacuna', position: 'MF' }, { name: 'Gevaro Nepomuceno', position: 'FW' }] },
-  "Cote d'Ivoire":    { flag: 'ci', fifaRank: 52, odds: '150/1', players: [{ name: 'Nicolas Pépé', position: 'FW' }, { name: 'Sébastien Haller', position: 'FW' }, { name: 'Franck Kessié', position: 'MF' }] },
-  'Ecuador':          { flag: 'ec', fifaRank: 24, odds: '100/1', players: [{ name: 'Enner Valencia', position: 'FW' }, { name: 'Piero Hincapié', position: 'DF' }, { name: 'Moisés Caicedo', position: 'MF' }] },
-  // GROUP F
-  'Netherlands':      { flag: 'nl', fifaRank: 8,  odds: '14/1',  players: [{ name: 'Virgil van Dijk', position: 'DF' }, { name: 'Frenkie de Jong', position: 'MF' }, { name: 'Cody Gakpo', position: 'FW' }] },
-  'Japan':            { flag: 'jp', fifaRank: 17, odds: '50/1',  players: [{ name: 'Takefusa Kubo', position: 'FW' }, { name: 'Wataru Endo', position: 'MF' }, { name: 'Hiroki Ito', position: 'DF' }] },
-  'Sweden':           { flag: 'se', fifaRank: 25, odds: '125/1', players: [{ name: 'Alexander Isak', position: 'FW' }, { name: 'Dejan Kulusevski', position: 'MF' }, { name: 'Victor Lindelöf', position: 'DF' }] },
-  'Tunisia':          { flag: 'tn', fifaRank: 33, odds: '200/1', players: [{ name: 'Wahbi Khazri', position: 'FW' }, { name: 'Youssef Msakni', position: 'MF' }, { name: 'Montassar Talbi', position: 'DF' }] },
-  // GROUP G
-  'Belgium':          { flag: 'be', fifaRank: 10, odds: '28/1',  players: [{ name: 'Kevin De Bruyne', position: 'MF' }, { name: 'Romelu Lukaku', position: 'FW' }, { name: 'Thibaut Courtois', position: 'GK' }] },
-  'Egypt':            { flag: 'eg', fifaRank: 32, odds: '200/1', players: [{ name: 'Mohamed Salah', position: 'FW' }, { name: 'Omar Marmoush', position: 'FW' }, { name: 'Ahmed El-Shenawy', position: 'GK' }] },
-  'Iran':             { flag: 'ir', fifaRank: 25, odds: '150/1', players: [{ name: 'Mehdi Taremi', position: 'FW' }, { name: 'Sardar Azmoun', position: 'FW' }, { name: 'Alireza Beiranvand', position: 'GK' }] },
-  'New Zealand':      { flag: 'nz', fifaRank: 92, odds: '500/1', players: [{ name: 'Chris Wood', position: 'FW' }, { name: 'Ryan Thomas', position: 'MF' }, { name: 'Joe Bell', position: 'MF' }] },
-  // GROUP H
-  'Spain':            { flag: 'es', fifaRank: 4,  odds: '7/1',   players: [{ name: 'Pedri', position: 'MF' }, { name: 'Lamine Yamal', position: 'FW' }, { name: 'Dani Olmo', position: 'MF' }] },
-  'Cabo Verde':       { flag: 'cv', fifaRank: 80, odds: '400/1', players: [{ name: 'Ryan Mendes', position: 'MF' }, { name: 'Garry Rodrigues', position: 'FW' }, { name: 'Stopira', position: 'DF' }] },
-  'Saudi Arabia':     { flag: 'sa', fifaRank: 55, odds: '300/1', players: [{ name: 'Salem Al-Dawsari', position: 'FW' }, { name: 'Mohammed Al-Owais', position: 'GK' }, { name: 'Sami Al-Najei', position: 'DF' }] },
-  'Uruguay':          { flag: 'uy', fifaRank: 15, odds: '25/1',  players: [{ name: 'Darwin Núñez', position: 'FW' }, { name: 'Federico Valverde', position: 'MF' }, { name: 'Ronald Araújo', position: 'DF' }] },
-  // GROUP I
-  'France':           { flag: 'fr', fifaRank: 3,  odds: '5/1',   players: [{ name: 'Kylian Mbappé', position: 'FW' }, { name: 'Antoine Griezmann', position: 'FW' }, { name: 'Aurélien Tchouaméni', position: 'MF' }] },
-  'Senegal':          { flag: 'sn', fifaRank: 20, odds: '80/1',  players: [{ name: 'Sadio Mané', position: 'FW' }, { name: 'Kalidou Koulibaly', position: 'DF' }, { name: 'Idrissa Gueye', position: 'MF' }] },
-  'Iraq':             { flag: 'iq', fifaRank: 63, odds: '400/1', players: [{ name: 'Amjad Rashid', position: 'MF' }, { name: 'Mohanad Ali', position: 'FW' }, { name: 'Bashar Resan', position: 'MF' }] },
-  'Norway':           { flag: 'no', fifaRank: 23, odds: '100/1', players: [{ name: 'Erling Haaland', position: 'FW' }, { name: 'Martin Ødegaard', position: 'MF' }, { name: 'Alexander Sørloth', position: 'FW' }] },
-  // GROUP J
-  'Argentina':        { flag: 'ar', fifaRank: 1,  odds: '9/2',   players: [{ name: 'Lionel Messi', position: 'FW' }, { name: 'Julián Álvarez', position: 'FW' }, { name: 'Rodrigo De Paul', position: 'MF' }] },
-  'Algeria':          { flag: 'dz', fifaRank: 40, odds: '150/1', players: [{ name: 'Riyad Mahrez', position: 'FW' }, { name: 'Islam Slimani', position: 'FW' }, { name: 'Youcef Atal', position: 'MF' }] },
-  'Austria':          { flag: 'at', fifaRank: 26, odds: '100/1', players: [{ name: 'David Alaba', position: 'DF' }, { name: 'Marcel Sabitzer', position: 'MF' }, { name: 'Marko Arnautovic', position: 'FW' }] },
-  'Jordan':           { flag: 'jo', fifaRank: 90, odds: '400/1', players: [{ name: 'Ahmad Hayel', position: 'GK' }, { name: 'Muhannad Nasani', position: 'MF' }, { name: "Baha' Faisal", position: 'DF' }] },
-  // GROUP K
-  'Portugal':         { flag: 'pt', fifaRank: 7,  odds: '10/1',  players: [{ name: 'Cristiano Ronaldo', position: 'FW' }, { name: 'Bernardo Silva', position: 'MF' }, { name: 'Rúben Dias', position: 'DF' }] },
-  'DR Congo':         { flag: 'cd', fifaRank: 55, odds: '300/1', players: [{ name: 'Chancel Mbemba', position: 'DF' }, { name: 'Cédric Bakambu', position: 'FW' }, { name: 'Arthur Masuaku', position: 'DF' }] },
-  'Uzbekistan':       { flag: 'uz', fifaRank: 75, odds: '300/1', players: [{ name: 'Eldor Shomurodov', position: 'FW' }, { name: 'Jasur Jalolov', position: 'FW' }, { name: 'Otabek Shukurov', position: 'MF' }] },
-  'Colombia':         { flag: 'co', fifaRank: 14, odds: '33/1',  players: [{ name: 'Luis Díaz', position: 'FW' }, { name: 'James Rodríguez', position: 'MF' }, { name: 'Davinson Sánchez', position: 'DF' }] },
-  // GROUP L
-  'England':          { flag: 'gb-eng', fifaRank: 6,  odds: '7/1',   players: [{ name: 'Harry Kane', position: 'FW' }, { name: 'Jude Bellingham', position: 'MF' }, { name: 'Bukayo Saka', position: 'FW' }] },
-  'Croatia':          { flag: 'hr', fifaRank: 13, odds: '50/1',  players: [{ name: 'Luka Modrić', position: 'MF' }, { name: 'Mateo Kovačić', position: 'MF' }, { name: 'Ivan Perišić', position: 'MF' }] },
-  'Ghana':            { flag: 'gh', fifaRank: 57, odds: '200/1', players: [{ name: 'Thomas Partey', position: 'MF' }, { name: 'Jordan Ayew', position: 'FW' }, { name: 'Daniel Amartey', position: 'DF' }] },
-  'Panama':           { flag: 'pa', fifaRank: 68, odds: '500/1', players: [{ name: 'Rolando Blackburn', position: 'FW' }, { name: 'Alfredo Stephens', position: 'MF' }, { name: 'Édgar Bárcenas', position: 'MF' }] },
+  // GROUP C — Brazil 6, Morocco 8, Haiti 88, Scotland 37
+  'Brazil':           { flag: 'br', fifaRank: 6,  odds: '7/1',   players: [{ name: 'Vinícius Jr.', position: 'FW' }, { name: 'Rodrygo', position: 'FW' }, { name: 'Alisson', position: 'GK' }] },
+  'Morocco':          { flag: 'ma', fifaRank: 8,  odds: '25/1',  players: [{ name: 'Achraf Hakimi', position: 'DF' }, { name: 'Sofyan Amrabat', position: 'MF' }, { name: 'Youssef En-Nesyri', position: 'FW' }] },
+  'Haiti':            { flag: 'ht', fifaRank: 88, odds: '500/1', players: [{ name: 'Duckens Nazon', position: 'FW' }, { name: 'Frantzdy Pierrot', position: 'FW' }, { name: 'Derrick Etienne', position: 'MF' }] },
+  'Scotland':         { flag: 'gb-sct', fifaRank: 37, odds: '200/1', players: [{ name: 'Andrew Robertson', position: 'DF' }, { name: 'Scott McTominay', position: 'MF' }, { name: 'Kieran Tierney', position: 'DF' }] },
+  // GROUP D — USA 16, Paraguay 56, Australia 26, Turkey 27
+  'United States':    { flag: 'us', fifaRank: 16, odds: '28/1',  players: [{ name: 'Christian Pulisic', position: 'FW' }, { name: 'Gio Reyna', position: 'MF' }, { name: 'Tyler Adams', position: 'MF' }] },
+  'Paraguay':         { flag: 'py', fifaRank: 56, odds: '250/1', players: [{ name: 'Miguel Almirón', position: 'MF' }, { name: 'Gustavo Gómez', position: 'DF' }, { name: 'Antonio Sanabria', position: 'FW' }] },
+  'Australia':        { flag: 'au', fifaRank: 26, odds: '100/1', players: [{ name: 'Mathew Ryan', position: 'GK' }, { name: 'Ajdin Hrustic', position: 'MF' }, { name: 'Mitchell Duke', position: 'FW' }] },
+  'Turkey':           { flag: 'tr', fifaRank: 27, odds: '100/1', players: [{ name: 'Hakan Çalhanoğlu', position: 'MF' }, { name: 'Arda Güler', position: 'MF' }, { name: 'Zeki Çelik', position: 'DF' }] },
+  // GROUP E — Germany 10, Curacao 110, Ivory Coast 53, Ecuador 40
+  'Germany':          { flag: 'de', fifaRank: 10, odds: '9/1',   players: [{ name: 'Jamal Musiala', position: 'MF' }, { name: 'Florian Wirtz', position: 'MF' }, { name: 'Manuel Neuer', position: 'GK' }] },
+  'Curacao':          { flag: 'cw', fifaRank: 110, odds: '750/1', players: [{ name: 'Cuco Martina', position: 'DF' }, { name: 'Leandro Bacuna', position: 'MF' }, { name: 'Gevaro Nepomuceno', position: 'FW' }] },
+  "Cote d'Ivoire":    { flag: 'ci', fifaRank: 53, odds: '150/1', players: [{ name: 'Nicolas Pépé', position: 'FW' }, { name: 'Sébastien Haller', position: 'FW' }, { name: 'Franck Kessié', position: 'MF' }] },
+  'Ecuador':          { flag: 'ec', fifaRank: 40, odds: '125/1', players: [{ name: 'Enner Valencia', position: 'FW' }, { name: 'Piero Hincapié', position: 'DF' }, { name: 'Moisés Caicedo', position: 'MF' }] },
+  // GROUP F — Netherlands 7, Japan 18, Sweden 27, Tunisia 36
+  'Netherlands':      { flag: 'nl', fifaRank: 7,  odds: '12/1',  players: [{ name: 'Virgil van Dijk', position: 'DF' }, { name: 'Frenkie de Jong', position: 'MF' }, { name: 'Cody Gakpo', position: 'FW' }] },
+  'Japan':            { flag: 'jp', fifaRank: 18, odds: '40/1',  players: [{ name: 'Takefusa Kubo', position: 'FW' }, { name: 'Wataru Endo', position: 'MF' }, { name: 'Hiroki Ito', position: 'DF' }] },
+  'Sweden':           { flag: 'se', fifaRank: 27, odds: '125/1', players: [{ name: 'Alexander Isak', position: 'FW' }, { name: 'Dejan Kulusevski', position: 'MF' }, { name: 'Victor Lindelöf', position: 'DF' }] },
+  'Tunisia':          { flag: 'tn', fifaRank: 36, odds: '200/1', players: [{ name: 'Wahbi Khazri', position: 'FW' }, { name: 'Youssef Msakni', position: 'MF' }, { name: 'Montassar Talbi', position: 'DF' }] },
+  // GROUP G — Belgium 9, Egypt 36, Iran 29, New Zealand 95
+  'Belgium':          { flag: 'be', fifaRank: 9,  odds: '22/1',  players: [{ name: 'Kevin De Bruyne', position: 'MF' }, { name: 'Romelu Lukaku', position: 'FW' }, { name: 'Thibaut Courtois', position: 'GK' }] },
+  'Egypt':            { flag: 'eg', fifaRank: 36, odds: '200/1', players: [{ name: 'Mohamed Salah', position: 'FW' }, { name: 'Omar Marmoush', position: 'FW' }, { name: 'Ahmed El-Shenawy', position: 'GK' }] },
+  'Iran':             { flag: 'ir', fifaRank: 29, odds: '150/1', players: [{ name: 'Mehdi Taremi', position: 'FW' }, { name: 'Sardar Azmoun', position: 'FW' }, { name: 'Alireza Beiranvand', position: 'GK' }] },
+  'New Zealand':      { flag: 'nz', fifaRank: 95, odds: '500/1', players: [{ name: 'Chris Wood', position: 'FW' }, { name: 'Ryan Thomas', position: 'MF' }, { name: 'Joe Bell', position: 'MF' }] },
+  // GROUP H — Spain 2, Cabo Verde 82, Saudi Arabia 58, Uruguay 17
+  'Spain':            { flag: 'es', fifaRank: 2,  odds: '5/1',   players: [{ name: 'Pedri', position: 'MF' }, { name: 'Lamine Yamal', position: 'FW' }, { name: 'Dani Olmo', position: 'MF' }] },
+  'Cabo Verde':       { flag: 'cv', fifaRank: 82, odds: '400/1', players: [{ name: 'Ryan Mendes', position: 'MF' }, { name: 'Garry Rodrigues', position: 'FW' }, { name: 'Stopira', position: 'DF' }] },
+  'Saudi Arabia':     { flag: 'sa', fifaRank: 58, odds: '300/1', players: [{ name: 'Salem Al-Dawsari', position: 'FW' }, { name: 'Mohammed Al-Owais', position: 'GK' }, { name: 'Sami Al-Najei', position: 'DF' }] },
+  'Uruguay':          { flag: 'uy', fifaRank: 17, odds: '20/1',  players: [{ name: 'Darwin Núñez', position: 'FW' }, { name: 'Federico Valverde', position: 'MF' }, { name: 'Ronald Araújo', position: 'DF' }] },
+  // GROUP I — France 1, Senegal 21, Norway 30, Iraq 65
+  'France':           { flag: 'fr', fifaRank: 1,  odds: '9/2',   players: [{ name: 'Kylian Mbappé', position: 'FW' }, { name: 'Antoine Griezmann', position: 'FW' }, { name: 'Aurélien Tchouaméni', position: 'MF' }] },
+  'Senegal':          { flag: 'sn', fifaRank: 21, odds: '66/1',  players: [{ name: 'Sadio Mané', position: 'FW' }, { name: 'Kalidou Koulibaly', position: 'DF' }, { name: 'Idrissa Gueye', position: 'MF' }] },
+  'Iraq':             { flag: 'iq', fifaRank: 65, odds: '400/1', players: [{ name: 'Amjad Rashid', position: 'MF' }, { name: 'Mohanad Ali', position: 'FW' }, { name: 'Bashar Resan', position: 'MF' }] },
+  'Norway':           { flag: 'no', fifaRank: 30, odds: '80/1',  players: [{ name: 'Erling Haaland', position: 'FW' }, { name: 'Martin Ødegaard', position: 'MF' }, { name: 'Alexander Sørloth', position: 'FW' }] },
+  // GROUP J — Argentina 3, Algeria 44, Austria 27, Jordan 95
+  'Argentina':        { flag: 'ar', fifaRank: 3,  odds: '11/2',  players: [{ name: 'Lionel Messi', position: 'FW' }, { name: 'Julián Álvarez', position: 'FW' }, { name: 'Rodrigo De Paul', position: 'MF' }] },
+  'Algeria':          { flag: 'dz', fifaRank: 44, odds: '150/1', players: [{ name: 'Riyad Mahrez', position: 'FW' }, { name: 'Islam Slimani', position: 'FW' }, { name: 'Youcef Atal', position: 'MF' }] },
+  'Austria':          { flag: 'at', fifaRank: 27, odds: '100/1', players: [{ name: 'David Alaba', position: 'DF' }, { name: 'Marcel Sabitzer', position: 'MF' }, { name: 'Marko Arnautovic', position: 'FW' }] },
+  'Jordan':           { flag: 'jo', fifaRank: 95, odds: '400/1', players: [{ name: 'Ahmad Hayel', position: 'GK' }, { name: 'Muhannad Nasani', position: 'MF' }, { name: "Baha' Faisal", position: 'DF' }] },
+  // GROUP K — Portugal 5, DR Congo 62, Uzbekistan 78, Colombia 12
+  'Portugal':         { flag: 'pt', fifaRank: 5,  odds: '7/1',   players: [{ name: 'Cristiano Ronaldo', position: 'FW' }, { name: 'Bernardo Silva', position: 'MF' }, { name: 'Rúben Dias', position: 'DF' }] },
+  'DR Congo':         { flag: 'cd', fifaRank: 62, odds: '300/1', players: [{ name: 'Chancel Mbemba', position: 'DF' }, { name: 'Cédric Bakambu', position: 'FW' }, { name: 'Arthur Masuaku', position: 'DF' }] },
+  'Uzbekistan':       { flag: 'uz', fifaRank: 78, odds: '300/1', players: [{ name: 'Eldor Shomurodov', position: 'FW' }, { name: 'Jasur Jalolov', position: 'FW' }, { name: 'Otabek Shukurov', position: 'MF' }] },
+  'Colombia':         { flag: 'co', fifaRank: 12, odds: '22/1',  players: [{ name: 'Luis Díaz', position: 'FW' }, { name: 'James Rodríguez', position: 'MF' }, { name: 'Davinson Sánchez', position: 'DF' }] },
+  // GROUP L — England 4, Croatia 11, Ghana 62, Panama 72
+  'England':          { flag: 'gb-eng', fifaRank: 4,  odds: '6/1',   players: [{ name: 'Harry Kane', position: 'FW' }, { name: 'Jude Bellingham', position: 'MF' }, { name: 'Bukayo Saka', position: 'FW' }] },
+  'Croatia':          { flag: 'hr', fifaRank: 11, odds: '50/1',  players: [{ name: 'Luka Modrić', position: 'MF' }, { name: 'Mateo Kovačić', position: 'MF' }, { name: 'Ivan Perišić', position: 'MF' }] },
+  'Ghana':            { flag: 'gh', fifaRank: 62, odds: '200/1', players: [{ name: 'Thomas Partey', position: 'MF' }, { name: 'Jordan Ayew', position: 'FW' }, { name: 'Daniel Amartey', position: 'DF' }] },
+  'Panama':           { flag: 'pa', fifaRank: 72, odds: '500/1', players: [{ name: 'Rolando Blackburn', position: 'FW' }, { name: 'Alfredo Stephens', position: 'MF' }, { name: 'Édgar Bárcenas', position: 'MF' }] },
 };
 
 export function getTeamMeta(name: string): TeamMeta {
@@ -1108,11 +1108,13 @@ export function computeMatchOdds(
   // Rank difference: positive = home team is ranked higher (smaller number)
   const diff = awayRank - homeRank;
 
-  // Logistic probability for each outcome
-  const k = 0.025;
+  // Logistic probability for each outcome.
+  // k=0.020 reduces over-weighting of rank gaps; draw floor raised to match
+  // real international football draw rates (~25-30%).
+  const k = 0.020;
   const pHome = 1 / (1 + Math.exp(-(k * diff + 0.05)));
   const pAway = 1 / (1 + Math.exp(k * diff + 0.05));
-  const pDraw = Math.max(0.18, 0.27 - 0.002 * Math.abs(diff));
+  const pDraw = Math.max(0.22, 0.40 - 0.002 * Math.abs(diff));
 
   const total = pHome + pAway + pDraw;
 
@@ -1125,3 +1127,60 @@ export function computeMatchOdds(
     away: round2(m / (pAway / total)),
   };
 }
+
+export function computeMatchProbabilities(
+  homeTeam: string,
+  awayTeam: string
+): { home: number; draw: number; away: number } {
+  const homeRank = getTeamMeta(homeTeam).fifaRank;
+  const awayRank = getTeamMeta(awayTeam).fifaRank;
+  const diff = awayRank - homeRank;
+  const k = 0.020;
+  const pHome = 1 / (1 + Math.exp(-(k * diff + 0.05)));
+  const pAway = 1 / (1 + Math.exp(k * diff + 0.05));
+  const pDraw = Math.max(0.22, 0.40 - 0.002 * Math.abs(diff));
+  const total = pHome + pAway + pDraw;
+  return { home: pHome / total, draw: pDraw / total, away: pAway / total };
+}
+
+export interface GroupStanding {
+  team: string;
+  p: number;
+  w: number;
+  d: number;
+  l: number;
+  pts: number;
+}
+
+export function computeGroupStandings(
+  groupId: string,
+  picks: Record<string, string>
+): GroupStanding[] {
+  const group = GROUPS.find((g) => g.id === groupId);
+  if (!group) return [];
+  const matches = getGroupMatches(groupId);
+  const table: Record<string, GroupStanding> = {};
+  for (let i = 0; i < group.teams.length; i++) {
+    const t = group.teams[i];
+    table[t] = { team: t, p: 0, w: 0, d: 0, l: 0, pts: 0 };
+  }
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const pick = picks[m.matchId];
+    if (!pick) continue;
+    table[m.home].p++;
+    table[m.away].p++;
+    if (pick === 'home') {
+      table[m.home].w++; table[m.home].pts += 3; table[m.away].l++;
+    } else if (pick === 'away') {
+      table[m.away].w++; table[m.away].pts += 3; table[m.home].l++;
+    } else {
+      table[m.home].d++; table[m.home].pts++;
+      table[m.away].d++; table[m.away].pts++;
+    }
+  }
+  return group.teams
+    .map((t) => table[t])
+    .sort((a, b) => b.pts - a.pts || b.w - a.w || a.team.localeCompare(b.team));
+}
+

@@ -21,18 +21,15 @@ export default async function StandingsPage() {
   // Get all users with picks
   const users = await prisma.user.findMany({
     include: {
-      groupStandingPicks: true,
+      matchPicks: true,
       bracketPicks: true,
     },
     orderBy: { createdAt: 'asc' },
   });
 
-  // Calculate scores for each user
-  // Score = 0 for now until actual group standings / bracket results are entered by admin
   const scores: UserScore[] = users.map((user) => {
     const score = 0;
 
-    // Champion is the Final bracket pick slot 0
     const championPick =
       user.bracketPicks.find((p) => p.round === 'Final' && p.slot === 0)?.team ?? null;
 
@@ -40,7 +37,7 @@ export default async function StandingsPage() {
       id: user.id,
       username: user.username,
       score,
-      groupPicksCount: user.groupStandingPicks.length,
+      groupPicksCount: user.matchPicks.length,
       bracketPicksCount: user.bracketPicks.length,
       championPick,
     };
@@ -65,10 +62,7 @@ export default async function StandingsPage() {
       <div className="card bg-wc-green-900/50 border-wc-green-800">
         <h3 className="text-sm font-bold text-wc-gold-400 mb-2">Scoring System</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-wc-green-300">
-          <div>Group 1st: <span className="text-wc-gold-400 font-bold">4 pts</span></div>
-          <div>Group 2nd: <span className="text-wc-gold-400 font-bold">3 pts</span></div>
-          <div>Group 3rd: <span className="text-wc-gold-400 font-bold">2 pts</span></div>
-          <div>Group 4th: <span className="text-wc-gold-400 font-bold">1 pt</span></div>
+          <div>Correct result: <span className="text-wc-gold-400 font-bold">3 pts</span></div>
           <div>R32 pick: <span className="text-wc-gold-400 font-bold">2 pts</span></div>
           <div>R16 pick: <span className="text-wc-gold-400 font-bold">3 pts</span></div>
           <div>QF pick: <span className="text-wc-gold-400 font-bold">5 pts</span></div>
@@ -159,9 +153,9 @@ export default async function StandingsPage() {
                         </span>
                       </td>
 
-                      {/* Groups ranked */}
+                      {/* Match picks */}
                       <td className="py-3 px-4 text-right text-sm text-wc-green-300 hidden sm:table-cell">
-                        {u.groupPicksCount}/12 groups
+                        {u.groupPicksCount}/72 matches
                       </td>
 
                       {/* Bracket */}

@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
-import { GROUPS, GROUP_MATCHES, ALL_TEAMS } from '@/lib/worldcup-data';
+import { GROUPS, GROUP_MATCHES, ALL_TEAMS, computeGroupStandings, getGroupMatches } from '@/lib/worldcup-data';
+import type { MatchOdds } from '@/app/api/odds/route';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export default function PicksPage() {
-  // matchId -> "home"|"draw"|"away"
   const [matchPicks, setMatchPicks] = useState<Record<string, string>>({});
-  // "round-slot" -> team
   const [bracketPicks, setBracketPicks] = useState<Record<string, string>>({});
+  const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -23,9 +23,10 @@ export default function PicksPage() {
   // Load saved picks on mount
   const fetchPicks = useCallback(async () => {
     try {
-      const [groupRes, bracketRes] = await Promise.all([
+      const [groupRes, bracketRes, oddsRes] = await Promise.all([
         fetch('/api/picks/groups'),
         fetch('/api/picks/bracket'),
+        fetch('/api/odds'),
       ]);
       const groupData = await groupRes.json();
       if (groupData.picks) setMatchPicks(groupData.picks);
@@ -38,6 +39,9 @@ export default function PicksPage() {
         }
         setBracketPicks(map);
       }
+
+      const oddsData = await oddsRes.json().catch(() => ({}));
+      if (oddsData.odds) setOddsMap(oddsData.odds);
     } catch (err) {
       console.error('Error loading picks', err);
     } finally {
@@ -102,6 +106,82 @@ export default function PicksPage() {
     bracketTimers.current.set(timerKey, t);
   }
 
+  // Derive R32 matchups from completed group picks.
+  // Only populates a slot when both contributing groups are fully picked.
+  const r32Teams = useMemo((): Record<number, [string, string]> => {
+    // Compute standings for every group. Track which groups are complete.
+    const standings: Record<string, string[]> = {};
+    for (let gi = 0; gi < GROUPS.length; gi++) {
+      const g = GROUPS[gi];
+      const matches = getGroupMatches(g.id);
+      const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
+      if (pickedCount === matches.length) {
+        const rows = computeGroupStandings(g.id, matchPicks);
+        standings[g.id] = rows.map((r) => r.team);
+      }
+    }
+
+    const result: Record<number, [string, string]> = {};
+
+    // Helper: place team from standings — position 0=1st, 1=2nd, 2=3rd
+    function team(groupId: string, pos: number): string | null {
+      return standings[groupId] ? standings[groupId][pos] ?? null : null;
+    }
+
+    // Slots 0-5: left half fixed matchups
+    const leftPairs: [string, number, string, number][] = [
+      ['A', 0, 'B', 1], // slot 0: 1A vs 2B
+      ['C', 0, 'D', 1], // slot 1: 1C vs 2D
+      ['E', 0, 'F', 1], // slot 2: 1E vs 2F
+      ['G', 0, 'H', 1], // slot 3: 1G vs 2H
+      ['I', 0, 'J', 1], // slot 4: 1I vs 2J
+      ['K', 0, 'L', 1], // slot 5: 1K vs 2L
+    ];
+    for (let i = 0; i < leftPairs.length; i++) {
+      const [g1, p1, g2, p2] = leftPairs[i];
+      const t1 = team(g1, p1);
+      const t2 = team(g2, p2);
+      if (t1 && t2) result[i] = [t1, t2];
+    }
+
+    // Slots 8-13: right half fixed matchups
+    const rightPairs: [string, number, string, number][] = [
+      ['A', 1, 'B', 0], // slot 8:  2A vs 1B
+      ['C', 1, 'D', 0], // slot 9:  2C vs 1D
+      ['E', 1, 'F', 0], // slot 10: 2E vs 1F
+      ['G', 1, 'H', 0], // slot 11: 2G vs 1H
+      ['I', 1, 'J', 0], // slot 12: 2I vs 1J
+      ['K', 1, 'L', 0], // slot 13: 2K vs 1L
+    ];
+    for (let i = 0; i < rightPairs.length; i++) {
+      const [g1, p1, g2, p2] = rightPairs[i];
+      const t1 = team(g1, p1);
+      const t2 = team(g2, p2);
+      if (t1 && t2) result[8 + i] = [t1, t2];
+    }
+
+    // Slots 6, 7, 14, 15: best 3rd-place teams (need all 12 groups complete)
+    const allGroupsDone = GROUPS.every((g) => standings[g.id]);
+    if (allGroupsDone) {
+      const thirds: { team: string; pts: number }[] = [];
+      for (let gi = 0; gi < GROUPS.length; gi++) {
+        const g = GROUPS[gi];
+        const rows = computeGroupStandings(g.id, matchPicks);
+        if (rows[2]) {
+          thirds.push({ team: rows[2].team, pts: rows[2].pts });
+        }
+      }
+      thirds.sort((a, b) => b.pts - a.pts);
+      // Assign pairs: slots 6&7 = best 3rd #1 vs #2, slots 14&15 = #3 vs #4
+      if (thirds[0] && thirds[1]) result[6] = [thirds[0].team, thirds[1].team];
+      if (thirds[2] && thirds[3]) result[7] = [thirds[2].team, thirds[3].team];
+      if (thirds[4] && thirds[5]) result[14] = [thirds[4].team, thirds[5].team];
+      if (thirds[6] && thirds[7]) result[15] = [thirds[6].team, thirds[7].team];
+    }
+
+    return result;
+  }, [matchPicks]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -155,6 +235,7 @@ export default function PicksPage() {
             matchPicks={matchPicks}
             onPickChange={handleMatchPickChange}
             onClose={() => setSelectedGroup(null)}
+            oddsMap={oddsMap}
           />
         )}
       </section>
@@ -173,6 +254,7 @@ export default function PicksPage() {
             onChange={handleBracketChange}
             locked={false}
             allTeams={ALL_TEAMS}
+            r32Teams={r32Teams}
           />
         </div>
       </section>
