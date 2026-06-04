@@ -36,13 +36,15 @@ const ALIASES: Record<string, string> = {
   'south africa': 'South Africa',
 };
 
-const ALL_TEAM_NAMES = new Set(GROUP_MATCHES.flatMap((m) => [m.home, m.away]));
+const ALL_TEAM_NAMES: string[] = Array.from(
+  new Set(GROUP_MATCHES.flatMap((m) => [m.home, m.away]))
+);
 
 function resolveTeam(raw: string): string | null {
   const lower = raw.toLowerCase().trim();
   if (ALIASES[lower]) return ALIASES[lower];
-  for (const name of ALL_TEAM_NAMES) {
-    if (name.toLowerCase() === lower) return name;
+  for (let i = 0; i < ALL_TEAM_NAMES.length; i++) {
+    if (ALL_TEAM_NAMES[i].toLowerCase() === lower) return ALL_TEAM_NAMES[i];
   }
   return null;
 }
