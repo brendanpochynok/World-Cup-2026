@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GROUP_MATCHES, computeMatchProbabilities } from '@/lib/worldcup-data';
+import { GROUP_MATCHES } from '@/lib/worldcup-data';
 
 export const revalidate = 300; // re-fetch Polymarket every 5 minutes
 
@@ -160,15 +160,5 @@ async function fetchPolymarketOdds(): Promise<Record<string, MatchOdds>> {
 export async function GET() {
   const polyOdds = await fetchPolymarketOdds();
 
-  const odds: Record<string, MatchOdds> = {};
-  for (const match of GROUP_MATCHES) {
-    if (polyOdds[match.matchId]) {
-      odds[match.matchId] = polyOdds[match.matchId];
-    } else {
-      const p = computeMatchProbabilities(match.home, match.away);
-      odds[match.matchId] = { ...p, source: 'model' };
-    }
-  }
-
-  return NextResponse.json({ odds });
+  return NextResponse.json({ odds: polyOdds });
 }

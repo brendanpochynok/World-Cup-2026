@@ -6,7 +6,6 @@ import {
   getGroupMatches,
   getTeamMeta,
   getFlagUrl,
-  computeMatchProbabilities,
   isMatchLocked,
 } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
@@ -228,9 +227,8 @@ export default function GroupDetailModal({
               const locked = isMatchLocked(match);
               const pick = matchPicks[match.matchId] ?? null;
 
-              // Use Polymarket if available, else model
               const oddsEntry = oddsMap[match.matchId];
-              const probs = oddsEntry ?? computeMatchProbabilities(match.home, match.away);
+              const probs = oddsEntry ?? null;
               const isPolymarket = oddsEntry?.source === 'polymarket';
 
               const homeMeta = getTeamMeta(match.home);
@@ -252,13 +250,9 @@ export default function GroupDetailModal({
                     <span>{formatDate(match.date)}</span>
                     <div className="flex items-center gap-2">
                       <span className="truncate">{match.city}</span>
-                      {isPolymarket ? (
+                      {isPolymarket && (
                         <span className="text-[10px] bg-purple-900/60 text-purple-300 px-1.5 py-0.5 rounded font-medium">
                           Polymarket
-                        </span>
-                      ) : (
-                        <span className="text-[10px] bg-green-900/60 text-green-500 px-1.5 py-0.5 rounded">
-                          Model
                         </span>
                       )}
                       {locked && <span className="text-yellow-600 font-semibold">LOCKED</span>}
@@ -284,9 +278,9 @@ export default function GroupDetailModal({
                   <div className="grid grid-cols-3 gap-2">
                     {(
                       [
-                        { key: 'home' as const, label: shortenName(match.home), prob: probs.home },
-                        { key: 'draw' as const, label: 'Draw',                  prob: probs.draw },
-                        { key: 'away' as const, label: shortenName(match.away), prob: probs.away },
+                        { key: 'home' as const, label: shortenName(match.home), prob: probs?.home ?? null },
+                        { key: 'draw' as const, label: 'Draw',                  prob: probs?.draw ?? null },
+                        { key: 'away' as const, label: shortenName(match.away), prob: probs?.away ?? null },
                       ]
                     ).map(({ key, label, prob }) => (
                       <button
@@ -302,9 +296,11 @@ export default function GroupDetailModal({
                         }`}
                       >
                         <div className="text-xs font-semibold truncate">{label}</div>
-                        <div className={`text-[13px] font-mono font-bold mt-0.5 ${pick === key ? 'text-black/70' : 'text-green-300'}`}>
-                          {pct(prob)}
-                        </div>
+                        {prob !== null && (
+                          <div className={`text-[13px] font-mono font-bold mt-0.5 ${pick === key ? 'text-black/70' : 'text-green-300'}`}>
+                            {pct(prob)}
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -316,7 +312,7 @@ export default function GroupDetailModal({
           {/* Footer */}
           <div className="flex-shrink-0 border-t border-green-800 px-5 py-3 flex justify-between items-center">
             <span className="text-[11px] text-green-600">
-              {hasPolymarket ? 'Odds: Polymarket prediction market' : 'Odds: FIFA ranking model'}
+              {hasPolymarket ? 'Odds: Polymarket prediction market' : 'Odds not yet available'}
             </span>
             <button
               onClick={onClose}
