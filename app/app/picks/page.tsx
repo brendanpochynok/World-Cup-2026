@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import GroupCard, { GroupPicks } from '@/components/picks/GroupCard';
+import { GroupPicks } from '@/components/picks/GroupCard';
+import GroupOverview from '@/components/picks/GroupOverview';
+import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
 import { GROUPS, ALL_TEAMS } from '@/lib/worldcup-data';
 
@@ -20,6 +22,7 @@ export default function PicksPage() {
   const [bracketPicks, setBracketPicks] = useState<BracketPicksMap>({});
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   // Debounce timers per group / bracket key
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -112,6 +115,28 @@ export default function PicksPage() {
   }
 
   // ----------------------------------------------------------------
+  // Group pick save from modal (immediate save)
+  // ----------------------------------------------------------------
+  async function handleGroupSave(groupId: string, picks: GroupPicks) {
+    setGroupPicks((prev) => ({ ...prev, [groupId]: picks }));
+    setSaveStatus('saving');
+    try {
+      const res = await fetch('/api/picks/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group: groupId, ...picks }),
+      });
+      if (res.ok) {
+        showSaved();
+      } else {
+        showError();
+      }
+    } catch {
+      showError();
+    }
+  }
+
+  // ----------------------------------------------------------------
   // Bracket pick save (debounced 400ms per slot)
   // ----------------------------------------------------------------
   function handleBracketChange(round: string, slot: number, team: string) {
@@ -190,8 +215,7 @@ export default function PicksPage() {
         <div className="mb-4">
           <h2 className="text-xl font-bold text-wc-gold-400">Group Stage</h2>
           <p className="text-wc-green-400 text-sm mt-1">
-            Rank each group 1st–4th. Top 2 qualify (green Q badge).
-            Drag rows or use ▲▼ buttons.
+            Click a group to rank teams 1st–4th. Top 2 qualify (green Q badge).
           </p>
           <div className="mt-2 flex flex-wrap gap-3 text-xs text-wc-green-500">
             <span>1st correct: <span className="text-wc-gold-400 font-semibold">+4 pts</span></span>
@@ -201,17 +225,20 @@ export default function PicksPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {GROUPS.map((group) => (
-            <GroupCard
-              key={group.id}
-              group={group}
-              picks={groupPicks[group.id] ?? null}
-              onChange={(picks) => handleGroupChange(group.id, picks)}
-              locked={false}
-            />
-          ))}
-        </div>
+        <GroupOverview
+          groups={GROUPS}
+          allPicks={groupPicks}
+          onSelectGroup={setSelectedGroup}
+        />
+
+        {selectedGroup && (
+          <GroupDetailModal
+            group={GROUPS.find((g) => g.id === selectedGroup)!}
+            picks={groupPicks[selectedGroup] ?? null}
+            onSave={(picks) => handleGroupSave(selectedGroup, picks)}
+            onClose={() => setSelectedGroup(null)}
+          />
+        )}
       </section>
 
       {/* ================================================================
