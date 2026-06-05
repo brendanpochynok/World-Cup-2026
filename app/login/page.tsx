@@ -15,16 +15,13 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error || 'Login failed');
       } else {
@@ -39,68 +36,75 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-wc-green-950 to-wc-green-900">
-      <div className="w-full max-w-md">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-4">⚽</div>
-          <h1 className="text-4xl font-bold text-wc-gold-400">World Cup 2026</h1>
-          <p className="text-wc-green-300 mt-2">Pool Picks</p>
+    <div className="min-h-screen flex items-center justify-center bg-wc-green-950 px-4">
+      {/* Subtle pitch lines decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 79px, #fff 79px, #fff 80px), repeating-linear-gradient(90deg, transparent, transparent 79px, #fff 79px, #fff 80px)',
+          }}
+        />
+      </div>
+
+      <div className="w-full max-w-sm relative">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-wc-gold-500 mb-5 shadow-lg shadow-wc-gold-900/40">
+            <svg className="w-7 h-7 text-wc-green-950" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 2c1.85 0 3.56.63 4.93 1.68L5.68 16.93A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8zm0 16a7.95 7.95 0 01-4.93-1.68L18.32 7.07A7.95 7.95 0 0120 12c0 4.41-3.59 8-8 8z"/>
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">World Cup 2026</h1>
+          <p className="text-wc-green-400 text-sm mt-1.5 tracking-wide uppercase text-xs font-medium">Pool Picks</p>
         </div>
 
-        {/* Login Card */}
-        <div className="card mx-4">
-          <h2 className="text-2xl font-bold text-center mb-6">Sign In</h2>
+        {/* Card */}
+        <div className="bg-wc-green-900 border border-wc-green-800 rounded-2xl p-7 shadow-2xl shadow-black/40">
+          <h2 className="text-lg font-semibold text-white mb-5">Sign in</h2>
 
           {error && (
-            <div className="bg-red-900/50 border border-red-700 text-red-200 rounded-lg px-4 py-3 mb-4 text-sm">
+            <div className="bg-red-950/60 border border-red-800/60 text-red-300 rounded-lg px-4 py-3 mb-5 text-sm">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-wc-green-300 mb-1">
-                Username
-              </label>
+              <label className="field-label">Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input-field"
-                placeholder="Enter your username"
+                placeholder="your username"
                 required
                 autoComplete="username"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-wc-green-300 mb-1">
-                Password
-              </label>
+              <label className="field-label">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-field"
-                placeholder="Enter your password"
+                placeholder="••••••••"
                 required
                 autoComplete="current-password"
               />
             </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full mt-2"
+              className="btn-primary w-full mt-1"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <p className="text-center text-wc-green-400 text-sm mt-4">
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-wc-gold-400 hover:text-wc-gold-300 font-semibold">
+          <p className="text-center text-wc-green-500 text-sm mt-5">
+            No account?{' '}
+            <Link href="/register" className="text-wc-gold-400 hover:text-wc-gold-300 font-semibold transition-colors">
               Register
             </Link>
           </p>
