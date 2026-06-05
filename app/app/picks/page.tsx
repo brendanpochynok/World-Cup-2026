@@ -4,10 +4,38 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
-import { GROUPS, GROUP_MATCHES, ALL_TEAMS, computeGroupStandings, getGroupMatches, getTeamMeta } from '@/lib/worldcup-data';
+import { GROUPS, GROUP_MATCHES, ALL_TEAMS, computeGroupStandings, getGroupMatches, getTeamMeta, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+function BracketLockBadge() {
+  const locked = isBracketLocked();
+  const lockDate = new Date(BRACKET_LOCK_ISO);
+  const formatted = lockDate.toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  });
+
+  if (locked) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full flex-shrink-0">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        Bracket locked
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs font-semibold text-wc-blue-600 bg-wc-blue-50 border border-wc-blue-200 px-3 py-1.5 rounded-full flex-shrink-0">
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+      </svg>
+      Locks {formatted}
+    </div>
+  );
+}
 
 export default function PicksPage() {
   const [matchPicks, setMatchPicks] = useState<Record<string, string>>({});
@@ -363,18 +391,21 @@ export default function PicksPage() {
 
       {/* ─── Knockout Bracket ─── */}
       <section>
-        <div className="mb-5">
-          <h2 className="text-xl font-black text-gray-900">Knockout Bracket</h2>
-          <p className="text-gray-400 text-xs mt-0.5">
-            Pick winners each round · R32=2 · R16=3 · QF=5 · SF=8 · Final=13 · Champion=20 pts
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-5">
+          <div>
+            <h2 className="text-xl font-black text-gray-900">Knockout Bracket</h2>
+            <p className="text-gray-400 text-xs mt-0.5">
+              March Madness style · R32=2 · R16=3 · QF=5 · SF=8 · Final=13 · Champion=20 pts
+            </p>
+          </div>
+          <BracketLockBadge />
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-x-auto shadow-sm">
+        <div className={`bg-white border rounded-2xl overflow-x-auto shadow-sm ${isBracketLocked() ? 'border-gray-300' : 'border-gray-200'}`}>
           <KnockoutBracket
             picks={bracketPicks}
             onChange={handleBracketChange}
-            locked={false}
+            locked={isBracketLocked()}
             allTeams={ALL_TEAMS}
             r32Teams={r32Teams}
           />

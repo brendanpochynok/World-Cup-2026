@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { ALL_TEAMS } from '@/lib/worldcup-data';
+import { ALL_TEAMS, isBracketLocked } from '@/lib/worldcup-data';
 
 const VALID_ROUNDS = new Set(['R32', 'R16', 'QF', 'SF', 'Final']);
 const ROUND_MAX_SLOTS: Record<string, number> = {
@@ -31,6 +31,7 @@ export async function GET() {
 export async function DELETE() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (isBracketLocked()) return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
   await prisma.bracketPick.deleteMany({ where: { userId: user.userId } });
   return NextResponse.json({ ok: true });
 }
@@ -41,6 +42,9 @@ export async function POST(request: NextRequest) {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (isBracketLocked()) {
+    return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
   }
 
   try {
