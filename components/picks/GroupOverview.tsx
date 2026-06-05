@@ -1,10 +1,11 @@
 'use client';
 
-import { Group, GroupMatch, getGroupMatches, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
+import { Group, GroupMatch, getGroupMatches, getTeamMeta, getFlagUrl, computeGroupStandings, groupHasTie } from '@/lib/worldcup-data';
 
 interface GroupOverviewProps {
   groups: Group[];
   matchPicks: Record<string, string>;
+  tiebreakerPicks?: Record<string, string[]>;
   onSelectGroup: (groupId: string) => void;
 }
 
@@ -59,15 +60,18 @@ function computeStandings(
 interface GroupMiniCardProps {
   group: Group;
   matchPicks: Record<string, string>;
+  tiebreakerOrder?: string[];
   onClick: () => void;
 }
 
-function GroupMiniCard({ group, matchPicks, onClick }: GroupMiniCardProps) {
+function GroupMiniCard({ group, matchPicks, tiebreakerOrder, onClick }: GroupMiniCardProps) {
   const matches = getGroupMatches(group.id);
   const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
   const total = matches.length;
   const complete = pickedCount === total;
   const started = pickedCount > 0;
+
+  const needsTiebreaker = complete && groupHasTie(computeGroupStandings(group.id, matchPicks)) && !tiebreakerOrder;
 
   const standings = started ? computeStandings(group.teams, matches, matchPicks) : null;
 
@@ -85,7 +89,9 @@ function GroupMiniCard({ group, matchPicks, onClick }: GroupMiniCardProps) {
         <span className="text-yellow-400 font-bold text-xs tracking-widest uppercase">
           {group.name}
         </span>
-        {complete ? (
+        {needsTiebreaker ? (
+          <span className="text-amber-400 text-xs font-bold">⚠ Tie</span>
+        ) : complete ? (
           <span className="text-green-400 text-xs font-bold">&#10003;</span>
         ) : started ? (
           <span className="text-yellow-500 text-[10px] font-semibold">{pickedCount}/{total}</span>
@@ -193,7 +199,7 @@ function GroupMiniCard({ group, matchPicks, onClick }: GroupMiniCardProps) {
   );
 }
 
-export default function GroupOverview({ groups, matchPicks, onSelectGroup }: GroupOverviewProps) {
+export default function GroupOverview({ groups, matchPicks, tiebreakerPicks = {}, onSelectGroup }: GroupOverviewProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       {groups.map((group) => (
@@ -201,6 +207,7 @@ export default function GroupOverview({ groups, matchPicks, onSelectGroup }: Gro
           key={group.id}
           group={group}
           matchPicks={matchPicks}
+          tiebreakerOrder={tiebreakerPicks[group.id]}
           onClick={() => onSelectGroup(group.id)}
         />
       ))}

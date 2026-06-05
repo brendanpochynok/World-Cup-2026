@@ -1154,7 +1154,8 @@ export interface GroupStanding {
 
 export function computeGroupStandings(
   groupId: string,
-  picks: Record<string, string>
+  picks: Record<string, string>,
+  tiebreakerOrder?: string[]
 ): GroupStanding[] {
   const group = GROUPS.find((g) => g.id === groupId);
   if (!group) return [];
@@ -1181,6 +1182,27 @@ export function computeGroupStandings(
   }
   return group.teams
     .map((t) => table[t])
-    .sort((a, b) => b.pts - a.pts || b.w - a.w || a.team.localeCompare(b.team));
+    .sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      if (b.w !== a.w) return b.w - a.w;
+      // True tie — apply user-resolved tiebreaker order if available
+      if (tiebreakerOrder) {
+        const ai = tiebreakerOrder.indexOf(a.team);
+        const bi = tiebreakerOrder.indexOf(b.team);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+      }
+      return a.team.localeCompare(b.team);
+    });
+}
+
+// Returns true if any adjacent teams in the standings are genuinely tied
+// (same points AND same wins, meaning no deterministic sort without a tiebreaker)
+export function groupHasTie(standings: GroupStanding[]): boolean {
+  for (let i = 0; i < standings.length - 1; i++) {
+    if (standings[i].pts === standings[i + 1].pts && standings[i].w === standings[i + 1].w) {
+      return true;
+    }
+  }
+  return false;
 }
 

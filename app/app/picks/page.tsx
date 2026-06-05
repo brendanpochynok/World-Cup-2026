@@ -14,6 +14,7 @@ export default function PicksPage() {
   const [bracketPicks, setBracketPicks] = useState<Record<string, string>>({});
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const [kickoffTimes, setKickoffTimes] = useState<Record<string, string>>({});
+  const [tiebreakerPicks, setTiebreakerPicks] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -24,10 +25,11 @@ export default function PicksPage() {
   // Load saved picks on mount
   const fetchPicks = useCallback(async () => {
     try {
-      const [groupRes, bracketRes, oddsRes] = await Promise.all([
+      const [groupRes, bracketRes, oddsRes, tbRes] = await Promise.all([
         fetch('/api/picks/groups'),
         fetch('/api/picks/bracket'),
         fetch('/api/odds'),
+        fetch('/api/picks/tiebreakers'),
       ]);
       const groupData = await groupRes.json();
       if (groupData.picks) setMatchPicks(groupData.picks);
@@ -44,6 +46,9 @@ export default function PicksPage() {
       const oddsData = await oddsRes.json().catch(() => ({}));
       if (oddsData.odds) setOddsMap(oddsData.odds);
       if (oddsData.kickoffTimes) setKickoffTimes(oddsData.kickoffTimes);
+
+      const tbData = await tbRes.json().catch(() => ({}));
+      if (tbData.picks) setTiebreakerPicks(tbData.picks);
     } catch (err) {
       console.error('Error loading picks', err);
     } finally {
@@ -91,14 +96,29 @@ export default function PicksPage() {
     setSaveStatus('saving');
     setMatchPicks({});
     setBracketPicks({});
+    setTiebreakerPicks({});
     try {
-      const [r1, r2] = await Promise.all([
+      const [r1, r2, r3] = await Promise.all([
         fetch('/api/picks/groups', { method: 'DELETE' }),
         fetch('/api/picks/bracket', { method: 'DELETE' }),
+        fetch('/api/picks/tiebreakers', { method: 'DELETE' }),
       ]);
-      r1.ok && r2.ok ? showSaved() : showError();
+      r1.ok && r2.ok && r3.ok ? showSaved() : showError();
     } catch {
       showError();
+    }
+  }
+
+  async function handleTiebreakerChange(groupId: string, teamOrder: string[]) {
+    setTiebreakerPicks((prev) => ({ ...prev, [groupId]: teamOrder }));
+    try {
+      await fetch('/api/picks/tiebreakers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId, teamOrder }),
+      });
+    } catch {
+      // non-critical — state is already updated
     }
   }
 
@@ -181,7 +201,7 @@ export default function PicksPage() {
       const matches = getGroupMatches(g.id);
       const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
       if (pickedCount === matches.length) {
-        const rows = computeGroupStandings(g.id, matchPicks);
+        const rows = computeGroupStandings(g.id, matchPicks, tiebreakerPicks[g.id]);
         standings[g.id] = rows.map((r) => r.team);
       }
     }
@@ -245,7 +265,7 @@ export default function PicksPage() {
     }
 
     return result;
-  }, [matchPicks]);
+  }, [matchPicks, tiebreakerPicks]);
 
   if (loading) {
     return (
@@ -307,6 +327,7 @@ export default function PicksPage() {
         <GroupOverview
           groups={GROUPS}
           matchPicks={matchPicks}
+          tiebreakerPicks={tiebreakerPicks}
           onSelectGroup={setSelectedGroup}
         />
 
@@ -318,6 +339,8 @@ export default function PicksPage() {
             onClose={() => setSelectedGroup(null)}
             oddsMap={oddsMap}
             kickoffTimes={kickoffTimes}
+            tiebreakerOrder={tiebreakerPicks[selectedGroup]}
+            onTiebreakerChange={(order) => handleTiebreakerChange(selectedGroup, order)}
           />
         )}
       </section>
