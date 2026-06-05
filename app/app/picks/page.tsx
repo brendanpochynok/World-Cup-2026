@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
-import { GROUPS, GROUP_MATCHES, ALL_TEAMS, computeGroupStandings, getGroupMatches } from '@/lib/worldcup-data';
+import { GROUPS, GROUP_MATCHES, ALL_TEAMS, computeGroupStandings, getGroupMatches, getTeamMeta } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -79,6 +79,69 @@ export default function PicksPage() {
         body: JSON.stringify({ matchId, pick }),
       });
       res.ok ? showSaved() : showError();
+    } catch {
+      showError();
+    }
+  }
+
+  // Clear all picks
+  async function handleClearAll() {
+    setSaveStatus('saving');
+    setMatchPicks({});
+    setBracketPicks({});
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch('/api/picks/groups', { method: 'DELETE' }),
+        fetch('/api/picks/bracket', { method: 'DELETE' }),
+      ]);
+      r1.ok && r2.ok ? showSaved() : showError();
+    } catch {
+      showError();
+    }
+  }
+
+  // Auto-pick favourites: pick the highest-probability outcome for each unpicked match
+  async function handleAutoPick() {
+    setSaveStatus('saving');
+    const newPicks: Record<string, string> = {};
+
+    for (let i = 0; i < GROUP_MATCHES.length; i++) {
+      const match = GROUP_MATCHES[i];
+      if (matchPicks[match.matchId]) continue; // already picked
+
+      const odds = oddsMap[match.matchId];
+      let pick: string;
+
+      if (odds) {
+        if (odds.home >= odds.draw && odds.home >= odds.away) pick = 'home';
+        else if (odds.away >= odds.draw) pick = 'away';
+        else pick = 'draw';
+      } else {
+        // Fall back to FIFA ranking (lower number = stronger team)
+        const homeRank = getTeamMeta(match.home).fifaRank;
+        const awayRank = getTeamMeta(match.away).fifaRank;
+        pick = homeRank <= awayRank ? 'home' : 'away';
+      }
+      newPicks[match.matchId] = pick;
+    }
+
+    if (Object.keys(newPicks).length === 0) {
+      setSaveStatus('idle');
+      return;
+    }
+
+    setMatchPicks((prev) => ({ ...prev, ...newPicks }));
+    try {
+      const responses = await Promise.all(
+        Object.entries(newPicks).map(([matchId, pick]) =>
+          fetch('/api/picks/groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matchId, pick }),
+          })
+        )
+      );
+      responses.every((r) => r.ok) ? showSaved() : showError();
     } catch {
       showError();
     }
@@ -204,10 +267,24 @@ export default function PicksPage() {
             {pickedMatches}/{totalMatches} group matches · {bracketSlots} bracket slots
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm flex-wrap">
           {saveStatus === 'saving' && <span className="text-green-300 animate-pulse">Saving...</span>}
           {saveStatus === 'saved'  && <span className="text-green-400 font-medium">Saved ✓</span>}
           {saveStatus === 'error'  && <span className="text-red-400 font-medium">Save failed</span>}
+          <button
+            onClick={handleAutoPick}
+            disabled={saveStatus === 'saving'}
+            className="px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
+          >
+            Auto-pick favourites
+          </button>
+          <button
+            onClick={handleClearAll}
+            disabled={saveStatus === 'saving'}
+            className="px-3 py-1.5 rounded-lg bg-red-900/60 hover:bg-red-800 disabled:opacity-50 text-red-300 hover:text-white text-xs font-semibold transition-colors border border-red-800"
+          >
+            Clear all
+          </button>
         </div>
       </div>
 
@@ -219,7 +296,11 @@ export default function PicksPage() {
             Click a group to pick each match. Top 2 + 8 best 3rd-place teams advance to Round of 32.
           </p>
           <div className="mt-2 text-xs text-green-500">
-            Correct result: <span className="text-yellow-400 font-semibold">+3 pts</span>
+            Correct: <span className="text-yellow-400 font-semibold">+1 pt</span>
+            <span className="mx-1.5">·</span>
+            Wrong on decisive: <span className="text-red-400 font-semibold">-1 pt</span>
+            <span className="mx-1.5">·</span>
+            Match drew (no draw pick): <span className="text-green-400 font-semibold">0 pts</span>
           </div>
         </div>
 

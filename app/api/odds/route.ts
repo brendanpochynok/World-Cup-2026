@@ -1,164 +1,189 @@
 import { NextResponse } from 'next/server';
 import { GROUP_MATCHES } from '@/lib/worldcup-data';
 
-export const revalidate = 300; // re-fetch Polymarket every 5 minutes
+export const revalidate = 300; // re-fetch every 5 minutes
 
 export interface MatchOdds {
   home: number;   // probability 0–1
   draw: number;
   away: number;
-  source: 'polymarket' | 'model';
+  source: 'polymarket';
 }
 
-// Normalise a name for fuzzy team matching
-const ALIASES: Record<string, string> = {
-  'united states': 'United States',
-  'usa': 'United States',
-  'u.s.': 'United States',
-  'u.s.a.': 'United States',
-  "ivory coast": "Cote d'Ivoire",
-  "côte d'ivoire": "Cote d'Ivoire",
-  "cote d'ivoire": "Cote d'Ivoire",
-  'ivory': "Cote d'Ivoire",
-  'south korea': 'South Korea',
-  'republic of korea': 'South Korea',
-  'korea republic': 'South Korea',
-  'democratic republic of the congo': 'DR Congo',
-  'democratic republic of congo': 'DR Congo',
-  'dr congo': 'DR Congo',
-  'drc': 'DR Congo',
-  'cape verde': 'Cabo Verde',
-  'bosnia and herzegovina': 'Bosnia and Herzegovina',
-  'bosnia': 'Bosnia and Herzegovina',
-  'bosnia & herzegovina': 'Bosnia and Herzegovina',
-  'saudi arabia': 'Saudi Arabia',
-  'new zealand': 'New Zealand',
-  'south africa': 'South Africa',
+// Polymarket 3-letter codes for each team (primary first, fallbacks after)
+const TEAM_CODES: Record<string, string[]> = {
+  'Mexico':                   ['mex'],
+  'South Africa':             ['rsa', 'zaf'],
+  'South Korea':              ['kor'],
+  'Czechia':                  ['cze'],
+  'Canada':                   ['can'],
+  'Switzerland':              ['che'],
+  'Qatar':                    ['qat'],
+  'Bosnia and Herzegovina':   ['bih'],
+  'Brazil':                   ['bra'],
+  'Morocco':                  ['mar'],
+  'Haiti':                    ['hti', 'hai'],
+  'Scotland':                 ['sco'],
+  'United States':            ['usa'],
+  'Paraguay':                 ['par', 'pry'],
+  'Australia':                ['aus'],
+  'Turkey':                   ['tur'],
+  'Germany':                  ['deu', 'ger'],
+  'Curacao':                  ['cur', 'cuw'],
+  "Cote d'Ivoire":            ['civ'],
+  'Ecuador':                  ['ecu'],
+  'Netherlands':              ['ned', 'nld'],
+  'Japan':                    ['jpn'],
+  'Sweden':                   ['swe'],
+  'Tunisia':                  ['tun'],
+  'Belgium':                  ['bel'],
+  'Egypt':                    ['egy'],
+  'Iran':                     ['irn', 'iri'],
+  'New Zealand':              ['nzl'],
+  'Spain':                    ['esp'],
+  'Cabo Verde':               ['cpv', 'cav'],
+  'Saudi Arabia':             ['sau', 'ksa'],
+  'Uruguay':                  ['uru', 'ury'],
+  'France':                   ['fra'],
+  'Senegal':                  ['sen'],
+  'Norway':                   ['nor'],
+  'Iraq':                     ['irq'],
+  'Argentina':                ['arg'],
+  'Algeria':                  ['dza', 'alg'],
+  'Austria':                  ['aut'],
+  'Jordan':                   ['jor'],
+  'Portugal':                 ['por', 'prt'],
+  'DR Congo':                 ['cod', 'cog'],
+  'Uzbekistan':               ['uzb'],
+  'Colombia':                 ['col'],
+  'England':                  ['eng'],
+  'Croatia':                  ['cro', 'hrv'],
+  'Ghana':                    ['gha'],
+  'Panama':                   ['pan'],
 };
 
-const ALL_TEAM_NAMES: string[] = Array.from(
-  new Set(GROUP_MATCHES.flatMap((m) => [m.home, m.away]))
-);
-
-function resolveTeam(raw: string): string | null {
-  const lower = raw.toLowerCase().trim();
-  if (ALIASES[lower]) return ALIASES[lower];
-  for (let i = 0; i < ALL_TEAM_NAMES.length; i++) {
-    if (ALL_TEAM_NAMES[i].toLowerCase() === lower) return ALL_TEAM_NAMES[i];
-  }
-  return null;
-}
-
-// Build a lookup: (homeTeam, awayTeam) -> matchId (both orderings)
-const MATCH_LOOKUP = new Map<string, string>();
-for (const m of GROUP_MATCHES) {
-  MATCH_LOOKUP.set(`${m.home}|${m.away}`, m.matchId);
-  MATCH_LOOKUP.set(`${m.away}|${m.home}`, m.matchId);
-}
+const FETCH_HEADERS = {
+  Accept: 'application/json',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+  Referer: 'https://polymarket.com/',
+};
 
 interface PolyMarket {
-  question: string;
-  outcomes: string;        // JSON array string
-  outcomePrices: string;   // JSON array string
+  slug: string;
+  outcomePrices: string; // JSON array like '["0.46","0.54"]'
   active: boolean;
   closed: boolean;
 }
 
-async function fetchPolymarketOdds(): Promise<Record<string, MatchOdds>> {
-  const result: Record<string, MatchOdds> = {};
+interface PolyEvent {
+  slug: string;
+  markets: PolyMarket[];
+}
+
+async function fetchEventBySlug(slug: string): Promise<PolyEvent | null> {
   try {
-    // Try multiple queries to maximise hit rate for individual match markets
-    const queries = [
-      'https://gamma-api.polymarket.com/markets?q=2026+FIFA+World+Cup&active=true&closed=false&limit=500',
-      'https://gamma-api.polymarket.com/markets?q=World+Cup+2026+group&active=true&closed=false&limit=500',
-    ];
-    const headers = {
-      Accept: 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Referer': 'https://polymarket.com/',
-    };
-    let allMarkets: PolyMarket[] = [];
-    for (let qi = 0; qi < queries.length; qi++) {
-      const res = await fetch(queries[qi], { headers, next: { revalidate: 300 } });
-      if (!res.ok) continue;
-      const batch: PolyMarket[] = await res.json().catch(() => []);
-      for (let mi = 0; mi < batch.length; mi++) allMarkets.push(batch[mi]);
+    const url = `https://gamma-api.polymarket.com/events?slug=${slug}`;
+    const res = await fetch(url, { headers: FETCH_HEADERS, next: { revalidate: 300 } });
+    if (!res.ok) return null;
+    const data: PolyEvent[] = await res.json().catch(() => []);
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const event = data.find((e) => e.slug === slug) ?? data[0];
+    if (!event || !Array.isArray(event.markets) || event.markets.length === 0) return null;
+    return event;
+  } catch {
+    return null;
+  }
+}
+
+// Parse home/draw/away probabilities from a Polymarket negRisk event.
+// Each child market slug ends in -{homeCode}, -{awayCode}, or -draw.
+function parseEventOdds(
+  event: PolyEvent,
+  homeCode: string,
+  awayCode: string
+): { home: number; draw: number; away: number } | null {
+  let homeProb = -1;
+  let drawProb = -1;
+  let awayProb = -1;
+
+  for (let i = 0; i < event.markets.length; i++) {
+    const market = event.markets[i];
+    let prices: number[];
+    try {
+      prices = (JSON.parse(market.outcomePrices) as string[]).map(Number);
+    } catch {
+      continue;
     }
-    // Deduplicate by question
-    const seenQuestions: Record<string, boolean> = {};
-    const markets: PolyMarket[] = [];
-    for (let i = 0; i < allMarkets.length; i++) {
-      const q = allMarkets[i].question;
-      if (!seenQuestions[q]) {
-        seenQuestions[q] = true;
-        markets.push(allMarkets[i]);
-      }
+    // outcomePrices[0] = "Yes" probability for this binary market
+    const yesPrice = prices[0];
+    if (isNaN(yesPrice) || yesPrice < 0 || yesPrice > 1) continue;
+
+    const mSlug = market.slug.toLowerCase();
+    if (mSlug.endsWith('-' + homeCode)) {
+      homeProb = yesPrice;
+    } else if (mSlug.endsWith('-' + awayCode)) {
+      awayProb = yesPrice;
+    } else if (mSlug.endsWith('-draw')) {
+      drawProb = yesPrice;
     }
-    if (markets.length === 0) return result;
+  }
 
-    for (const mkt of markets) {
-      if (!mkt.active || mkt.closed) continue;
+  if (homeProb < 0 || drawProb < 0 || awayProb < 0) return null;
 
-      let outcomes: string[];
-      let prices: number[];
-      try {
-        outcomes = JSON.parse(mkt.outcomes) as string[];
-        prices = (JSON.parse(mkt.outcomePrices) as string[]).map(Number);
-      } catch {
-        continue;
-      }
+  const total = homeProb + drawProb + awayProb || 1;
+  return { home: homeProb / total, draw: drawProb / total, away: awayProb / total };
+}
 
-      if (outcomes.length !== 3 || prices.length !== 3) continue;
+async function fetchMatchOdds(
+  match: (typeof GROUP_MATCHES)[0]
+): Promise<{ matchId: string; odds: MatchOdds } | null> {
+  const homeCodes = TEAM_CODES[match.home] ?? [];
+  const awayCodes = TEAM_CODES[match.away] ?? [];
+  if (homeCodes.length === 0 || awayCodes.length === 0) return null;
 
-      // Find the draw outcome — Polymarket labels it "Draw", "Tie", or "Draw/Tie"
-      const drawIdx = outcomes.findIndex((o) =>
-        /^(draw|tie|draw\/tie)$/i.test(o.trim())
-      );
-      if (drawIdx === -1) continue;
+  // Try primary codes (home-away order), then reversed, then alternative codes
+  const hPrimary = homeCodes[0];
+  const aPrimary = awayCodes[0];
 
-      const teamIdxs = [0, 1, 2].filter((i) => i !== drawIdx);
-      const t1 = resolveTeam(outcomes[teamIdxs[0]]);
-      const t2 = resolveTeam(outcomes[teamIdxs[1]]);
-      if (!t1 || !t2) continue;
+  const toTry: Array<{ slug: string; hCode: string; aCode: string }> = [
+    { slug: `fifwc-${hPrimary}-${aPrimary}-${match.date}`, hCode: hPrimary, aCode: aPrimary },
+    { slug: `fifwc-${aPrimary}-${hPrimary}-${match.date}`, hCode: hPrimary, aCode: aPrimary },
+  ];
+  if (homeCodes.length > 1) {
+    const hAlt = homeCodes[1];
+    toTry.push({ slug: `fifwc-${hAlt}-${aPrimary}-${match.date}`, hCode: hAlt, aCode: aPrimary });
+    toTry.push({ slug: `fifwc-${aPrimary}-${hAlt}-${match.date}`, hCode: hAlt, aCode: aPrimary });
+  }
+  if (awayCodes.length > 1) {
+    const aAlt = awayCodes[1];
+    toTry.push({ slug: `fifwc-${hPrimary}-${aAlt}-${match.date}`, hCode: hPrimary, aCode: aAlt });
+    toTry.push({ slug: `fifwc-${aAlt}-${hPrimary}-${match.date}`, hCode: hPrimary, aCode: aAlt });
+  }
 
-      const matchId =
-        MATCH_LOOKUP.get(`${t1}|${t2}`) ?? MATCH_LOOKUP.get(`${t2}|${t1}`);
-      if (!matchId) continue;
-
-      const match = GROUP_MATCHES.find((m) => m.matchId === matchId)!;
-      // Determine which outcome index maps to home/away
-      const homeTeamName = outcomes[teamIdxs[0]];
-      const resolvedFirst = resolveTeam(homeTeamName);
-      let homeProb: number;
-      let awayProb: number;
-      let drawProb: number;
-
-      if (resolvedFirst === match.home) {
-        homeProb = prices[teamIdxs[0]];
-        awayProb = prices[teamIdxs[1]];
-      } else {
-        homeProb = prices[teamIdxs[1]];
-        awayProb = prices[teamIdxs[0]];
-      }
-      drawProb = prices[drawIdx];
-
-      // Normalise so they sum to 1
-      const total = homeProb + drawProb + awayProb || 1;
-      result[matchId] = {
-        home: homeProb / total,
-        draw: drawProb / total,
-        away: awayProb / total,
-        source: 'polymarket',
-      };
+  for (let i = 0; i < toTry.length; i++) {
+    const { slug, hCode, aCode } = toTry[i];
+    const event = await fetchEventBySlug(slug);
+    if (!event) continue;
+    const odds = parseEventOdds(event, hCode, aCode);
+    if (odds) {
+      return { matchId: match.matchId, odds: { ...odds, source: 'polymarket' } };
     }
-  } catch (err) {
-    console.error('Polymarket fetch error:', err);
+  }
+  return null;
+}
+
+async function fetchAllOdds(): Promise<Record<string, MatchOdds>> {
+  const result: Record<string, MatchOdds> = {};
+  // Fetch all 48 matches in parallel; Next.js deduplicates identical URLs via fetch cache
+  const results = await Promise.all(GROUP_MATCHES.map(fetchMatchOdds));
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (r) result[r.matchId] = r.odds;
   }
   return result;
 }
 
 export async function GET() {
-  const polyOdds = await fetchPolymarketOdds();
-
-  return NextResponse.json({ odds: polyOdds });
+  const odds = await fetchAllOdds();
+  return NextResponse.json({ odds });
 }

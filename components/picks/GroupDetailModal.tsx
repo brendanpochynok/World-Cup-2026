@@ -138,7 +138,7 @@ export default function GroupDetailModal({
             <div>
               <h2 className="text-yellow-400 font-bold text-lg tracking-wide">{group.name}</h2>
               <p className="text-green-500 text-xs mt-0.5">
-                {pickedCount}/{matches.length} picks made · correct result = 3 pts
+                {pickedCount}/{matches.length} picks made · correct +1 · wrong -1 · draw 0
               </p>
             </div>
             <button
