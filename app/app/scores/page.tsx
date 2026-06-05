@@ -20,13 +20,13 @@ function SectionHeader({ label, live = false }: { label: string; live?: boolean 
     <div className="flex items-center gap-2 mb-4">
       {live ? (
         <div className="relative flex items-center justify-center w-5 h-5">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-wc-red-500 opacity-30 animate-ping" />
+          <span className="absolute inline-flex h-full w-full rounded-full bg-wc-red-500 opacity-20 animate-ping" />
           <span className="relative inline-flex w-2.5 h-2.5 rounded-full bg-wc-red-500" />
         </div>
       ) : (
-        <span className="w-1.5 h-1.5 rounded-full bg-wc-navy-600 inline-block" />
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />
       )}
-      <h2 className={`text-sm font-black uppercase tracking-[0.1em] ${live ? 'text-wc-red-400' : 'text-wc-navy-400'}`}>
+      <h2 className={`text-sm font-black uppercase tracking-[0.1em] ${live ? 'text-wc-red-500' : 'text-gray-500'}`}>
         {label}
       </h2>
     </div>
@@ -74,8 +74,8 @@ export default function ScoresPage() {
       <div className="flex items-center justify-between">
         <div>
           <p className="eyebrow mb-1.5">Real-time</p>
-          <h1 className="text-3xl font-black text-white">Scores</h1>
-          <p className="text-wc-navy-500 text-sm mt-1">
+          <h1 className="text-3xl font-black text-gray-900">Scores</h1>
+          <p className="text-gray-500 text-sm mt-1">
             {lastUpdated
               ? `Updated ${lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
               : 'Auto-refreshes every minute'}
@@ -95,13 +95,13 @@ export default function ScoresPage() {
 
       {/* Error state */}
       {error && (
-        <div className="card border-wc-red-600/30 bg-wc-red-700/8 flex items-start gap-3">
-          <svg className="w-5 h-5 text-wc-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="card border-red-200 bg-red-50 flex items-start gap-3">
+          <svg className="w-5 h-5 text-wc-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
           <div>
-            <p className="text-wc-red-300 text-sm font-semibold">{error}</p>
-            <p className="text-wc-navy-500 text-xs mt-0.5">The ESPN API may be temporarily unavailable.</p>
+            <p className="text-wc-red-600 text-sm font-semibold">{error}</p>
+            <p className="text-gray-500 text-xs mt-0.5">The ESPN API may be temporarily unavailable.</p>
           </div>
         </div>
       )}
@@ -112,7 +112,7 @@ export default function ScoresPage() {
             <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
           </svg>
-          <span className="text-wc-navy-400 text-sm font-medium">Loading scores…</span>
+          <span className="text-gray-500 text-sm font-medium">Loading scores…</span>
         </div>
       ) : (
         <>
@@ -145,10 +145,9 @@ export default function ScoresPage() {
 
           {!loading && games.length === 0 && !error && (
             <div className="card text-center py-16">
-              <div className="text-5xl mb-4">⚽</div>
-              <h3 className="text-xl font-black text-white mb-2">No matches today</h3>
-              <p className="text-wc-navy-400 text-sm">Group stage runs June 11 – June 27, 2026.</p>
-              <p className="text-wc-navy-600 text-xs mt-1">Check back soon!</p>
+              <h3 className="text-xl font-black text-gray-900 mb-2">No matches today</h3>
+              <p className="text-gray-500 text-sm">Group stage runs June 11 – June 27, 2026.</p>
+              <p className="text-gray-400 text-xs mt-1">Check back soon!</p>
             </div>
           )}
         </>

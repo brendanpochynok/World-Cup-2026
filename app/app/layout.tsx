@@ -16,9 +16,9 @@ export default async function AppLayout({
   const username = user!.username;
 
   return (
-    <div className="min-h-screen bg-wc-navy-950">
+    <div className="min-h-screen bg-gray-50">
       <Navbar username={username} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
     </div>

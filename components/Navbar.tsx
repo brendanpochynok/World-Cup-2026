@@ -64,24 +64,23 @@ export default function Navbar({ username }: NavbarProps) {
 
   return (
     <nav className="sticky top-0 z-50">
-      {/* FIFA WC 2026 host nations rainbow stripe */}
+      {/* FIFA WC 2026 host nations gradient stripe */}
       <div className="h-[3px] bg-gradient-to-r from-wc-blue-500 via-wc-green-500 to-wc-red-500" />
 
-      {/* Main nav bar */}
-      <div className="bg-wc-navy-950/96 backdrop-blur-md border-b border-wc-navy-800/70">
+      <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-14">
 
             {/* Brand */}
-            <Link href="/app/dashboard" className="flex items-center gap-2.5 group flex-shrink-0">
-              <div className="relative w-8 h-8 rounded-xl bg-gradient-to-br from-wc-blue-500 to-wc-blue-700 flex items-center justify-center shadow-md shadow-wc-blue-900/60 group-hover:shadow-wc-blue-900/80 transition-shadow">
-                <svg className="w-4.5 h-4.5 text-white" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+            <Link href="/app/dashboard" className="flex items-center gap-2.5 flex-shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-wc-blue-500 to-wc-blue-700 flex items-center justify-center shadow-sm flex-shrink-0">
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13H9V9h2v6zm4 0h-2V9h2v6z"/>
                 </svg>
               </div>
               <div className="hidden sm:block leading-none">
-                <span className="text-white font-black text-[13px] tracking-tight block">WC 2026</span>
-                <span className="text-wc-navy-500 text-[10px] uppercase tracking-[0.12em] font-semibold">Pool Picks</span>
+                <span className="text-gray-900 font-black text-[13px] tracking-tight block">WC 2026</span>
+                <span className="text-gray-400 text-[10px] uppercase tracking-[0.12em] font-semibold">Pool Picks</span>
               </div>
             </Link>
 
@@ -95,8 +94,8 @@ export default function Navbar({ username }: NavbarProps) {
                     href={link.href}
                     className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold transition-all duration-150 ${
                       active
-                        ? 'bg-wc-blue-500/12 text-wc-blue-300'
-                        : 'text-wc-navy-300 hover:text-white hover:bg-wc-navy-800/70'
+                        ? 'text-wc-blue-500 bg-wc-blue-500/8'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     {active && (
@@ -109,17 +108,12 @@ export default function Navbar({ username }: NavbarProps) {
               })}
             </div>
 
-            {/* User area — desktop */}
+            {/* User area */}
             <div className="hidden md:flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-wc-blue-600 to-wc-blue-800 border border-wc-blue-500/40 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[11px] font-black text-white uppercase">{username[0]}</span>
-                </div>
-                <span className="text-wc-navy-300 text-[13px] font-semibold">{username}</span>
-              </div>
+              <span className="text-gray-700 text-[13px] font-semibold">{username}</span>
               <button
                 onClick={handleLogout}
-                className="text-[12px] text-wc-navy-500 hover:text-white font-semibold transition-colors border border-wc-navy-700/60 hover:border-wc-navy-600 px-3 py-1.5 rounded-lg hover:bg-wc-navy-800"
+                className="text-[12px] text-gray-500 hover:text-gray-900 font-semibold transition-colors border border-gray-300 hover:border-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50"
               >
                 Sign out
               </button>
@@ -127,7 +121,7 @@ export default function Navbar({ username }: NavbarProps) {
 
             {/* Mobile hamburger */}
             <button
-              className="md:hidden text-wc-navy-400 hover:text-white p-2 rounded-xl hover:bg-wc-navy-800 transition-colors"
+              className="md:hidden text-gray-500 hover:text-gray-900 p-2 rounded-xl hover:bg-gray-100 transition-colors"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Toggle menu"
             >
@@ -146,7 +140,7 @@ export default function Navbar({ username }: NavbarProps) {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="md:hidden border-t border-wc-navy-800 bg-wc-navy-950">
+          <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-3 py-2 space-y-0.5">
               {navLinks.map((link) => {
                 const active = pathname === link.href;
@@ -157,8 +151,8 @@ export default function Navbar({ username }: NavbarProps) {
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                       active
-                        ? 'bg-wc-blue-500/12 text-wc-blue-300 border-l-2 border-wc-blue-500'
-                        : 'text-wc-navy-300 hover:text-white hover:bg-wc-navy-800'
+                        ? 'bg-wc-blue-500/8 text-wc-blue-500 border-l-2 border-wc-blue-500'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     {link.icon}
@@ -167,15 +161,10 @@ export default function Navbar({ username }: NavbarProps) {
                 );
               })}
             </div>
-            <div className="px-4 py-3 border-t border-wc-navy-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-wc-blue-600 to-wc-blue-800 border border-wc-blue-500/40 flex items-center justify-center">
-                  <span className="text-[11px] font-black text-white uppercase">{username[0]}</span>
-                </div>
-                <span className="text-wc-navy-300 text-sm font-semibold">{username}</span>
-              </div>
+            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-gray-700 text-sm font-semibold">{username}</span>
               <button onClick={handleLogout}
-                className="text-xs text-wc-navy-400 hover:text-white font-semibold transition-colors">
+                className="text-xs text-gray-500 hover:text-gray-900 font-semibold transition-colors">
                 Sign out
               </button>
             </div>

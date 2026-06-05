@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-wc-navy-950 text-white;
+    @apply bg-gray-50 text-gray-900;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: 'tnum' on, 'lnum' on;
@@ -15,108 +15,58 @@
 }
 
 @layer components {
-  /* Primary CTA — FIFA sky blue with shadow glow */
+  /* Primary CTA — FIFA sky blue */
   .btn-primary {
-    @apply relative bg-wc-blue-500 hover:bg-wc-blue-400 active:bg-wc-blue-600
+    @apply bg-wc-blue-500 hover:bg-wc-blue-400 active:bg-wc-blue-600
            text-white font-bold text-sm py-2.5 px-5
            rounded-xl tracking-wide transition-all duration-150
            disabled:opacity-40 disabled:cursor-not-allowed
-           shadow-lg shadow-wc-blue-900/50
-           hover:shadow-xl hover:shadow-wc-blue-900/60
-           hover:-translate-y-px;
+           shadow-sm hover:-translate-y-px;
   }
 
-  /* Secondary — ghost / navy outline */
+  /* Secondary — outline on light */
   .btn-secondary {
-    @apply bg-transparent hover:bg-wc-navy-800 active:bg-wc-navy-700
-           text-wc-navy-200 hover:text-white font-semibold text-sm py-2.5 px-5
-           rounded-xl border border-wc-navy-700 hover:border-wc-navy-600
+    @apply bg-white hover:bg-gray-50 active:bg-gray-100
+           text-gray-700 hover:text-gray-900 font-semibold text-sm py-2.5 px-5
+           rounded-xl border border-gray-300 hover:border-gray-400
            transition-all duration-150;
   }
 
-  /* Ghost — minimal */
+  /* Ghost */
   .btn-ghost {
-    @apply bg-transparent hover:bg-wc-navy-800
-           text-wc-navy-400 hover:text-white font-medium text-sm py-1.5 px-3
+    @apply bg-transparent hover:bg-gray-100
+           text-gray-500 hover:text-gray-900 font-medium text-sm py-1.5 px-3
            rounded-lg transition-all duration-150;
   }
 
   /* Base card */
   .card {
-    @apply bg-wc-navy-900 border border-wc-navy-700/80 rounded-2xl p-5
-           shadow-xl shadow-black/25;
-  }
-
-  /* Card with colored top accent stripe */
-  .card-accent-blue {
-    @apply card;
-    border-top: 2px solid #009DDA;
-  }
-
-  .card-accent-gold {
-    @apply card;
-    border-top: 2px solid #CC9520;
-  }
-
-  .card-accent-green {
-    @apply card;
-    border-top: 2px solid #00A648;
+    @apply bg-white border border-gray-200 rounded-2xl p-5 shadow-sm;
   }
 
   /* Inputs */
   .input-field {
-    @apply bg-wc-navy-800 border border-wc-navy-700
-           text-white rounded-xl px-4 py-3 w-full
-           focus:outline-none focus:ring-2 focus:ring-wc-blue-500/40
-           focus:border-wc-blue-600
-           placeholder-wc-navy-500
+    @apply bg-white border border-gray-300
+           text-gray-900 rounded-xl px-4 py-3 w-full
+           focus:outline-none focus:ring-2 focus:ring-wc-blue-500/25
+           focus:border-wc-blue-500
+           placeholder-gray-400
            transition-colors duration-150
            text-sm;
   }
 
   /* Field label */
   .field-label {
-    @apply block text-[11px] font-bold text-wc-navy-400 uppercase tracking-[0.12em] mb-1.5;
+    @apply block text-[11px] font-bold text-gray-500 uppercase tracking-[0.12em] mb-1.5;
   }
 
-  /* Section eyebrow label */
+  /* Section eyebrow */
   .eyebrow {
-    @apply text-[11px] font-bold uppercase tracking-[0.15em] text-wc-navy-500;
+    @apply text-[11px] font-bold uppercase tracking-[0.15em] text-wc-blue-600;
   }
 
-  /* Inline tag / badge pill */
+  /* Inline badge pill */
   .tag {
     @apply inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full;
   }
-
-  /* Stat number */
-  .stat-number {
-    @apply text-4xl font-black text-white tabular-nums leading-none;
-  }
-}
-
-/* Shimmer skeleton loader */
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
-}
-
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    #040D28 0%,
-    #0C2260 50%,
-    #040D28 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
-  border-radius: 8px;
-}
-
-/* Spin animation for save indicator */
-@keyframes spin-slow {
-  to { transform: rotate(360deg); }
-}
-.animate-spin-slow {
-  animation: spin-slow 1s linear infinite;
 }

@@ -255,7 +255,7 @@ export default function PicksPage() {
           <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
           <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
         </svg>
-        <span className="text-wc-navy-400 text-sm font-medium">Loading your picks…</span>
+        <span className="text-gray-500 text-sm font-medium">Loading your picks…</span>
       </div>
     );
   }
@@ -271,21 +271,20 @@ export default function PicksPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="eyebrow mb-1">FIFA World Cup 2026™</p>
-          <h1 className="text-3xl font-black text-white">My Picks</h1>
-          <p className="text-wc-navy-400 text-sm mt-1.5">
-            <span className="text-white font-semibold">{pickedMatches}</span>
-            <span className="text-wc-navy-600">/{totalMatches}</span>
+          <h1 className="text-3xl font-black text-gray-900">My Picks</h1>
+          <p className="text-gray-500 text-sm mt-1.5">
+            <span className="text-gray-900 font-semibold">{pickedMatches}</span>
+            <span className="text-gray-400">/{totalMatches}</span>
             {' '}group matches
-            <span className="text-wc-navy-700 mx-2">·</span>
-            <span className="text-white font-semibold">{bracketSlots}</span> bracket slots
+            <span className="text-gray-300 mx-2">·</span>
+            <span className="text-gray-900 font-semibold">{bracketSlots}</span> bracket slots
           </p>
         </div>
 
         {/* Actions bar */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Save status */}
           {saveStatus === 'saving' && (
-            <span className="flex items-center gap-1.5 text-xs text-wc-navy-400 font-medium">
+            <span className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
               <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -294,7 +293,7 @@ export default function PicksPage() {
             </span>
           )}
           {saveStatus === 'saved' && (
-            <span className="flex items-center gap-1.5 text-xs text-wc-green-400 font-bold">
+            <span className="flex items-center gap-1.5 text-xs text-wc-green-600 font-bold">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
@@ -302,7 +301,7 @@ export default function PicksPage() {
             </span>
           )}
           {saveStatus === 'error' && (
-            <span className="flex items-center gap-1.5 text-xs text-wc-red-400 font-bold">
+            <span className="flex items-center gap-1.5 text-xs text-wc-red-500 font-bold">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               </svg>
@@ -313,7 +312,7 @@ export default function PicksPage() {
           <button
             onClick={handleAutoPick}
             disabled={saveStatus === 'saving'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-wc-blue-500/12 hover:bg-wc-blue-500/20 border border-wc-blue-500/25 text-wc-blue-300 hover:text-wc-blue-200 text-xs font-bold transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 hover:text-gray-900 text-xs font-bold transition-all disabled:opacity-40"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -324,7 +323,7 @@ export default function PicksPage() {
           <button
             onClick={handleClearAll}
             disabled={saveStatus === 'saving'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-wc-red-500/8 hover:bg-wc-red-500/15 border border-wc-red-600/25 text-wc-red-400 hover:text-wc-red-300 text-xs font-bold transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-wc-red-500 hover:text-wc-red-600 text-xs font-bold transition-all disabled:opacity-40"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -336,28 +335,11 @@ export default function PicksPage() {
 
       {/* ─── Group Stage ─── */}
       <section>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 rounded-xl bg-wc-gold-400/12 flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-wc-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-black text-white">Group Stage</h2>
-            <p className="text-wc-navy-500 text-xs mt-0.5">
-              Click any group to pick match results · Top 2 + 8 best 3rd-place advance
-            </p>
-          </div>
-          <div className="hidden sm:flex items-center gap-3 text-xs flex-shrink-0">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-wc-gold-400" />
-              <span className="text-wc-navy-400">Correct <span className="text-wc-gold-400 font-black">+1</span></span>
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-wc-red-400" />
-              <span className="text-wc-navy-400">Wrong <span className="text-wc-red-400 font-black">−1</span></span>
-            </span>
-          </div>
+        <div className="mb-5">
+          <h2 className="text-xl font-black text-gray-900">Group Stage</h2>
+          <p className="text-gray-400 text-xs mt-0.5">
+            Click any group to pick match results · Top 2 + 8 best 3rd-place advance
+          </p>
         </div>
 
         <GroupOverview
@@ -381,21 +363,14 @@ export default function PicksPage() {
 
       {/* ─── Knockout Bracket ─── */}
       <section>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 rounded-xl bg-wc-blue-500/12 flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-wc-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-black text-white">Knockout Bracket</h2>
-            <p className="text-wc-navy-500 text-xs mt-0.5">
-              Pick winners each round · R32=2 · R16=3 · QF=5 · SF=8 · Final=13 · Champion=20 pts
-            </p>
-          </div>
+        <div className="mb-5">
+          <h2 className="text-xl font-black text-gray-900">Knockout Bracket</h2>
+          <p className="text-gray-400 text-xs mt-0.5">
+            Pick winners each round · R32=2 · R16=3 · QF=5 · SF=8 · Final=13 · Champion=20 pts
+          </p>
         </div>
 
-        <div className="bg-wc-navy-900/60 border border-wc-navy-700/60 rounded-2xl overflow-x-auto shadow-xl shadow-black/20">
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-x-auto shadow-sm">
           <KnockoutBracket
             picks={bracketPicks}
             onChange={handleBracketChange}

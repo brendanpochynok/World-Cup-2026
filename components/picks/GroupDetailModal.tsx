@@ -64,22 +64,22 @@ export default function GroupDetailModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/80 z-50" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} aria-hidden="true" />
 
       <div role="dialog" aria-modal="true" aria-label={`${group.name} match picks`}
         className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-50 p-0 sm:p-4">
-        <div className="bg-wc-navy-950 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-xl max-h-[92vh] flex flex-col shadow-2xl border border-wc-navy-800">
+        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-xl max-h-[92vh] flex flex-col shadow-2xl border border-gray-200">
 
           {/* Header */}
-          <div className="sticky top-0 bg-wc-navy-950 border-b border-wc-navy-800 px-5 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0">
+          <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0">
             <div>
-              <h2 className="text-wc-gold-400 font-bold text-lg tracking-wide">{group.name}</h2>
-              <p className="text-wc-navy-400 text-xs mt-0.5">
+              <h2 className="text-gray-900 font-black text-lg">{group.name}</h2>
+              <p className="text-gray-400 text-xs mt-0.5">
                 {pickedCount}/{matches.length} picks · correct +1 · wrong −1
               </p>
             </div>
             <button onClick={onClose}
-              className="text-wc-navy-500 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-wc-navy-800"
+              className="text-gray-400 hover:text-gray-700 transition-colors p-1.5 rounded-lg hover:bg-gray-100"
               aria-label="Close">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -90,14 +90,14 @@ export default function GroupDetailModal({
           <div className="overflow-y-auto flex-1 p-4 space-y-4">
 
             {/* Standings */}
-            <div className="rounded-xl border border-wc-navy-700 overflow-hidden">
-              <div className="bg-wc-navy-800 px-3 py-2 flex items-center justify-between">
-                <span className="text-wc-gold-400 text-xs font-bold uppercase tracking-wider">Predicted Standings</span>
-                {!hasAnyPick && <span className="text-wc-navy-500 text-[11px]">Pick matches below to update</span>}
+            <div className="rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-3 py-2 flex items-center justify-between border-b border-gray-200">
+                <span className="text-gray-600 text-xs font-bold uppercase tracking-wider">Predicted Standings</span>
+                {!hasAnyPick && <span className="text-gray-400 text-[11px]">Pick matches below to update</span>}
               </div>
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-wc-navy-500 border-b border-wc-navy-700/60">
+                  <tr className="text-gray-400 border-b border-gray-100">
                     <th className="text-left py-1.5 px-3 font-medium">#</th>
                     <th className="text-left py-1.5 pl-0 font-medium">Team</th>
                     <th className="text-center py-1.5 font-medium w-7">P</th>
@@ -113,28 +113,28 @@ export default function GroupDetailModal({
                     const advances = i < 2;
                     return (
                       <tr key={row.team}
-                        className={`border-b border-wc-navy-700/30 last:border-0 ${advances ? 'bg-wc-gold-400/5' : ''}`}>
+                        className={`border-b border-gray-100 last:border-0 ${advances ? 'bg-wc-blue-500/4' : ''}`}>
                         <td className="py-1.5 px-3">
-                          <span className={`font-bold ${advances ? 'text-wc-gold-400' : 'text-wc-navy-600'}`}>{i + 1}</span>
+                          <span className={`font-bold ${advances ? 'text-wc-blue-500' : 'text-gray-300'}`}>{i + 1}</span>
                         </td>
                         <td className="py-1.5 pl-0">
                           <div className="flex items-center gap-1.5">
                             <img src={getFlagUrl(meta.flag)} alt={row.team} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" />
-                            <span className={`font-medium ${advances ? 'text-white' : 'text-wc-navy-300'}`}>{shortenName(row.team)}</span>
-                            {advances && row.pts > 0 && <span className="text-[10px] text-wc-gold-500 ml-0.5">↑</span>}
+                            <span className={`font-medium ${advances ? 'text-gray-900' : 'text-gray-500'}`}>{shortenName(row.team)}</span>
+                            {advances && row.pts > 0 && <span className="text-[10px] text-wc-blue-400 ml-0.5">↑</span>}
                           </div>
                         </td>
-                        <td className="py-1.5 text-center text-wc-navy-400">{row.p}</td>
-                        <td className="py-1.5 text-center text-wc-navy-300">{row.w}</td>
-                        <td className="py-1.5 text-center text-wc-navy-400">{row.d}</td>
-                        <td className="py-1.5 text-center text-wc-navy-500">{row.l}</td>
-                        <td className="py-1.5 text-center pr-1 font-bold text-wc-gold-400">{row.pts}</td>
+                        <td className="py-1.5 text-center text-gray-400">{row.p}</td>
+                        <td className="py-1.5 text-center text-gray-600">{row.w}</td>
+                        <td className="py-1.5 text-center text-gray-400">{row.d}</td>
+                        <td className="py-1.5 text-center text-gray-400">{row.l}</td>
+                        <td className="py-1.5 text-center pr-1 font-bold text-gray-900">{row.pts}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-              <div className="bg-wc-navy-800/50 px-3 py-1.5 text-[10px] text-wc-navy-500">
+              <div className="bg-gray-50 px-3 py-1.5 text-[10px] text-gray-400 border-t border-gray-100">
                 Top 2 advance · Best 8 third-place also advance · Ties broken by Polymarket odds
               </div>
             </div>
@@ -153,38 +153,38 @@ export default function GroupDetailModal({
                 <div key={match.matchId}
                   className={`rounded-xl border p-4 transition-colors ${
                     locked
-                      ? 'border-wc-navy-800 bg-wc-navy-900/40 opacity-70'
+                      ? 'border-gray-100 bg-gray-50 opacity-70'
                       : pick
-                      ? 'border-wc-blue-700/40 bg-wc-navy-800/60'
-                      : 'border-wc-navy-700 bg-wc-navy-800/40'
+                      ? 'border-wc-blue-200 bg-wc-blue-500/3'
+                      : 'border-gray-200 bg-white'
                   }`}>
-                  <div className="flex justify-between items-center text-[11px] text-wc-navy-500 mb-3">
+                  <div className="flex justify-between items-center text-[11px] text-gray-400 mb-3">
                     <div className="flex items-center gap-1.5">
                       <span>{formatDate(match.date)}</span>
                       {kickoffTimes[match.matchId] && (
-                        <span className="text-wc-navy-400">· {formatKickoff(kickoffTimes[match.matchId])}</span>
+                        <span className="text-gray-400">· {formatKickoff(kickoffTimes[match.matchId])}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="truncate">{match.city}</span>
                       {isPolymarket && (
-                        <span className="text-[10px] bg-wc-blue-900/60 text-wc-blue-300 px-1.5 py-0.5 rounded font-medium">Polymarket</span>
+                        <span className="text-[10px] bg-wc-blue-50 text-wc-blue-500 border border-wc-blue-200 px-1.5 py-0.5 rounded font-medium">Polymarket</span>
                       )}
-                      {locked && <span className="text-wc-red-400 font-semibold text-[10px] uppercase">Locked</span>}
+                      {locked && <span className="text-wc-red-500 font-semibold text-[10px] uppercase">Locked</span>}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 items-center gap-2 mb-4">
                     <div className="text-center">
                       <img src={getFlagUrl(homeMeta.flag)} alt={match.home} className="w-10 h-7 object-cover rounded mx-auto mb-1" />
-                      <div className="text-sm font-semibold text-white leading-tight">{shortenName(match.home)}</div>
-                      <div className="text-[11px] text-wc-navy-500">#{homeMeta.fifaRank}</div>
+                      <div className="text-sm font-semibold text-gray-900 leading-tight">{shortenName(match.home)}</div>
+                      <div className="text-[11px] text-gray-400">#{homeMeta.fifaRank}</div>
                     </div>
-                    <div className="text-center text-wc-navy-600 font-bold text-xs">VS</div>
+                    <div className="text-center text-gray-300 font-bold text-xs">VS</div>
                     <div className="text-center">
                       <img src={getFlagUrl(awayMeta.flag)} alt={match.away} className="w-10 h-7 object-cover rounded mx-auto mb-1" />
-                      <div className="text-sm font-semibold text-white leading-tight">{shortenName(match.away)}</div>
-                      <div className="text-[11px] text-wc-navy-500">#{awayMeta.fifaRank}</div>
+                      <div className="text-sm font-semibold text-gray-900 leading-tight">{shortenName(match.away)}</div>
+                      <div className="text-[11px] text-gray-400">#{awayMeta.fifaRank}</div>
                     </div>
                   </div>
 
@@ -198,14 +198,14 @@ export default function GroupDetailModal({
                         onClick={() => !locked && onPickChange(match.matchId, key)}
                         className={`py-2.5 px-1 rounded-lg text-center transition-all select-none ${
                           pick === key
-                            ? 'bg-wc-blue-500 text-white font-bold shadow-lg shadow-wc-blue-900/40'
+                            ? 'bg-wc-blue-500 text-white font-bold shadow-sm'
                             : locked
-                            ? 'bg-wc-navy-800/40 text-wc-navy-600 cursor-not-allowed'
-                            : 'bg-wc-navy-700 hover:bg-wc-navy-600 text-white cursor-pointer'
+                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer'
                         }`}>
                         <div className="text-xs font-semibold truncate">{label}</div>
                         {prob !== null && (
-                          <div className={`text-[13px] font-mono font-bold mt-0.5 ${pick === key ? 'text-white/70' : 'text-wc-navy-300'}`}>
+                          <div className={`text-[13px] font-mono font-bold mt-0.5 ${pick === key ? 'text-white/70' : 'text-gray-400'}`}>
                             {pct(prob)}
                           </div>
                         )}
@@ -217,8 +217,8 @@ export default function GroupDetailModal({
             })}
           </div>
 
-          <div className="flex-shrink-0 border-t border-wc-navy-800 px-5 py-3 flex justify-between items-center">
-            <span className="text-[11px] text-wc-navy-500">
+          <div className="flex-shrink-0 border-t border-gray-100 px-5 py-3 flex justify-between items-center bg-white rounded-b-2xl">
+            <span className="text-[11px] text-gray-400">
               {hasPolymarket ? 'Odds: Polymarket prediction market' : 'Odds not yet available'}
             </span>
             <button onClick={onClose} className="btn-primary text-xs py-1.5 px-4">Done</button>
