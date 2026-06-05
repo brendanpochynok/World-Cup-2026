@@ -34,10 +34,13 @@ export async function GET() {
     const standings = users.map((u) => {
       let score = 0;
 
-      // Group stage: 3 pts per correct match result
+      // Group stage: +1 correct, -1 wrong decisive, 0 if match drew and no draw pick
       for (const mp of u.matchPicks) {
         const actual = resultMap.get(mp.matchId);
-        if (actual && mp.pick === actual) score += SCORING.groupCorrect;
+        if (!actual) continue;
+        if (mp.pick === actual) score += SCORING.groupCorrect;
+        else if (actual !== 'draw') score += SCORING.groupWrong;
+        // actual === 'draw' && pick !== 'draw' → +0 (no change)
       }
 
       // Bracket: points by round

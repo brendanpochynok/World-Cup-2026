@@ -296,7 +296,11 @@ export default function PicksPage() {
             Click a group to pick each match. Top 2 + 8 best 3rd-place teams advance to Round of 32.
           </p>
           <div className="mt-2 text-xs text-green-500">
-            Correct result: <span className="text-yellow-400 font-semibold">+3 pts</span>
+            Correct: <span className="text-yellow-400 font-semibold">+1 pt</span>
+            <span className="mx-1.5">·</span>
+            Wrong on decisive: <span className="text-red-400 font-semibold">-1 pt</span>
+            <span className="mx-1.5">·</span>
+            Match drew (no draw pick): <span className="text-green-400 font-semibold">0 pts</span>
           </div>
         </div>
 

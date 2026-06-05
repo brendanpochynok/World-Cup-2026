@@ -868,7 +868,9 @@ export const BRACKET_ROUNDS = [
 ];
 
 export const SCORING = {
-  groupCorrect: 3,
+  groupCorrect: 1,    // correct pick (or picked draw and it was a draw)
+  groupWrong: -1,     // wrong pick when match had a decisive result
+  groupDrawNoCall: 0, // match drew but you didn't pick draw
   groupRank1: 4,
   groupRank2: 3,
   groupRank3: 2,
