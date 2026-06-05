@@ -77,7 +77,7 @@ interface PolyMarket {
 
 interface PolyEvent {
   slug: string;
-  startDate?: string; // ISO kick-off time e.g. "2026-06-24T18:00:00Z"
+  startTime?: string; // ISO kick-off time e.g. "2026-06-24T19:00:00Z"
   markets: PolyMarket[];
 }
 
@@ -170,7 +170,7 @@ async function fetchMatchOdds(
       return {
         matchId: match.matchId,
         odds: { ...odds, source: 'polymarket' },
-        kickoff: event.startDate ?? null,
+        kickoff: event.startTime ?? null,
       };
     }
   }
