@@ -10,56 +10,56 @@ export interface MatchOdds {
   source: 'polymarket';
 }
 
-// Polymarket 3-letter codes for each team (primary first, fallbacks after)
-const TEAM_CODES: Record<string, string[]> = {
-  'Mexico':                   ['mex'],
-  'South Africa':             ['rsa', 'zaf'],
-  'South Korea':              ['kor'],
-  'Czechia':                  ['cze'],
-  'Canada':                   ['can'],
-  'Switzerland':              ['che'],
-  'Qatar':                    ['qat'],
-  'Bosnia and Herzegovina':   ['bih'],
-  'Brazil':                   ['bra'],
-  'Morocco':                  ['mar'],
-  'Haiti':                    ['hti', 'hai'],
-  'Scotland':                 ['sco'],
-  'United States':            ['usa'],
-  'Paraguay':                 ['par', 'pry'],
-  'Australia':                ['aus'],
-  'Turkey':                   ['tur'],
-  'Germany':                  ['deu', 'ger'],
-  'Curacao':                  ['cur', 'cuw'],
-  "Cote d'Ivoire":            ['civ'],
-  'Ecuador':                  ['ecu'],
-  'Netherlands':              ['ned', 'nld'],
-  'Japan':                    ['jpn'],
-  'Sweden':                   ['swe'],
-  'Tunisia':                  ['tun'],
-  'Belgium':                  ['bel'],
-  'Egypt':                    ['egy'],
-  'Iran':                     ['irn', 'iri'],
-  'New Zealand':              ['nzl'],
-  'Spain':                    ['esp'],
-  'Cabo Verde':               ['cpv', 'cav'],
-  'Saudi Arabia':             ['sau', 'ksa'],
-  'Uruguay':                  ['uru', 'ury'],
-  'France':                   ['fra'],
-  'Senegal':                  ['sen'],
-  'Norway':                   ['nor'],
-  'Iraq':                     ['irq'],
-  'Argentina':                ['arg'],
-  'Algeria':                  ['dza', 'alg'],
-  'Austria':                  ['aut'],
-  'Jordan':                   ['jor'],
-  'Portugal':                 ['por', 'prt'],
-  'DR Congo':                 ['cod', 'cog'],
-  'Uzbekistan':               ['uzb'],
-  'Colombia':                 ['col'],
-  'England':                  ['eng'],
-  'Croatia':                  ['cro', 'hrv'],
-  'Ghana':                    ['gha'],
-  'Panama':                   ['pan'],
+// Polymarket abbreviations — sourced directly from event team data (June 2026)
+const TEAM_CODES: Record<string, string> = {
+  'Mexico':                   'mex',
+  'South Africa':             'rsa',
+  'South Korea':              'kr',   // Polymarket: "Korea Republic" = kr
+  'Czechia':                  'cze',
+  'Canada':                   'can',
+  'Switzerland':              'che',
+  'Qatar':                    'qat',
+  'Bosnia and Herzegovina':   'bih',
+  'Brazil':                   'bra',
+  'Morocco':                  'mar',
+  'Haiti':                    'hai',
+  'Scotland':                 'sco',
+  'United States':            'usa',
+  'Paraguay':                 'par',
+  'Australia':                'aus',
+  'Turkey':                   'tur',
+  'Germany':                  'ger',
+  'Curacao':                  'kor',  // Polymarket: "Curaçao" = kor (not a typo)
+  "Cote d'Ivoire":            'civ',
+  'Ecuador':                  'ecu',
+  'Netherlands':              'nld',
+  'Japan':                    'jpn',
+  'Sweden':                   'swe',
+  'Tunisia':                  'tun',
+  'Belgium':                  'bel',
+  'Egypt':                    'egy',
+  'Iran':                     'irn',
+  'New Zealand':              'nzl',
+  'Spain':                    'esp',
+  'Cabo Verde':               'cvi',
+  'Saudi Arabia':             'ksa',
+  'Uruguay':                  'ury',
+  'France':                   'fra',
+  'Senegal':                  'sen',
+  'Norway':                   'nor',
+  'Iraq':                     'irq',
+  'Argentina':                'arg',
+  'Algeria':                  'alg',
+  'Austria':                  'aut',
+  'Jordan':                   'jor',
+  'Portugal':                 'prt',
+  'DR Congo':                 'cdr',
+  'Uzbekistan':               'uzb',
+  'Colombia':                 'col',
+  'England':                  'eng',
+  'Croatia':                  'hrv',
+  'Ghana':                    'gha',
+  'Panama':                   'pan',
 };
 
 const FETCH_HEADERS = {
@@ -138,34 +138,21 @@ function parseEventOdds(
 async function fetchMatchOdds(
   match: (typeof GROUP_MATCHES)[0]
 ): Promise<{ matchId: string; odds: MatchOdds; kickoff: string | null } | null> {
-  const homeCodes = TEAM_CODES[match.home] ?? [];
-  const awayCodes = TEAM_CODES[match.away] ?? [];
-  if (homeCodes.length === 0 || awayCodes.length === 0) return null;
+  const hCode = TEAM_CODES[match.home];
+  const aCode = TEAM_CODES[match.away];
+  if (!hCode || !aCode) return null;
 
-  // Try primary codes (home-away order), then reversed, then alternative codes
-  const hPrimary = homeCodes[0];
-  const aPrimary = awayCodes[0];
-
-  const toTry: Array<{ slug: string; hCode: string; aCode: string }> = [
-    { slug: `fifwc-${hPrimary}-${aPrimary}-${match.date}`, hCode: hPrimary, aCode: aPrimary },
-    { slug: `fifwc-${aPrimary}-${hPrimary}-${match.date}`, hCode: hPrimary, aCode: aPrimary },
+  // Try home-away order, then reversed (Polymarket sometimes lists away team first)
+  const toTry = [
+    { slug: `fifwc-${hCode}-${aCode}-${match.date}`, hCode, aCode },
+    { slug: `fifwc-${aCode}-${hCode}-${match.date}`, hCode, aCode },
   ];
-  if (homeCodes.length > 1) {
-    const hAlt = homeCodes[1];
-    toTry.push({ slug: `fifwc-${hAlt}-${aPrimary}-${match.date}`, hCode: hAlt, aCode: aPrimary });
-    toTry.push({ slug: `fifwc-${aPrimary}-${hAlt}-${match.date}`, hCode: hAlt, aCode: aPrimary });
-  }
-  if (awayCodes.length > 1) {
-    const aAlt = awayCodes[1];
-    toTry.push({ slug: `fifwc-${hPrimary}-${aAlt}-${match.date}`, hCode: hPrimary, aCode: aAlt });
-    toTry.push({ slug: `fifwc-${aAlt}-${hPrimary}-${match.date}`, hCode: hPrimary, aCode: aAlt });
-  }
 
   for (let i = 0; i < toTry.length; i++) {
-    const { slug, hCode, aCode } = toTry[i];
+    const { slug, hCode: h, aCode: a } = toTry[i];
     const event = await fetchEventBySlug(slug);
     if (!event) continue;
-    const odds = parseEventOdds(event, hCode, aCode);
+    const odds = parseEventOdds(event, h, a);
     if (odds) {
       return {
         matchId: match.matchId,
