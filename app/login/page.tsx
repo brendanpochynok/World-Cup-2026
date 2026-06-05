@@ -43,11 +43,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-wc-blue-500 to-wc-blue-700 mb-5 shadow-lg">
-            <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 2c1.85 0 3.56.63 4.93 1.68L5.68 16.93A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8zm0 16a7.95 7.95 0 01-4.93-1.68L18.32 7.07A7.95 7.95 0 0120 12c0 4.41-3.59 8-8 8z"/>
-            </svg>
-          </div>
+          <img src="/trionda-ball/trionda-ball.png" alt="Trionda" className="w-20 h-20 object-contain mx-auto mb-4" />
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">World Cup 2026</h1>
           <p className="text-gray-400 text-xs mt-1.5 tracking-[0.15em] uppercase font-semibold">Pool Picks</p>
         </div>

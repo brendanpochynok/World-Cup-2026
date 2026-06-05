@@ -73,11 +73,7 @@ export default function Navbar({ username }: NavbarProps) {
 
             {/* Brand */}
             <Link href="/app/dashboard" className="flex items-center gap-2.5 flex-shrink-0">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-wc-blue-500 to-wc-blue-700 flex items-center justify-center shadow-sm flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13H9V9h2v6zm4 0h-2V9h2v6z"/>
-                </svg>
-              </div>
+              <img src="/trionda-ball/trionda-ball.png" alt="Trionda" className="w-9 h-9 object-contain flex-shrink-0" />
               <div className="hidden sm:block leading-none">
                 <span className="text-gray-900 font-black text-[13px] tracking-tight block">WC 2026</span>
                 <span className="text-gray-400 text-[10px] uppercase tracking-[0.12em] font-semibold">Pool Picks</span>
