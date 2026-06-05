@@ -8,7 +8,6 @@ import {
   getFlagUrl,
   isMatchLocked,
   computeGroupStandings,
-  groupHasTie,
 } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
 
@@ -19,8 +18,7 @@ interface GroupDetailModalProps {
   onClose: () => void;
   oddsMap?: Record<string, MatchOdds>;
   kickoffTimes?: Record<string, string>;
-  tiebreakerOrder?: string[];
-  onTiebreakerChange?: (order: string[]) => void;
+  advancementScores?: Record<string, number>;
 }
 
 function shortenName(name: string): string {
@@ -52,7 +50,6 @@ function pct(p: number) {
   return `${Math.round(p * 100)}%`;
 }
 
-
 export default function GroupDetailModal({
   group,
   matchPicks,
@@ -60,39 +57,15 @@ export default function GroupDetailModal({
   onClose,
   oddsMap = {},
   kickoffTimes = {},
-  tiebreakerOrder,
-  onTiebreakerChange,
+  advancementScores,
 }: GroupDetailModalProps) {
   const matches = getGroupMatches(group.id);
   const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
-  const allPicked = pickedCount === matches.length;
 
   const standings = useMemo(
-    () => computeGroupStandings(group.id, matchPicks, tiebreakerOrder),
-    [group.id, matchPicks, tiebreakerOrder]
+    () => computeGroupStandings(group.id, matchPicks, advancementScores),
+    [group.id, matchPicks, advancementScores]
   );
-
-  const hasTie = allPicked && groupHasTie(standings);
-  const tieResolved = hasTie && !!tiebreakerOrder;
-
-  function handleSwap(i: number, direction: 'up' | 'down') {
-    const j = direction === 'up' ? i - 1 : i + 1;
-    const newOrder = standings.map((s) => s.team);
-    const tmp = newOrder[i]; newOrder[i] = newOrder[j]; newOrder[j] = tmp;
-    onTiebreakerChange?.(newOrder);
-  }
-
-  function isTiedWithNext(i: number) {
-    return i < standings.length - 1 &&
-      standings[i].pts === standings[i + 1].pts &&
-      standings[i].w === standings[i + 1].w;
-  }
-
-  function isTiedWithPrev(i: number) {
-    return i > 0 &&
-      standings[i].pts === standings[i - 1].pts &&
-      standings[i].w === standings[i - 1].w;
-  }
 
   const hasAnyPick = pickedCount > 0;
 
@@ -110,9 +83,7 @@ export default function GroupDetailModal({
     };
   }, [handleKey]);
 
-  const hasPolymarket = matches.some(
-    (m) => oddsMap[m.matchId]?.source === 'polymarket'
-  );
+  const hasPolymarket = matches.some((m) => oddsMap[m.matchId]?.source === 'polymarket');
 
   return (
     <>
@@ -158,15 +129,6 @@ export default function GroupDetailModal({
                 )}
               </div>
 
-              {hasTie && (
-                <div className={`px-3 py-2 text-xs flex items-center gap-2 ${tieResolved ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-300'}`}>
-                  <span>{tieResolved ? '✓ Tiebreaker set' : '⚠ Tiebreaker needed'}</span>
-                  <span className="text-green-600">
-                    {tieResolved ? '— tap arrows to adjust' : '— use the arrows to set the order'}
-                  </span>
-                </div>
-              )}
-
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-green-500 border-b border-green-800/60">
@@ -177,23 +139,19 @@ export default function GroupDetailModal({
                     <th className="text-center py-1.5 font-medium w-7">D</th>
                     <th className="text-center py-1.5 font-medium w-7">L</th>
                     <th className="text-center py-1.5 pr-1 font-bold w-8">Pts</th>
-                    {hasTie && <th className="w-10" />}
                   </tr>
                 </thead>
                 <tbody>
                   {standings.map((row, i) => {
                     const meta = getTeamMeta(row.team);
                     const advances = i < 2;
-                    const tied = isTiedWithNext(i) || isTiedWithPrev(i);
                     return (
                       <tr
                         key={row.team}
-                        className={`border-b border-green-800/40 last:border-0 transition-colors ${
-                          tied && hasTie ? 'bg-amber-900/10' : advances ? 'bg-yellow-500/5' : ''
-                        }`}
+                        className={`border-b border-green-800/40 last:border-0 ${advances ? 'bg-yellow-500/5' : ''}`}
                       >
                         <td className="py-1.5 px-3">
-                          <span className={`font-bold ${tied && hasTie && !tieResolved ? 'text-amber-400' : advances ? 'text-yellow-400' : 'text-green-600'}`}>
+                          <span className={`font-bold ${advances ? 'text-yellow-400' : 'text-green-600'}`}>
                             {i + 1}
                           </span>
                         </td>
@@ -207,7 +165,7 @@ export default function GroupDetailModal({
                             <span className={`font-medium ${advances ? 'text-white' : 'text-green-300'}`}>
                               {shortenName(row.team)}
                             </span>
-                            {advances && row.pts > 0 && !tied && (
+                            {advances && row.pts > 0 && (
                               <span className="text-[10px] text-yellow-500 font-semibold ml-0.5">↑</span>
                             )}
                           </div>
@@ -217,31 +175,13 @@ export default function GroupDetailModal({
                         <td className="py-1.5 text-center text-green-400">{row.d}</td>
                         <td className="py-1.5 text-center text-green-500">{row.l}</td>
                         <td className="py-1.5 text-center pr-1 font-bold text-yellow-400">{row.pts}</td>
-                        {hasTie && (
-                          <td className="py-1 pr-2">
-                            <div className="flex flex-col gap-0.5 items-center">
-                              <button
-                                onClick={() => handleSwap(i, 'up')}
-                                disabled={!isTiedWithPrev(i)}
-                                className="text-[11px] leading-none px-1 py-0.5 rounded disabled:opacity-0 enabled:text-amber-400 enabled:hover:bg-amber-900/40 transition-colors"
-                                aria-label="Move up"
-                              >▲</button>
-                              <button
-                                onClick={() => handleSwap(i, 'down')}
-                                disabled={!isTiedWithNext(i)}
-                                className="text-[11px] leading-none px-1 py-0.5 rounded disabled:opacity-0 enabled:text-amber-400 enabled:hover:bg-amber-900/40 transition-colors"
-                                aria-label="Move down"
-                              >▼</button>
-                            </div>
-                          </td>
-                        )}
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
               <div className="bg-green-900/30 px-3 py-1.5 text-[10px] text-green-600">
-                Top 2 advance automatically · Best 8 third-place also advance
+                Top 2 advance · Best 8 third-place also advance · Ties broken by Polymarket odds
               </div>
             </div>
 
@@ -249,11 +189,9 @@ export default function GroupDetailModal({
             {matches.map((match) => {
               const locked = isMatchLocked(match, kickoffTimes[match.matchId]);
               const pick = matchPicks[match.matchId] ?? null;
-
               const oddsEntry = oddsMap[match.matchId];
               const probs = oddsEntry ?? null;
               const isPolymarket = oddsEntry?.source === 'polymarket';
-
               const homeMeta = getTeamMeta(match.home);
               const awayMeta = getTeamMeta(match.away);
 
@@ -268,7 +206,6 @@ export default function GroupDetailModal({
                       : 'border-green-800 bg-green-900/60'
                   }`}
                 >
-                  {/* Date + venue */}
                   <div className="flex justify-between items-center text-[11px] text-green-600 mb-3">
                     <div className="flex items-center gap-1.5">
                       <span>{formatDate(match.date)}</span>
@@ -287,7 +224,6 @@ export default function GroupDetailModal({
                     </div>
                   </div>
 
-                  {/* Teams row */}
                   <div className="grid grid-cols-3 items-center gap-2 mb-4">
                     <div className="text-center">
                       <img src={getFlagUrl(homeMeta.flag)} alt={match.home} className="w-10 h-7 object-cover rounded mx-auto mb-1" />
@@ -302,7 +238,6 @@ export default function GroupDetailModal({
                     </div>
                   </div>
 
-                  {/* Outcome buttons */}
                   <div className="grid grid-cols-3 gap-2">
                     {(
                       [
@@ -337,7 +272,6 @@ export default function GroupDetailModal({
             })}
           </div>
 
-          {/* Footer */}
           <div className="flex-shrink-0 border-t border-green-800 px-5 py-3 flex justify-between items-center">
             <span className="text-[11px] text-green-600">
               {hasPolymarket ? 'Odds: Polymarket prediction market' : 'Odds not yet available'}

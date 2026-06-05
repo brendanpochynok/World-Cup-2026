@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
-import ThirdsQualificationPanel from '@/components/picks/ThirdsQualificationPanel';
 import { GROUPS, GROUP_MATCHES, ALL_TEAMS, computeGroupStandings, getGroupMatches, getTeamMeta } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
 
@@ -15,7 +14,6 @@ export default function PicksPage() {
   const [bracketPicks, setBracketPicks] = useState<Record<string, string>>({});
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const [kickoffTimes, setKickoffTimes] = useState<Record<string, string>>({});
-  const [tiebreakerPicks, setTiebreakerPicks] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -23,14 +21,12 @@ export default function PicksPage() {
   const bracketTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load saved picks on mount
   const fetchPicks = useCallback(async () => {
     try {
-      const [groupRes, bracketRes, oddsRes, tbRes] = await Promise.all([
+      const [groupRes, bracketRes, oddsRes] = await Promise.all([
         fetch('/api/picks/groups'),
         fetch('/api/picks/bracket'),
         fetch('/api/odds'),
-        fetch('/api/picks/tiebreakers'),
       ]);
       const groupData = await groupRes.json();
       if (groupData.picks) setMatchPicks(groupData.picks);
@@ -47,9 +43,6 @@ export default function PicksPage() {
       const oddsData = await oddsRes.json().catch(() => ({}));
       if (oddsData.odds) setOddsMap(oddsData.odds);
       if (oddsData.kickoffTimes) setKickoffTimes(oddsData.kickoffTimes);
-
-      const tbData = await tbRes.json().catch(() => ({}));
-      if (tbData.picks) setTiebreakerPicks(tbData.picks);
     } catch (err) {
       console.error('Error loading picks', err);
     } finally {
@@ -76,7 +69,6 @@ export default function PicksPage() {
     statusTimer.current = setTimeout(() => setSaveStatus('idle'), 3000);
   }
 
-  // Save a single match pick immediately on click
   async function handleMatchPickChange(matchId: string, pick: string) {
     setMatchPicks((prev) => ({ ...prev, [matchId]: pick }));
     setSaveStatus('saving');
@@ -92,45 +84,28 @@ export default function PicksPage() {
     }
   }
 
-  // Clear all picks
   async function handleClearAll() {
     setSaveStatus('saving');
     setMatchPicks({});
     setBracketPicks({});
-    setTiebreakerPicks({});
     try {
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2] = await Promise.all([
         fetch('/api/picks/groups', { method: 'DELETE' }),
         fetch('/api/picks/bracket', { method: 'DELETE' }),
-        fetch('/api/picks/tiebreakers', { method: 'DELETE' }),
       ]);
-      r1.ok && r2.ok && r3.ok ? showSaved() : showError();
+      r1.ok && r2.ok ? showSaved() : showError();
     } catch {
       showError();
     }
   }
 
-  async function handleTiebreakerChange(groupId: string, teamOrder: string[]) {
-    setTiebreakerPicks((prev) => ({ ...prev, [groupId]: teamOrder }));
-    try {
-      await fetch('/api/picks/tiebreakers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupId, teamOrder }),
-      });
-    } catch {
-      // non-critical — state is already updated
-    }
-  }
-
-  // Auto-pick favourites: pick the highest-probability outcome for each unpicked match
   async function handleAutoPick() {
     setSaveStatus('saving');
     const newPicks: Record<string, string> = {};
 
     for (let i = 0; i < GROUP_MATCHES.length; i++) {
       const match = GROUP_MATCHES[i];
-      if (matchPicks[match.matchId]) continue; // already picked
+      if (matchPicks[match.matchId]) continue;
 
       const odds = oddsMap[match.matchId];
       let pick: string;
@@ -140,7 +115,6 @@ export default function PicksPage() {
         else if (odds.away >= odds.draw) pick = 'away';
         else pick = 'draw';
       } else {
-        // Fall back to FIFA ranking (lower number = stronger team)
         const homeRank = getTeamMeta(match.home).fifaRank;
         const awayRank = getTeamMeta(match.away).fifaRank;
         pick = homeRank <= awayRank ? 'home' : 'away';
@@ -148,10 +122,7 @@ export default function PicksPage() {
       newPicks[match.matchId] = pick;
     }
 
-    if (Object.keys(newPicks).length === 0) {
-      setSaveStatus('idle');
-      return;
-    }
+    if (Object.keys(newPicks).length === 0) { setSaveStatus('idle'); return; }
 
     setMatchPicks((prev) => ({ ...prev, ...newPicks }));
     try {
@@ -170,7 +141,6 @@ export default function PicksPage() {
     }
   }
 
-  // Bracket picks debounced 400ms
   function handleBracketChange(round: string, slot: number, team: string) {
     const key = `${round}-${slot}`;
     setBracketPicks((prev) => ({ ...prev, [key]: team }));
@@ -192,106 +162,106 @@ export default function PicksPage() {
     bracketTimers.current.set(timerKey, t);
   }
 
-  // Compute third-place standings for all groups (when all are complete).
-  // Returns null when not all groups are finished yet.
-  const thirdsInfo = useMemo(() => {
-    const thirdsOrder: string[] | undefined = tiebreakerPicks['thirds'];
-    const thirdsEntries: { team: string; pts: number; group: string }[] = [];
-
-    let allDone = true;
+  // Polymarket-derived expected group points per team.
+  // Used as automatic tiebreaker when two teams are equal on pts+wins.
+  // Falls back to FIFA rank (already built into computeGroupStandings).
+  const advancementScores = useMemo((): Record<string, number> => {
+    const scores: Record<string, number> = {};
     for (let gi = 0; gi < GROUPS.length; gi++) {
       const g = GROUPS[gi];
       const matches = getGroupMatches(g.id);
-      const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
-      if (pickedCount < matches.length) { allDone = false; break; }
-      const rows = computeGroupStandings(g.id, matchPicks, tiebreakerPicks[g.id]);
-      if (rows[2]) thirdsEntries.push({ team: rows[2].team, pts: rows[2].pts, group: g.id });
-    }
-
-    if (!allDone) return null;
-
-    thirdsEntries.sort((a, b) => {
-      if (b.pts !== a.pts) return b.pts - a.pts;
-      if (thirdsOrder) {
-        const ai = thirdsOrder.indexOf(a.team);
-        const bi = thirdsOrder.indexOf(b.team);
-        if (ai !== -1 && bi !== -1) return ai - bi;
+      for (let ti = 0; ti < g.teams.length; ti++) {
+        const team = g.teams[ti];
+        let expected = 0;
+        let hasOdds = false;
+        for (let mi = 0; mi < matches.length; mi++) {
+          const m = matches[mi];
+          if (m.home !== team && m.away !== team) continue;
+          const odds = oddsMap[m.matchId];
+          if (!odds) continue;
+          hasOdds = true;
+          // Expected pts = 3×P(win) + 1×P(draw)
+          expected += m.home === team
+            ? 3 * odds.home + odds.draw
+            : 3 * odds.away + odds.draw;
+        }
+        if (hasOdds) scores[team] = expected;
       }
-      return a.team.localeCompare(b.team);
-    });
-
-    const hasTieAtCut = thirdsEntries.length >= 9 && thirdsEntries[7].pts === thirdsEntries[8].pts;
-    const isResolved = !hasTieAtCut || !!thirdsOrder;
-
-    return { thirds: thirdsEntries, hasTieAtCut, isResolved };
-  }, [matchPicks, tiebreakerPicks]);
+    }
+    return scores;
+  }, [oddsMap]);
 
   // Derive R32 matchups from completed group picks.
-  // Only populates a slot when both contributing groups are fully picked.
   const r32Teams = useMemo((): Record<number, [string, string]> => {
-    // Compute standings for every group. Track which groups are complete.
     const standings: Record<string, string[]> = {};
     for (let gi = 0; gi < GROUPS.length; gi++) {
       const g = GROUPS[gi];
       const matches = getGroupMatches(g.id);
       const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
       if (pickedCount === matches.length) {
-        const rows = computeGroupStandings(g.id, matchPicks, tiebreakerPicks[g.id]);
+        const rows = computeGroupStandings(g.id, matchPicks, advancementScores);
         standings[g.id] = rows.map((r) => r.team);
       }
     }
 
     const result: Record<number, [string, string]> = {};
 
-    // Helper: place team from standings — position 0=1st, 1=2nd, 2=3rd
     function team(groupId: string, pos: number): string | null {
       return standings[groupId] ? standings[groupId][pos] ?? null : null;
     }
 
-    // Slots 0-5: left half fixed matchups
     const leftPairs: [string, number, string, number][] = [
-      ['A', 0, 'B', 1], // slot 0: 1A vs 2B
-      ['C', 0, 'D', 1], // slot 1: 1C vs 2D
-      ['E', 0, 'F', 1], // slot 2: 1E vs 2F
-      ['G', 0, 'H', 1], // slot 3: 1G vs 2H
-      ['I', 0, 'J', 1], // slot 4: 1I vs 2J
-      ['K', 0, 'L', 1], // slot 5: 1K vs 2L
+      ['A', 0, 'B', 1],
+      ['C', 0, 'D', 1],
+      ['E', 0, 'F', 1],
+      ['G', 0, 'H', 1],
+      ['I', 0, 'J', 1],
+      ['K', 0, 'L', 1],
     ];
     for (let i = 0; i < leftPairs.length; i++) {
       const [g1, p1, g2, p2] = leftPairs[i];
-      const t1 = team(g1, p1);
-      const t2 = team(g2, p2);
+      const t1 = team(g1, p1); const t2 = team(g2, p2);
       if (t1 && t2) result[i] = [t1, t2];
     }
 
-    // Slots 8-13: right half fixed matchups
     const rightPairs: [string, number, string, number][] = [
-      ['A', 1, 'B', 0], // slot 8:  2A vs 1B
-      ['C', 1, 'D', 0], // slot 9:  2C vs 1D
-      ['E', 1, 'F', 0], // slot 10: 2E vs 1F
-      ['G', 1, 'H', 0], // slot 11: 2G vs 1H
-      ['I', 1, 'J', 0], // slot 12: 2I vs 1J
-      ['K', 1, 'L', 0], // slot 13: 2K vs 1L
+      ['A', 1, 'B', 0],
+      ['C', 1, 'D', 0],
+      ['E', 1, 'F', 0],
+      ['G', 1, 'H', 0],
+      ['I', 1, 'J', 0],
+      ['K', 1, 'L', 0],
     ];
     for (let i = 0; i < rightPairs.length; i++) {
       const [g1, p1, g2, p2] = rightPairs[i];
-      const t1 = team(g1, p1);
-      const t2 = team(g2, p2);
+      const t1 = team(g1, p1); const t2 = team(g2, p2);
       if (t1 && t2) result[8 + i] = [t1, t2];
     }
 
-    // Slots 6, 7, 14, 15: best 3rd-place teams (need all 12 groups complete)
-    // Only populate when tiebreaker is resolved (or no tie exists)
-    if (thirdsInfo && thirdsInfo.isResolved) {
-      const t = thirdsInfo.thirds;
-      if (t[0] && t[1]) result[6]  = [t[0].team, t[1].team];
-      if (t[2] && t[3]) result[7]  = [t[2].team, t[3].team];
-      if (t[4] && t[5]) result[14] = [t[4].team, t[5].team];
-      if (t[6] && t[7]) result[15] = [t[6].team, t[7].team];
+    // Slots 6, 7, 14, 15: best 8 of 12 third-place teams
+    // Auto-ranked by pts → Polymarket expected pts → FIFA rank (no manual input needed)
+    const allGroupsDone = GROUPS.every((g) => standings[g.id]);
+    if (allGroupsDone) {
+      const thirds: { team: string; pts: number }[] = [];
+      for (let gi = 0; gi < GROUPS.length; gi++) {
+        const rows = computeGroupStandings(GROUPS[gi].id, matchPicks, advancementScores);
+        if (rows[2]) thirds.push({ team: rows[2].team, pts: rows[2].pts });
+      }
+      thirds.sort((a, b) => {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        const sa = advancementScores[a.team];
+        const sb = advancementScores[b.team];
+        if (sa !== undefined && sb !== undefined && sa !== sb) return sb - sa;
+        return getTeamMeta(a.team).fifaRank - getTeamMeta(b.team).fifaRank;
+      });
+      if (thirds[0] && thirds[1]) result[6]  = [thirds[0].team, thirds[1].team];
+      if (thirds[2] && thirds[3]) result[7]  = [thirds[2].team, thirds[3].team];
+      if (thirds[4] && thirds[5]) result[14] = [thirds[4].team, thirds[5].team];
+      if (thirds[6] && thirds[7]) result[15] = [thirds[6].team, thirds[7].team];
     }
 
     return result;
-  }, [matchPicks, tiebreakerPicks, thirdsInfo]);
+  }, [matchPicks, advancementScores]);
 
   if (loading) {
     return (
@@ -353,7 +323,6 @@ export default function PicksPage() {
         <GroupOverview
           groups={GROUPS}
           matchPicks={matchPicks}
-          tiebreakerPicks={tiebreakerPicks}
           onSelectGroup={setSelectedGroup}
         />
 
@@ -365,23 +334,10 @@ export default function PicksPage() {
             onClose={() => setSelectedGroup(null)}
             oddsMap={oddsMap}
             kickoffTimes={kickoffTimes}
-            tiebreakerOrder={tiebreakerPicks[selectedGroup]}
-            onTiebreakerChange={(order) => handleTiebreakerChange(selectedGroup, order)}
+            advancementScores={advancementScores}
           />
         )}
       </section>
-
-      {/* 3rd Place Tiebreaker — shown only when all groups done and a tie exists */}
-      {thirdsInfo && thirdsInfo.hasTieAtCut && (
-        <section>
-          <ThirdsQualificationPanel
-            thirds={thirdsInfo.thirds}
-            hasTieAtCut={thirdsInfo.hasTieAtCut}
-            tiebreakerOrder={tiebreakerPicks['thirds']}
-            onTiebreakerChange={(order) => handleTiebreakerChange('thirds', order)}
-          />
-        </section>
-      )}
 
       {/* Knockout Bracket */}
       <section>

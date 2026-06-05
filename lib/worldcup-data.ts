@@ -1152,10 +1152,12 @@ export interface GroupStanding {
   pts: number;
 }
 
+// advancementScores: Polymarket-derived expected group points per team.
+// Higher score = more likely to advance. Used as automatic tiebreaker.
 export function computeGroupStandings(
   groupId: string,
   picks: Record<string, string>,
-  tiebreakerOrder?: string[]
+  advancementScores?: Record<string, number>
 ): GroupStanding[] {
   const group = GROUPS.find((g) => g.id === groupId);
   if (!group) return [];
@@ -1185,21 +1187,12 @@ export function computeGroupStandings(
     .sort((a, b) => {
       if (b.pts !== a.pts) return b.pts - a.pts;
       if (b.w !== a.w) return b.w - a.w;
-      if (tiebreakerOrder) {
-        const ai = tiebreakerOrder.indexOf(a.team);
-        const bi = tiebreakerOrder.indexOf(b.team);
-        if (ai !== -1 && bi !== -1) return ai - bi;
-      }
-      return a.team.localeCompare(b.team);
+      // Polymarket-based tiebreak: higher expected group pts = ranks higher
+      const sa = advancementScores?.[a.team];
+      const sb = advancementScores?.[b.team];
+      if (sa !== undefined && sb !== undefined && sa !== sb) return sb - sa;
+      // Final fallback: FIFA rank (lower number = stronger)
+      return getTeamMeta(a.team).fifaRank - getTeamMeta(b.team).fifaRank;
     });
-}
-
-export function groupHasTie(standings: GroupStanding[]): boolean {
-  for (let i = 0; i < standings.length - 1; i++) {
-    if (standings[i].pts === standings[i + 1].pts && standings[i].w === standings[i + 1].w) {
-      return true;
-    }
-  }
-  return false;
 }
 
