@@ -298,9 +298,7 @@ export default function PicksPage() {
           <div className="mt-2 text-xs text-green-500">
             Correct: <span className="text-yellow-400 font-semibold">+1 pt</span>
             <span className="mx-1.5">·</span>
-            Wrong on decisive: <span className="text-red-400 font-semibold">-1 pt</span>
-            <span className="mx-1.5">·</span>
-            Match drew (no draw pick): <span className="text-green-400 font-semibold">0 pts</span>
+            Wrong: <span className="text-red-400 font-semibold">-1 pt</span>
           </div>
         </div>
 

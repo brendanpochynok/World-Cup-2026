@@ -63,8 +63,7 @@ export default async function StandingsPage() {
         <h3 className="text-sm font-bold text-wc-gold-400 mb-2">Scoring System</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-wc-green-300">
           <div>Correct pick: <span className="text-wc-gold-400 font-bold">+1 pt</span></div>
-          <div>Wrong (decisive): <span className="text-red-400 font-bold">-1 pt</span></div>
-          <div>Match drew (no draw pick): <span className="text-wc-green-300 font-bold">0 pts</span></div>
+          <div>Wrong pick: <span className="text-red-400 font-bold">-1 pt</span></div>
           <div>R32 pick: <span className="text-wc-gold-400 font-bold">2 pts</span></div>
           <div>R16 pick: <span className="text-wc-gold-400 font-bold">3 pts</span></div>
           <div>QF pick: <span className="text-wc-gold-400 font-bold">5 pts</span></div>

@@ -32,8 +32,7 @@ export default function GroupMatchCard({
   onPickChange,
 }: GroupMatchCardProps) {
   const isCorrect = result && currentPick === result;
-  const isWrongDecisive = result && result !== 'draw' && currentPick && currentPick !== result;
-  const isDrawNoCall = result === 'draw' && currentPick && currentPick !== 'draw';
+  const isWrong = result && currentPick && currentPick !== result;
 
   const formatDate = (d: string) => {
     return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
@@ -53,7 +52,7 @@ export default function GroupMatchCard({
       className={`card relative ${
         isCorrect
           ? 'border-green-500'
-          : isWrongDecisive
+          : isWrong
           ? 'border-red-600'
           : 'border-wc-green-700'
       }`}
@@ -78,14 +77,9 @@ export default function GroupMatchCard({
               ✓ +1pt
             </span>
           )}
-          {isWrongDecisive && (
+          {isWrong && (
             <span className="text-xs bg-red-900 text-red-300 px-2 py-0.5 rounded-full">
               ✗ -1pt
-            </span>
-          )}
-          {isDrawNoCall && (
-            <span className="text-xs bg-yellow-900/60 text-yellow-500 px-2 py-0.5 rounded-full">
-              — 0pts
             </span>
           )}
         </div>
