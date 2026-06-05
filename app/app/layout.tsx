@@ -13,13 +13,14 @@ export default async function AppLayout({
     redirect('/login');
   }
 
-  // After redirect(), user is guaranteed non-null (redirect throws)
   const username = user!.username;
 
   return (
-    <div className="min-h-screen bg-wc-navy-950">
+    <div className="min-h-screen bg-gray-50">
       <Navbar username={username} />
-      <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </main>
     </div>
   );
 }

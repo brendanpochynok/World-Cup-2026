@@ -36,25 +36,30 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-wc-navy-950 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+      {/* Rainbow stripe */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-wc-blue-500 via-wc-green-500 to-wc-red-500 z-10" />
+
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-wc-blue-500 mb-5 shadow-lg shadow-wc-blue-900/50">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-wc-blue-500 to-wc-blue-700 mb-5 shadow-lg">
             <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 2c1.85 0 3.56.63 4.93 1.68L5.68 16.93A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8zm0 16a7.95 7.95 0 01-4.93-1.68L18.32 7.07A7.95 7.95 0 0120 12c0 4.41-3.59 8-8 8z"/>
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">World Cup 2026</h1>
-          <p className="text-wc-navy-400 text-xs mt-1.5 tracking-widest uppercase font-medium">Pool Picks</p>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">World Cup 2026</h1>
+          <p className="text-gray-400 text-xs mt-1.5 tracking-[0.15em] uppercase font-semibold">Pool Picks</p>
         </div>
 
         {/* Card */}
-        <div className="bg-wc-navy-900 border border-wc-navy-700 rounded-2xl p-7 shadow-2xl shadow-black/50">
-          <h2 className="text-lg font-semibold text-white mb-5">Sign in</h2>
+        <div className="relative bg-white border border-gray-200 rounded-2xl p-7 shadow-lg">
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-wc-blue-500 rounded-t-2xl" style={{ borderRadius: '16px 16px 0 0' }} />
+
+          <h2 className="text-xl font-black text-gray-900 mb-6">Sign in</h2>
 
           {error && (
-            <div className="bg-wc-red-700/20 border border-wc-red-600/50 text-wc-red-300 rounded-lg px-4 py-3 mb-5 text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 mb-5 text-sm">
               {error}
             </div>
           )}
@@ -62,46 +67,35 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="field-label">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="input-field"
-                placeholder="your username"
-                required
-                autoComplete="username"
-              />
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
+                className="input-field" placeholder="your username"
+                required autoComplete="username" autoFocus />
             </div>
             <div>
               <label className="field-label">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field"
-                placeholder="••••••••"
-                required
-                autoComplete="current-password"
-              />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                className="input-field" placeholder="••••••••"
+                required autoComplete="current-password" />
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full mt-1">
-              {loading ? 'Signing in…' : 'Sign in'}
+            <button type="submit" disabled={loading} className="btn-primary w-full mt-1 flex items-center justify-center gap-2">
+              {loading ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  Signing in…
+                </>
+              ) : 'Sign in →'}
             </button>
           </form>
 
-          <p className="text-center text-wc-navy-400 text-sm mt-5">
+          <p className="text-center text-gray-500 text-sm mt-6">
             No account?{' '}
-            <Link href="/register" className="text-wc-gold-400 hover:text-wc-gold-300 font-semibold transition-colors">
+            <Link href="/register" className="text-wc-blue-500 hover:text-wc-blue-600 font-bold transition-colors">
               Register
             </Link>
           </p>
-        </div>
-
-        {/* Host nations flag strip */}
-        <div className="flex justify-center gap-3 mt-8">
-          {['🇺🇸', '🇨🇦', '🇲🇽'].map((flag) => (
-            <span key={flag} className="text-2xl opacity-40">{flag}</span>
-          ))}
         </div>
       </div>
     </div>

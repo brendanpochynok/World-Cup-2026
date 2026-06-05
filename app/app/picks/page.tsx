@@ -162,9 +162,6 @@ export default function PicksPage() {
     bracketTimers.current.set(timerKey, t);
   }
 
-  // Polymarket-derived expected group points per team.
-  // Used as automatic tiebreaker when two teams are equal on pts+wins.
-  // Falls back to FIFA rank (already built into computeGroupStandings).
   const advancementScores = useMemo((): Record<string, number> => {
     const scores: Record<string, number> = {};
     for (let gi = 0; gi < GROUPS.length; gi++) {
@@ -180,7 +177,6 @@ export default function PicksPage() {
           const odds = oddsMap[m.matchId];
           if (!odds) continue;
           hasOdds = true;
-          // Expected pts = 3×P(win) + 1×P(draw)
           expected += m.home === team
             ? 3 * odds.home + odds.draw
             : 3 * odds.away + odds.draw;
@@ -191,7 +187,6 @@ export default function PicksPage() {
     return scores;
   }, [oddsMap]);
 
-  // Derive R32 matchups from completed group picks.
   const r32Teams = useMemo((): Record<number, [string, string]> => {
     const standings: Record<string, string[]> = {};
     for (let gi = 0; gi < GROUPS.length; gi++) {
@@ -211,12 +206,8 @@ export default function PicksPage() {
     }
 
     const leftPairs: [string, number, string, number][] = [
-      ['A', 0, 'B', 1],
-      ['C', 0, 'D', 1],
-      ['E', 0, 'F', 1],
-      ['G', 0, 'H', 1],
-      ['I', 0, 'J', 1],
-      ['K', 0, 'L', 1],
+      ['A', 0, 'B', 1], ['C', 0, 'D', 1], ['E', 0, 'F', 1],
+      ['G', 0, 'H', 1], ['I', 0, 'J', 1], ['K', 0, 'L', 1],
     ];
     for (let i = 0; i < leftPairs.length; i++) {
       const [g1, p1, g2, p2] = leftPairs[i];
@@ -225,12 +216,8 @@ export default function PicksPage() {
     }
 
     const rightPairs: [string, number, string, number][] = [
-      ['A', 1, 'B', 0],
-      ['C', 1, 'D', 0],
-      ['E', 1, 'F', 0],
-      ['G', 1, 'H', 0],
-      ['I', 1, 'J', 0],
-      ['K', 1, 'L', 0],
+      ['A', 1, 'B', 0], ['C', 1, 'D', 0], ['E', 1, 'F', 0],
+      ['G', 1, 'H', 0], ['I', 1, 'J', 0], ['K', 1, 'L', 0],
     ];
     for (let i = 0; i < rightPairs.length; i++) {
       const [g1, p1, g2, p2] = rightPairs[i];
@@ -238,8 +225,6 @@ export default function PicksPage() {
       if (t1 && t2) result[8 + i] = [t1, t2];
     }
 
-    // Slots 6, 7, 14, 15: best 8 of 12 third-place teams
-    // Auto-ranked by pts → Polymarket expected pts → FIFA rank (no manual input needed)
     const allGroupsDone = GROUPS.every((g) => standings[g.id]);
     if (allGroupsDone) {
       const thirds: { team: string; pts: number }[] = [];
@@ -265,8 +250,12 @@ export default function PicksPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-green-300 text-lg animate-pulse">Loading picks...</div>
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <svg className="w-8 h-8 text-wc-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <span className="text-gray-500 text-sm font-medium">Loading your picks…</span>
       </div>
     );
   }
@@ -277,47 +266,80 @@ export default function PicksPage() {
 
   return (
     <div className="space-y-8 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+
+      {/* ─── Page Header ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">My Picks</h1>
-          <p className="text-green-400 text-sm mt-1">
-            {pickedMatches}/{totalMatches} group matches · {bracketSlots} bracket slots
+          <p className="eyebrow mb-1">FIFA World Cup 2026™</p>
+          <h1 className="text-3xl font-black text-gray-900">My Picks</h1>
+          <p className="text-gray-500 text-sm mt-1.5">
+            <span className="text-gray-900 font-semibold">{pickedMatches}</span>
+            <span className="text-gray-400">/{totalMatches}</span>
+            {' '}group matches
+            <span className="text-gray-300 mx-2">·</span>
+            <span className="text-gray-900 font-semibold">{bracketSlots}</span> bracket slots
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm flex-wrap">
-          {saveStatus === 'saving' && <span className="text-green-300 animate-pulse">Saving...</span>}
-          {saveStatus === 'saved'  && <span className="text-green-400 font-medium">Saved ✓</span>}
-          {saveStatus === 'error'  && <span className="text-red-400 font-medium">Save failed</span>}
+
+        {/* Actions bar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {saveStatus === 'saving' && (
+            <span className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Saving…
+            </span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className="flex items-center gap-1.5 text-xs text-wc-green-600 font-bold">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              Saved
+            </span>
+          )}
+          {saveStatus === 'error' && (
+            <span className="flex items-center gap-1.5 text-xs text-wc-red-500 font-bold">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              Save failed
+            </span>
+          )}
+
           <button
             onClick={handleAutoPick}
             disabled={saveStatus === 'saving'}
-            className="px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 hover:text-gray-900 text-xs font-bold transition-all disabled:opacity-40"
           >
-            Auto-pick favourites
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Auto-pick
           </button>
+
           <button
             onClick={handleClearAll}
             disabled={saveStatus === 'saving'}
-            className="px-3 py-1.5 rounded-lg bg-red-900/60 hover:bg-red-800 disabled:opacity-50 text-red-300 hover:text-white text-xs font-semibold transition-colors border border-red-800"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-wc-red-500 hover:text-wc-red-600 text-xs font-bold transition-all disabled:opacity-40"
           >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
             Clear all
           </button>
         </div>
       </div>
 
-      {/* Group Stage */}
+      {/* ─── Group Stage ─── */}
       <section>
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-yellow-400">Group Stage</h2>
-          <p className="text-green-400 text-sm mt-1">
-            Click a group to pick each match. Top 2 + 8 best 3rd-place teams advance to Round of 32.
+        <div className="mb-5">
+          <h2 className="text-xl font-black text-gray-900">Group Stage</h2>
+          <p className="text-gray-400 text-xs mt-0.5">
+            Click any group to pick match results · Top 2 + 8 best 3rd-place advance
           </p>
-          <div className="mt-2 text-xs text-green-500">
-            Correct: <span className="text-yellow-400 font-semibold">+1 pt</span>
-            <span className="mx-1.5">·</span>
-            Wrong: <span className="text-red-400 font-semibold">-1 pt</span>
-          </div>
         </div>
 
         <GroupOverview
@@ -339,15 +361,16 @@ export default function PicksPage() {
         )}
       </section>
 
-      {/* Knockout Bracket */}
+      {/* ─── Knockout Bracket ─── */}
       <section>
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-yellow-400">Knockout Bracket</h2>
-          <p className="text-green-400 text-sm mt-1">
-            Pick the winner of each round. R32=2pts · R16=3pts · QF=5pts · SF=8pts · Final=13pts · Champion=20pts
+        <div className="mb-5">
+          <h2 className="text-xl font-black text-gray-900">Knockout Bracket</h2>
+          <p className="text-gray-400 text-xs mt-0.5">
+            Pick winners each round · R32=2 · R16=3 · QF=5 · SF=8 · Final=13 · Champion=20 pts
           </p>
         </div>
-        <div className="bg-green-900/50 border border-green-700 rounded-xl p-4">
+
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-x-auto shadow-sm">
           <KnockoutBracket
             picks={bracketPicks}
             onChange={handleBracketChange}

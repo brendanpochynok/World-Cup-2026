@@ -1,6 +1,6 @@
 import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { GROUP_MATCHES } from '@/lib/worldcup-data';
+import { GROUP_MATCHES, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +20,7 @@ export default async function DashboardPage() {
     where: { userId_round_slot: { userId: user.userId, round: 'Final', slot: 0 } },
   });
   const championPick = finalPick?.team ?? null;
+  const championMeta = championPick ? getTeamMeta(championPick) : null;
 
   const matchResults = await prisma.matchResult.findMany();
   const completedGroupMatches = matchResults.filter((r) => r.status === 'finished').length;
@@ -31,132 +32,139 @@ export default async function DashboardPage() {
     .slice(0, 5);
 
   const picksPct = Math.round((matchPicksCount / totalMatches) * 100);
+  const groupsDone = matchPicksCount === totalMatches;
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-8 max-w-5xl">
 
-      {/* Header */}
-      <div className="flex items-end justify-between">
+      {/* ─── Header ─── */}
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-wc-navy-400 text-xs uppercase tracking-widest font-medium mb-1">Dashboard</p>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Welcome back, <span className="text-wc-gold-400">{user.username}</span>
+          <p className="eyebrow mb-2">FIFA World Cup 2026™</p>
+          <h1 className="text-4xl font-black text-gray-900 leading-tight">
+            Welcome, <span className="text-wc-blue-500">{user.username}</span>
           </h1>
+          <p className="text-gray-500 text-sm mt-2">Group Stage · June 11 – July 19, 2026</p>
         </div>
-        <Link href="/app/picks" className="btn-primary hidden sm:inline-flex items-center gap-2 text-sm">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Make picks
+        <Link href="/app/picks" className="btn-primary text-sm whitespace-nowrap hidden sm:inline-flex">
+          Make Picks →
         </Link>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ─── Stats ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Your points', value: '0', sub: 'live score' },
-          { label: 'Group picks', value: `${matchPicksCount}`, sub: `of ${totalMatches}` },
-          { label: 'Bracket picks', value: `${bracketPicksCount}`, sub: 'slots filled' },
-          { label: 'Matches played', value: `${completedGroupMatches}`, sub: 'group stage' },
+          { label: 'Your Points', value: '0', sub: 'tournament score' },
+          { label: 'Group Picks', value: `${matchPicksCount}`, sub: `of ${totalMatches} matches` },
+          { label: 'Bracket Picks', value: `${bracketPicksCount}`, sub: 'knockout slots' },
+          { label: 'Matches Played', value: `${completedGroupMatches}`, sub: 'group stage' },
         ].map(({ label, value, sub }) => (
           <div key={label} className="card">
-            <div className="text-3xl font-bold text-white tabular-nums">{value}</div>
-            <div className="text-wc-navy-200 text-xs font-medium mt-1">{label}</div>
-            <div className="text-wc-navy-400 text-xs mt-0.5">{sub}</div>
+            <div className="text-4xl font-black text-gray-900 tabular-nums leading-none">{value}</div>
+            <div className="text-gray-500 text-xs font-bold uppercase tracking-wider mt-3">{label}</div>
+            <div className="text-gray-400 text-xs mt-0.5">{sub}</div>
           </div>
         ))}
       </div>
 
-      {/* Progress + champion */}
+      {/* ─── Progress + Champion ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Progress */}
         <div className="card space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-white text-sm">Group stage picks</h3>
-            <span className="text-xs text-wc-navy-400 tabular-nums">{matchPicksCount} / {totalMatches}</span>
+            <h3 className="font-black text-gray-900">Group Stage Picks</h3>
+            <span className="text-gray-400 text-sm tabular-nums">{matchPicksCount}/{totalMatches}</span>
           </div>
           <div>
-            <div className="flex items-center justify-between text-xs text-wc-navy-400 mb-2">
+            <div className="flex justify-between text-xs text-gray-400 mb-2">
               <span>{picksPct}% complete</span>
-              {matchPicksCount === totalMatches && (
-                <span className="text-wc-green-400 font-semibold">All done</span>
-              )}
+              {groupsDone && <span className="text-wc-green-600 font-bold">All done</span>}
             </div>
-            <div className="w-full bg-wc-navy-800 rounded-full h-1.5">
+            <div className="w-full bg-gray-100 rounded-full h-1.5">
               <div
-                className={`h-1.5 rounded-full transition-all ${matchPicksCount === totalMatches ? 'bg-wc-green-400' : 'bg-wc-blue-500'}`}
-                style={{ width: `${picksPct}%` }}
+                className={`h-1.5 rounded-full transition-all duration-500 ${
+                  groupsDone ? 'bg-wc-green-500' : 'bg-wc-blue-500'
+                }`}
+                style={{ width: `${Math.max(picksPct, 2)}%` }}
               />
             </div>
           </div>
           <Link href="/app/picks" className="btn-secondary text-sm block text-center">
-            {matchPicksCount === totalMatches ? 'Edit picks' : 'Make picks'}
+            {groupsDone ? 'Review picks' : 'Make picks →'}
           </Link>
         </div>
 
-        <div className="card flex flex-col justify-between">
-          <div>
-            <h3 className="font-semibold text-white text-sm mb-3">Champion pick</h3>
-            {championPick ? (
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-wc-gold-400/15 border border-wc-gold-600/30 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-wc-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 3h14v4l-7 7-7-7V3zm0 0v3m14-3v3M12 14v7m-4 0h8" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-white font-bold">{championPick}</div>
-                  <div className="text-wc-navy-400 text-xs">Your champion · 20 pts if correct</div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-wc-navy-300 text-sm mb-4">No champion picked yet. Worth 20 pts.</p>
-            )}
+        {/* Champion */}
+        <div className="card relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-wc-gold-400" />
+          <div className="flex items-start justify-between mb-4">
+            <h3 className="font-black text-gray-900">Champion Pick</h3>
+            <span className="text-wc-gold-500 text-xs font-bold">20 pts</span>
           </div>
+
+          {championPick && championMeta ? (
+            <div className="flex items-center gap-4 mb-4">
+              <img
+                src={getFlagUrl(championMeta.flag)}
+                alt={championPick}
+                className="w-14 h-10 object-cover rounded-lg shadow-sm flex-shrink-0 border border-gray-200"
+              />
+              <div>
+                <div className="text-xl font-black text-gray-900">{championPick}</div>
+                <div className="text-gray-400 text-xs mt-0.5">FIFA Rank #{championMeta.fifaRank}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-4 mb-4 text-center border border-dashed border-gray-200 rounded-xl">
+              <p className="text-gray-500 text-sm font-medium">No champion picked yet</p>
+              <p className="text-gray-400 text-xs mt-0.5">Worth 20 pts if correct</p>
+            </div>
+          )}
+
           <Link href="/app/picks" className="btn-secondary text-sm block text-center">
-            {championPick ? 'Change pick' : 'Pick champion'}
+            {championPick ? 'Change pick' : 'Pick champion →'}
           </Link>
         </div>
       </div>
 
-      {/* Leaderboard */}
+      {/* ─── Leaderboard ─── */}
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-white text-sm">Leaderboard</h3>
-          <Link href="/app/standings" className="text-wc-navy-400 hover:text-white text-xs font-medium transition-colors">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-black text-gray-900">Leaderboard</h3>
+          <Link href="/app/standings"
+            className="text-wc-blue-500 hover:text-wc-blue-600 text-xs font-bold transition-colors">
             Full standings →
           </Link>
         </div>
+
         {leaderboard.length === 0 ? (
-          <p className="text-wc-navy-400 text-sm">No players yet</p>
+          <div className="text-center py-8">
+            <p className="text-gray-500 text-sm font-medium">No players yet</p>
+            <p className="text-gray-400 text-xs mt-1">Invite friends to join the pool</p>
+          </div>
         ) : (
-          <div className="space-y-1">
-            {leaderboard.map((entry, i) => (
-              <div
-                key={entry.id}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-colors ${
-                  entry.username === user.username
-                    ? 'bg-wc-gold-400/10 border border-wc-gold-600/20'
-                    : 'hover:bg-wc-navy-800'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-bold w-5 text-center tabular-nums ${i === 0 ? 'text-wc-gold-400' : 'text-wc-navy-500'}`}>
-                    {i + 1}
-                  </span>
-                  <span className={`font-medium ${entry.username === user.username ? 'text-wc-gold-300' : 'text-white'}`}>
+          <div className="divide-y divide-gray-100">
+            {leaderboard.map((entry, i) => {
+              const isMe = entry.username === user.username;
+              return (
+                <div key={entry.id}
+                  className={`flex items-center gap-4 py-3 ${isMe ? 'text-wc-blue-600' : ''}`}>
+                  <span className="text-gray-400 text-sm font-mono w-5 text-center flex-shrink-0">{i + 1}</span>
+                  <span className={`flex-1 font-semibold text-sm ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
                     {entry.username}
+                    {isMe && <span className="ml-2 text-xs text-gray-400 font-normal">(you)</span>}
                   </span>
-                  {entry.username === user.username && (
-                    <span className="text-[10px] text-wc-navy-400 font-medium uppercase tracking-wider">you</span>
-                  )}
+                  <span className={`font-black tabular-nums ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
+                    {entry.score}
+                    <span className="text-gray-400 text-xs font-normal ml-1">pts</span>
+                  </span>
                 </div>
-                <span className="font-semibold text-wc-navy-300 tabular-nums">{entry.score} pts</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
-
     </div>
   );
 }

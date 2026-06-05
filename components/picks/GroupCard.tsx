@@ -77,50 +77,45 @@ function SortableTeamRow({
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-2 py-1.5 px-2 rounded-lg transition-colors ${
-        isDragging ? 'bg-wc-navy-700 shadow-lg' : 'hover:bg-wc-navy-800/50'
+        isDragging ? 'bg-gray-100 shadow-md' : 'hover:bg-gray-50'
       }`}
     >
-      {/* Drag handle */}
       {!locked && (
         <button
           {...attributes}
           {...listeners}
-          className="text-wc-navy-500 hover:text-wc-navy-300 cursor-grab active:cursor-grabbing touch-none select-none"
+          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none select-none"
           aria-label="Drag to reorder"
         >
           ⋮⋮
         </button>
       )}
 
-      {/* Rank number */}
-      <span className="w-5 text-xs text-wc-navy-400 font-mono text-center select-none">
+      <span className="w-5 text-xs text-gray-400 font-mono text-center select-none">
         {rank}
       </span>
 
-      {/* Qualified badge */}
       {isQualified ? (
-        <span className="text-xs font-bold bg-wc-blue-700 text-wc-blue-200 px-1.5 py-0.5 rounded select-none">
+        <span className="text-xs font-bold bg-wc-blue-500/10 text-wc-blue-600 px-1.5 py-0.5 rounded select-none">
           Q
         </span>
       ) : (
         <span className="w-7 select-none" />
       )}
 
-      {/* Flag + team name */}
       <span className="flex-1 flex items-center gap-1.5 min-w-0">
         <span className="text-base leading-none select-none">
           {TEAM_FLAGS[team] ?? '🏳'}
         </span>
-        <span className="text-sm text-white truncate">{team}</span>
+        <span className="text-sm text-gray-900 truncate">{team}</span>
       </span>
 
-      {/* Arrow buttons (accessibility fallback) */}
       {!locked && (
         <div className="flex flex-col gap-0.5">
           <button
             onClick={onMoveUp}
             disabled={isFirst}
-            className="w-5 h-4 flex items-center justify-center text-wc-navy-400 hover:text-wc-gold-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs leading-none"
+            className="w-5 h-4 flex items-center justify-center text-gray-300 hover:text-wc-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs leading-none"
             aria-label="Move up"
           >
             ▲
@@ -128,7 +123,7 @@ function SortableTeamRow({
           <button
             onClick={onMoveDown}
             disabled={isLast}
-            className="w-5 h-4 flex items-center justify-center text-wc-navy-400 hover:text-wc-gold-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs leading-none"
+            className="w-5 h-4 flex items-center justify-center text-gray-300 hover:text-wc-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs leading-none"
             aria-label="Move down"
           >
             ▼
@@ -149,7 +144,6 @@ export default function GroupCard({ group, picks, onChange, locked }: GroupCardP
     return [...defaultOrder];
   });
 
-  // Sync when picks prop changes from parent (initial load)
   useEffect(() => {
     if (picks) {
       setOrder([picks.rank1, picks.rank2, picks.rank3, picks.rank4]);
@@ -198,15 +192,12 @@ export default function GroupCard({ group, picks, onChange, locked }: GroupCardP
   }
 
   return (
-    <div className="bg-wc-navy-900 border border-wc-navy-700 rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="bg-wc-navy-800 px-3 py-2 border-b border-wc-navy-700">
-        <h3 className="text-wc-gold-400 font-bold text-sm tracking-wide">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
+        <h3 className="text-gray-700 font-bold text-sm tracking-wide">
           {group.name}
         </h3>
       </div>
-
-      {/* Team list */}
       <div className="p-2">
         <DndContext
           sensors={sensors}

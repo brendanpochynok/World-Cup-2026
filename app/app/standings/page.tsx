@@ -12,6 +12,17 @@ interface UserScore {
   championPick: string | null;
 }
 
+const scoringRows = [
+  { label: 'Correct pick',  pts: '+1 pt',   positive: true  },
+  { label: 'Wrong pick',    pts: '−1 pt',   positive: false },
+  { label: 'Round of 32',   pts: '2 pts',   positive: true  },
+  { label: 'Round of 16',   pts: '3 pts',   positive: true  },
+  { label: 'Quarter-final', pts: '5 pts',   positive: true  },
+  { label: 'Semi-final',    pts: '8 pts',   positive: true  },
+  { label: 'Final',         pts: '13 pts',  positive: true  },
+  { label: 'Champion',      pts: '20 pts',  positive: true  },
+] as const;
+
 export default async function StandingsPage() {
   const currentUser = await getSessionUser();
 
@@ -36,100 +47,101 @@ export default async function StandingsPage() {
   scores.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
   const finishedMatches = matchResults.filter((r) => r.status === 'finished').length;
 
-  const scoringRows = [
-    ['Correct pick', '+1 pt', true],
-    ['Wrong pick', '−1 pt', false],
-    ['Round of 32', '2 pts', true],
-    ['Round of 16', '3 pts', true],
-    ['Quarter-final', '5 pts', true],
-    ['Semi-final', '8 pts', true],
-    ['Final', '13 pts', true],
-    ['Champion', '20 pts', true],
-  ] as const;
-
   return (
     <div className="space-y-6 max-w-4xl">
 
-      {/* Header */}
+      {/* ─── Header ─── */}
       <div>
-        <p className="text-wc-navy-400 text-xs uppercase tracking-widest font-medium mb-1">Leaderboard</p>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Standings</h1>
-        <p className="text-wc-navy-300 text-sm mt-1">
-          {finishedMatches} match{finishedMatches !== 1 ? 'es' : ''} completed · scores update automatically
+        <p className="eyebrow mb-1.5">Pool Leaderboard</p>
+        <h1 className="text-3xl font-black text-gray-900">Standings</h1>
+        <p className="text-gray-500 text-sm mt-1.5">
+          {finishedMatches} match{finishedMatches !== 1 ? 'es' : ''} completed
+          <span className="text-gray-300 mx-2">·</span>
+          {scores.length} player{scores.length !== 1 ? 's' : ''} in the pool
+          <span className="text-gray-300 mx-2">·</span>
+          scores update automatically
         </p>
       </div>
 
-      {/* Scoring reference */}
+      {/* ─── Scoring Reference ─── */}
       <div className="card">
-        <h3 className="text-xs font-semibold text-wc-navy-400 uppercase tracking-widest mb-3">Scoring system</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-sm">
-          {scoringRows.map(([label, pts, isGold]) => (
-            <div key={label} className="flex items-center justify-between">
-              <span className="text-wc-navy-300">{label}</span>
-              <span className={`font-bold ml-2 ${isGold ? 'text-wc-gold-400' : 'text-wc-red-400'}`}>{pts}</span>
+        <h3 className="eyebrow mb-4">Scoring System</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {scoringRows.map(({ label, pts, positive }) => (
+            <div key={label}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl border ${
+                positive ? 'bg-gray-50 border-gray-200' : 'bg-red-50 border-red-100'
+              }`}>
+              <span className="text-gray-600 text-xs font-medium">{label}</span>
+              <span className={`font-black text-sm ml-2 ${positive ? 'text-wc-gold-500' : 'text-wc-red-500'}`}>{pts}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Table */}
+      {/* ─── Full Table ─── */}
       <div className="card overflow-hidden p-0">
         {scores.length === 0 ? (
-          <div className="text-center py-12 px-5">
-            <p className="text-wc-navy-400 text-sm">No players yet — invite friends to join!</p>
+          <div className="text-center py-16 px-5">
+            <p className="text-gray-900 font-black text-lg mb-1">No players yet</p>
+            <p className="text-gray-500 text-sm">Invite friends to join the pool!</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-wc-navy-700">
-                  <th className="text-left py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider">#</th>
-                  <th className="text-left py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider">Player</th>
-                  <th className="text-right py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider">Pts</th>
-                  <th className="text-right py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider hidden sm:table-cell">Groups</th>
-                  <th className="text-right py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider hidden md:table-cell">Bracket</th>
-                  <th className="text-right py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider hidden md:table-cell">Champion</th>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left py-3.5 px-5 eyebrow text-left w-16">#</th>
+                  <th className="text-left py-3.5 px-4 eyebrow text-left">Player</th>
+                  <th className="text-right py-3.5 px-4 eyebrow">Points</th>
+                  <th className="text-right py-3.5 px-4 eyebrow hidden sm:table-cell">Groups</th>
+                  <th className="text-right py-3.5 px-4 eyebrow hidden md:table-cell">Bracket</th>
+                  <th className="text-right py-3.5 px-5 eyebrow hidden md:table-cell">Champion</th>
                 </tr>
               </thead>
               <tbody>
                 {scores.map((u, index) => {
-                  const isCurrentUser = u.username === currentUser?.username;
+                  const isMe = u.username === currentUser?.username;
                   return (
                     <tr
                       key={u.id}
-                      className={`border-b border-wc-navy-800/60 last:border-0 transition-colors ${
-                        isCurrentUser ? 'bg-wc-gold-400/8' : 'hover:bg-wc-navy-800/40'
+                      className={`border-b border-gray-100 last:border-0 transition-colors ${
+                        isMe ? 'bg-wc-blue-500/5' : 'hover:bg-gray-50'
                       }`}
                     >
-                      <td className="py-3.5 px-4">
-                        <span className={`font-bold tabular-nums text-xs ${index === 0 ? 'text-wc-gold-400' : 'text-wc-navy-500'}`}>
-                          {index + 1}
-                        </span>
+                      <td className="py-4 px-5">
+                        <span className="font-black text-sm text-gray-400 tabular-nums">{index + 1}</span>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-medium ${isCurrentUser ? 'text-wc-gold-300' : 'text-white'}`}>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`font-bold text-sm ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
                             {u.username}
                           </span>
-                          {isCurrentUser && (
-                            <span className="text-[10px] text-wc-navy-500 uppercase tracking-wider">you</span>
+                          {isMe && (
+                            <span className="tag bg-wc-blue-500/10 text-wc-blue-600 border border-wc-blue-200">
+                              you
+                            </span>
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <span className="font-bold text-white tabular-nums text-base">{u.score}</span>
+                      <td className="py-4 px-4 text-right">
+                        <span className={`font-black text-xl tabular-nums ${index === 0 ? 'text-wc-gold-500' : 'text-gray-900'}`}>
+                          {u.score}
+                        </span>
+                        <span className="text-gray-400 text-xs font-normal ml-1">pts</span>
                       </td>
-                      <td className="py-3.5 px-4 text-right text-wc-navy-400 hidden sm:table-cell tabular-nums">
+                      <td className="py-4 px-4 text-right text-gray-400 hidden sm:table-cell tabular-nums text-xs font-medium">
                         {u.groupPicksCount}/72
                       </td>
-                      <td className="py-3.5 px-4 text-right text-wc-navy-400 hidden md:table-cell tabular-nums">
+                      <td className="py-4 px-4 text-right text-gray-400 hidden md:table-cell tabular-nums text-xs font-medium">
                         {u.bracketPicksCount}
                       </td>
-                      <td className="py-3.5 px-4 text-right hidden md:table-cell">
-                        {u.championPick
-                          ? <span className="text-wc-gold-400">{u.championPick}</span>
-                          : <span className="text-wc-navy-700">—</span>
-                        }
+                      <td className="py-4 px-5 text-right hidden md:table-cell">
+                        {u.championPick ? (
+                          <span className="text-wc-gold-500 font-semibold text-xs">{u.championPick}</span>
+                        ) : (
+                          <span className="text-gray-300 text-sm">—</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -139,7 +151,6 @@ export default async function StandingsPage() {
           </div>
         )}
       </div>
-
     </div>
   );
 }
