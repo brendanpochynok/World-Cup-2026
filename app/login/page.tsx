@@ -36,34 +36,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-wc-green-950 px-4">
-      {/* Subtle pitch lines decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 79px, #fff 79px, #fff 80px), repeating-linear-gradient(90deg, transparent, transparent 79px, #fff 79px, #fff 80px)',
-          }}
-        />
-      </div>
-
-      <div className="w-full max-w-sm relative">
-        {/* Header */}
+    <div className="min-h-screen flex items-center justify-center bg-wc-navy-950 px-4">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-wc-gold-500 mb-5 shadow-lg shadow-wc-gold-900/40">
-            <svg className="w-7 h-7 text-wc-green-950" fill="currentColor" viewBox="0 0 24 24">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-wc-gold-400 mb-5 shadow-lg shadow-wc-gold-900/50">
+            <svg className="w-7 h-7 text-wc-navy-950" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 2c1.85 0 3.56.63 4.93 1.68L5.68 16.93A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8zm0 16a7.95 7.95 0 01-4.93-1.68L18.32 7.07A7.95 7.95 0 0120 12c0 4.41-3.59 8-8 8z"/>
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">World Cup 2026</h1>
-          <p className="text-wc-green-400 text-sm mt-1.5 tracking-wide uppercase text-xs font-medium">Pool Picks</p>
+          <p className="text-wc-navy-400 text-xs mt-1.5 tracking-widest uppercase font-medium">Pool Picks</p>
         </div>
 
         {/* Card */}
-        <div className="bg-wc-green-900 border border-wc-green-800 rounded-2xl p-7 shadow-2xl shadow-black/40">
+        <div className="bg-wc-navy-900 border border-wc-navy-700 rounded-2xl p-7 shadow-2xl shadow-black/50">
           <h2 className="text-lg font-semibold text-white mb-5">Sign in</h2>
 
           {error && (
-            <div className="bg-red-950/60 border border-red-800/60 text-red-300 rounded-lg px-4 py-3 mb-5 text-sm">
+            <div className="bg-wc-red-700/20 border border-wc-red-600/50 text-wc-red-300 rounded-lg px-4 py-3 mb-5 text-sm">
               {error}
             </div>
           )}
@@ -93,21 +84,24 @@ export default function LoginPage() {
                 autoComplete="current-password"
               />
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full mt-1"
-            >
+            <button type="submit" disabled={loading} className="btn-primary w-full mt-1">
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <p className="text-center text-wc-green-500 text-sm mt-5">
+          <p className="text-center text-wc-navy-400 text-sm mt-5">
             No account?{' '}
             <Link href="/register" className="text-wc-gold-400 hover:text-wc-gold-300 font-semibold transition-colors">
               Register
             </Link>
           </p>
+        </div>
+
+        {/* Host nations flag strip */}
+        <div className="flex justify-center gap-3 mt-8">
+          {['🇺🇸', '🇨🇦', '🇲🇽'].map((flag) => (
+            <span key={flag} className="text-2xl opacity-40">{flag}</span>
+          ))}
         </div>
       </div>
     </div>

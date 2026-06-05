@@ -59,20 +59,20 @@ export default function Navbar({ username }: NavbarProps) {
   }
 
   return (
-    <nav className="bg-wc-green-950/95 border-b border-wc-green-800 sticky top-0 z-50 backdrop-blur-sm">
+    <nav className="bg-wc-navy-950/95 border-b border-wc-navy-800 sticky top-0 z-50 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
 
           {/* Wordmark */}
-          <Link href="/app/dashboard" className="flex items-center gap-2.5 group">
-            <div className="w-7 h-7 rounded-lg bg-wc-gold-500 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-wc-green-950" fill="currentColor" viewBox="0 0 24 24">
+          <Link href="/app/dashboard" className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-wc-gold-400 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-wc-navy-950" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
               </svg>
             </div>
             <div className="hidden sm:block leading-tight">
               <span className="text-white font-bold text-sm tracking-tight block">WC 2026</span>
-              <span className="text-wc-green-400 text-[10px] uppercase tracking-widest">Pool</span>
+              <span className="text-wc-navy-400 text-[10px] uppercase tracking-widest">Pool</span>
             </div>
           </Link>
 
@@ -86,8 +86,8 @@ export default function Navbar({ username }: NavbarProps) {
                   href={link.href}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
                     active
-                      ? 'bg-wc-gold-500/15 text-wc-gold-400'
-                      : 'text-wc-green-300 hover:text-white hover:bg-wc-green-800'
+                      ? 'bg-wc-green-500/15 text-wc-green-400'
+                      : 'text-wc-navy-200 hover:text-white hover:bg-wc-navy-800'
                   }`}
                 >
                   {link.icon}
@@ -99,10 +99,10 @@ export default function Navbar({ username }: NavbarProps) {
 
           {/* User area */}
           <div className="hidden md:flex items-center gap-4">
-            <span className="text-wc-green-400 text-sm font-medium">{username}</span>
+            <span className="text-wc-navy-300 text-sm font-medium">{username}</span>
             <button
               onClick={handleLogout}
-              className="text-xs text-wc-green-500 hover:text-wc-green-200 font-medium transition-colors border border-wc-green-800 hover:border-wc-green-600 px-3 py-1.5 rounded-lg"
+              className="text-xs text-wc-navy-400 hover:text-white font-medium transition-colors border border-wc-navy-700 hover:border-wc-navy-500 px-3 py-1.5 rounded-lg"
             >
               Sign out
             </button>
@@ -110,7 +110,7 @@ export default function Navbar({ username }: NavbarProps) {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden text-wc-green-300 hover:text-white p-2 rounded-lg hover:bg-wc-green-800 transition-colors"
+            className="md:hidden text-wc-navy-300 hover:text-white p-2 rounded-lg hover:bg-wc-navy-800 transition-colors"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
@@ -128,7 +128,7 @@ export default function Navbar({ username }: NavbarProps) {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="md:hidden py-3 border-t border-wc-green-800 space-y-0.5">
+          <div className="md:hidden py-3 border-t border-wc-navy-800 space-y-0.5">
             {navLinks.map((link) => {
               const active = pathname === link.href;
               return (
@@ -138,8 +138,8 @@ export default function Navbar({ username }: NavbarProps) {
                   onClick={() => setMobileOpen(false)}
                   className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     active
-                      ? 'bg-wc-gold-500/15 text-wc-gold-400'
-                      : 'text-wc-green-300 hover:text-white hover:bg-wc-green-800'
+                      ? 'bg-wc-green-500/15 text-wc-green-400'
+                      : 'text-wc-navy-200 hover:text-white hover:bg-wc-navy-800'
                   }`}
                 >
                   {link.icon}
@@ -147,11 +147,11 @@ export default function Navbar({ username }: NavbarProps) {
                 </Link>
               );
             })}
-            <div className="pt-3 mt-2 border-t border-wc-green-800 flex items-center justify-between px-3">
-              <span className="text-wc-green-400 text-sm">{username}</span>
+            <div className="pt-3 mt-2 border-t border-wc-navy-800 flex items-center justify-between px-3">
+              <span className="text-wc-navy-300 text-sm">{username}</span>
               <button
                 onClick={handleLogout}
-                className="text-xs text-wc-green-500 hover:text-white font-medium transition-colors"
+                className="text-xs text-wc-navy-400 hover:text-white font-medium transition-colors"
               >
                 Sign out
               </button>

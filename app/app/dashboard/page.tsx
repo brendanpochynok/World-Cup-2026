@@ -35,10 +35,10 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6 max-w-5xl">
 
-      {/* Page header */}
+      {/* Header */}
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-wc-green-400 text-xs uppercase tracking-widest font-medium mb-1">Dashboard</p>
+          <p className="text-wc-navy-400 text-xs uppercase tracking-widest font-medium mb-1">Dashboard</p>
           <h1 className="text-2xl font-bold text-white tracking-tight">
             Welcome back, <span className="text-wc-gold-400">{user.username}</span>
           </h1>
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Stats row */}
+      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Your points', value: '0', sub: 'live score' },
@@ -61,31 +61,29 @@ export default async function DashboardPage() {
         ].map(({ label, value, sub }) => (
           <div key={label} className="card">
             <div className="text-3xl font-bold text-white tabular-nums">{value}</div>
-            <div className="text-wc-green-300 text-xs font-medium mt-1">{label}</div>
-            <div className="text-wc-green-600 text-xs mt-0.5">{sub}</div>
+            <div className="text-wc-navy-200 text-xs font-medium mt-1">{label}</div>
+            <div className="text-wc-navy-400 text-xs mt-0.5">{sub}</div>
           </div>
         ))}
       </div>
 
       {/* Progress + champion */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        {/* Picks progress */}
         <div className="card space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-white text-sm">Group stage picks</h3>
-            <span className="text-xs text-wc-green-400 tabular-nums">{matchPicksCount} / {totalMatches}</span>
+            <span className="text-xs text-wc-navy-400 tabular-nums">{matchPicksCount} / {totalMatches}</span>
           </div>
           <div>
-            <div className="flex items-center justify-between text-xs text-wc-green-500 mb-2">
+            <div className="flex items-center justify-between text-xs text-wc-navy-400 mb-2">
               <span>{picksPct}% complete</span>
               {matchPicksCount === totalMatches && (
                 <span className="text-wc-green-400 font-semibold">All done</span>
               )}
             </div>
-            <div className="w-full bg-wc-green-800 rounded-full h-1.5">
+            <div className="w-full bg-wc-navy-800 rounded-full h-1.5">
               <div
-                className={`h-1.5 rounded-full transition-all ${matchPicksCount === totalMatches ? 'bg-wc-green-400' : 'bg-wc-gold-500'}`}
+                className={`h-1.5 rounded-full transition-all ${matchPicksCount === totalMatches ? 'bg-wc-green-400' : 'bg-wc-gold-400'}`}
                 style={{ width: `${picksPct}%` }}
               />
             </div>
@@ -95,24 +93,23 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
-        {/* Champion */}
         <div className="card flex flex-col justify-between">
           <div>
             <h3 className="font-semibold text-white text-sm mb-3">Champion pick</h3>
             {championPick ? (
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-wc-gold-500/15 border border-wc-gold-700/40 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-wc-gold-400" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M5 3h14v4l-7 7-7-7V3zm7 9l6 6H6l6-6zm0 4l2 2H10l2-2z"/>
+                <div className="w-10 h-10 rounded-xl bg-wc-gold-400/15 border border-wc-gold-600/30 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-wc-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 3h14v4l-7 7-7-7V3zm0 0v3m14-3v3M12 14v7m-4 0h8" />
                   </svg>
                 </div>
                 <div>
                   <div className="text-white font-bold">{championPick}</div>
-                  <div className="text-wc-green-400 text-xs">Your champion · 20 pts if correct</div>
+                  <div className="text-wc-navy-400 text-xs">Your champion · 20 pts if correct</div>
                 </div>
               </div>
             ) : (
-              <p className="text-wc-green-400 text-sm mb-4">No champion picked yet. Worth 20 pts.</p>
+              <p className="text-wc-navy-300 text-sm mb-4">No champion picked yet. Worth 20 pts.</p>
             )}
           </div>
           <Link href="/app/picks" className="btn-secondary text-sm block text-center">
@@ -125,35 +122,35 @@ export default async function DashboardPage() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-white text-sm">Leaderboard</h3>
-          <Link href="/app/standings" className="text-wc-green-400 hover:text-white text-xs font-medium transition-colors">
+          <Link href="/app/standings" className="text-wc-navy-400 hover:text-white text-xs font-medium transition-colors">
             Full standings →
           </Link>
         </div>
         {leaderboard.length === 0 ? (
-          <p className="text-wc-green-500 text-sm">No players yet</p>
+          <p className="text-wc-navy-400 text-sm">No players yet</p>
         ) : (
           <div className="space-y-1">
             {leaderboard.map((entry, i) => (
               <div
                 key={entry.id}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-colors ${
                   entry.username === user.username
-                    ? 'bg-wc-gold-500/10 border border-wc-gold-700/30'
-                    : 'hover:bg-wc-green-800'
+                    ? 'bg-wc-gold-400/10 border border-wc-gold-600/20'
+                    : 'hover:bg-wc-navy-800'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className={`text-xs font-bold w-5 text-center tabular-nums ${i === 0 ? 'text-wc-gold-400' : 'text-wc-green-500'}`}>
+                  <span className={`text-xs font-bold w-5 text-center tabular-nums ${i === 0 ? 'text-wc-gold-400' : 'text-wc-navy-500'}`}>
                     {i + 1}
                   </span>
                   <span className={`font-medium ${entry.username === user.username ? 'text-wc-gold-300' : 'text-white'}`}>
                     {entry.username}
                   </span>
                   {entry.username === user.username && (
-                    <span className="text-[10px] text-wc-green-500 font-medium uppercase tracking-wider">you</span>
+                    <span className="text-[10px] text-wc-navy-400 font-medium uppercase tracking-wider">you</span>
                   )}
                 </div>
-                <span className="font-semibold text-wc-green-300 tabular-nums">{entry.score} pts</span>
+                <span className="font-semibold text-wc-navy-300 tabular-nums">{entry.score} pts</span>
               </div>
             ))}
           </div>

@@ -15,164 +15,121 @@ interface UserScore {
 export default async function StandingsPage() {
   const currentUser = await getSessionUser();
 
-  // Get all match results
   const matchResults = await prisma.matchResult.findMany();
-
-  // Get all users with picks
   const users = await prisma.user.findMany({
-    include: {
-      matchPicks: true,
-      bracketPicks: true,
-    },
+    include: { matchPicks: true, bracketPicks: true },
     orderBy: { createdAt: 'asc' },
   });
 
   const scores: UserScore[] = users.map((user) => {
-    const score = 0;
-
-    const championPick =
-      user.bracketPicks.find((p) => p.round === 'Final' && p.slot === 0)?.team ?? null;
-
+    const championPick = user.bracketPicks.find((p) => p.round === 'Final' && p.slot === 0)?.team ?? null;
     return {
       id: user.id,
       username: user.username,
-      score,
+      score: 0,
       groupPicksCount: user.matchPicks.length,
       bracketPicksCount: user.bracketPicks.length,
       championPick,
     };
   });
 
-  // Sort by score descending, then username
   scores.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
-
   const finishedMatches = matchResults.filter((r) => r.status === 'finished').length;
 
+  const scoringRows = [
+    ['Correct pick', '+1 pt', true],
+    ['Wrong pick', '−1 pt', false],
+    ['Round of 32', '2 pts', true],
+    ['Round of 16', '3 pts', true],
+    ['Quarter-final', '5 pts', true],
+    ['Semi-final', '8 pts', true],
+    ['Final', '13 pts', true],
+    ['Champion', '20 pts', true],
+  ] as const;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl">
+
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Standings</h1>
-        <p className="text-wc-green-300 text-sm mt-1">
-          Live leaderboard · {finishedMatches} matches completed
+        <p className="text-wc-navy-400 text-xs uppercase tracking-widest font-medium mb-1">Leaderboard</p>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Standings</h1>
+        <p className="text-wc-navy-300 text-sm mt-1">
+          {finishedMatches} match{finishedMatches !== 1 ? 'es' : ''} completed · scores update automatically
         </p>
       </div>
 
       {/* Scoring reference */}
-      <div className="card bg-wc-green-900/50 border-wc-green-800">
-        <h3 className="text-sm font-bold text-wc-gold-400 mb-2">Scoring System</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-wc-green-300">
-          <div>Correct pick: <span className="text-wc-gold-400 font-bold">+1 pt</span></div>
-          <div>Wrong pick: <span className="text-red-400 font-bold">-1 pt</span></div>
-          <div>R32 pick: <span className="text-wc-gold-400 font-bold">2 pts</span></div>
-          <div>R16 pick: <span className="text-wc-gold-400 font-bold">3 pts</span></div>
-          <div>QF pick: <span className="text-wc-gold-400 font-bold">5 pts</span></div>
-          <div>SF pick: <span className="text-wc-gold-400 font-bold">8 pts</span></div>
-          <div>Final pick: <span className="text-wc-gold-400 font-bold">13 pts</span></div>
-          <div>Champion: <span className="text-wc-gold-400 font-bold">20 pts</span></div>
+      <div className="card">
+        <h3 className="text-xs font-semibold text-wc-navy-400 uppercase tracking-widest mb-3">Scoring system</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+          {scoringRows.map(([label, pts, isGold]) => (
+            <div key={label} className="flex items-center justify-between">
+              <span className="text-wc-navy-300">{label}</span>
+              <span className={`font-bold ml-2 ${isGold ? 'text-wc-gold-400' : 'text-wc-red-400'}`}>{pts}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Leaderboard table */}
-      <div className="card overflow-hidden">
+      {/* Table */}
+      <div className="card overflow-hidden p-0">
         {scores.length === 0 ? (
-          <div className="text-center py-10">
-            <div className="text-4xl mb-3">🏆</div>
-            <p className="text-wc-green-300">No players yet. Invite friends to join!</p>
+          <div className="text-center py-12 px-5">
+            <p className="text-wc-navy-400 text-sm">No players yet — invite friends to join!</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-wc-green-700">
-                  <th className="text-left py-3 px-4 text-wc-green-400 text-sm font-medium">
-                    Rank
-                  </th>
-                  <th className="text-left py-3 px-4 text-wc-green-400 text-sm font-medium">
-                    Player
-                  </th>
-                  <th className="text-right py-3 px-4 text-wc-green-400 text-sm font-medium">
-                    Points
-                  </th>
-                  <th className="text-right py-3 px-4 text-wc-green-400 text-sm font-medium hidden sm:table-cell">
-                    Groups
-                  </th>
-                  <th className="text-right py-3 px-4 text-wc-green-400 text-sm font-medium hidden md:table-cell">
-                    Bracket
-                  </th>
-                  <th className="text-right py-3 px-4 text-wc-green-400 text-sm font-medium hidden md:table-cell">
-                    Champion
-                  </th>
+                <tr className="border-b border-wc-navy-700">
+                  <th className="text-left py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider">#</th>
+                  <th className="text-left py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider">Player</th>
+                  <th className="text-right py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider">Pts</th>
+                  <th className="text-right py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider hidden sm:table-cell">Groups</th>
+                  <th className="text-right py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider hidden md:table-cell">Bracket</th>
+                  <th className="text-right py-3 px-4 text-wc-navy-400 font-medium text-xs uppercase tracking-wider hidden md:table-cell">Champion</th>
                 </tr>
               </thead>
               <tbody>
                 {scores.map((u, index) => {
                   const isCurrentUser = u.username === currentUser?.username;
-                  const medal =
-                    index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
-
                   return (
                     <tr
                       key={u.id}
-                      className={`border-b border-wc-green-800/50 transition-colors ${
-                        isCurrentUser
-                          ? 'bg-wc-gold-500/10'
-                          : 'hover:bg-wc-green-800/30'
+                      className={`border-b border-wc-navy-800/60 last:border-0 transition-colors ${
+                        isCurrentUser ? 'bg-wc-gold-400/8' : 'hover:bg-wc-navy-800/40'
                       }`}
                     >
-                      {/* Rank */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          {medal ? (
-                            <span className="text-lg">{medal}</span>
-                          ) : (
-                            <span className="text-wc-green-500 text-sm w-6 text-center">
-                              {index + 1}
-                            </span>
-                          )}
-                        </div>
+                      <td className="py-3.5 px-4">
+                        <span className={`font-bold tabular-nums text-xs ${index === 0 ? 'text-wc-gold-400' : 'text-wc-navy-500'}`}>
+                          {index + 1}
+                        </span>
                       </td>
-
-                      {/* Username */}
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-white">
+                          <span className={`font-medium ${isCurrentUser ? 'text-wc-gold-300' : 'text-white'}`}>
                             {u.username}
                           </span>
                           {isCurrentUser && (
-                            <span className="text-xs text-wc-gold-400 bg-wc-gold-500/20 px-1.5 py-0.5 rounded">
-                              you
-                            </span>
+                            <span className="text-[10px] text-wc-navy-500 uppercase tracking-wider">you</span>
                           )}
                         </div>
                       </td>
-
-                      {/* Points */}
-                      <td className="py-3 px-4 text-right">
-                        <span className="font-bold text-wc-gold-400 text-lg">
-                          {u.score}
-                        </span>
+                      <td className="py-3.5 px-4 text-right">
+                        <span className="font-bold text-white tabular-nums text-base">{u.score}</span>
                       </td>
-
-                      {/* Match picks */}
-                      <td className="py-3 px-4 text-right text-sm text-wc-green-300 hidden sm:table-cell">
-                        {u.groupPicksCount}/72 matches
+                      <td className="py-3.5 px-4 text-right text-wc-navy-400 hidden sm:table-cell tabular-nums">
+                        {u.groupPicksCount}/72
                       </td>
-
-                      {/* Bracket */}
-                      <td className="py-3 px-4 text-right hidden md:table-cell">
-                        <span className="text-sm text-wc-green-400">
-                          {u.bracketPicksCount} picks
-                        </span>
+                      <td className="py-3.5 px-4 text-right text-wc-navy-400 hidden md:table-cell tabular-nums">
+                        {u.bracketPicksCount}
                       </td>
-
-                      {/* Champion */}
-                      <td className="py-3 px-4 text-right hidden md:table-cell">
-                        {u.championPick ? (
-                          <span className="text-wc-gold-400 text-sm">{u.championPick}</span>
-                        ) : (
-                          <span className="text-wc-green-700 text-sm">—</span>
-                        )}
+                      <td className="py-3.5 px-4 text-right hidden md:table-cell">
+                        {u.championPick
+                          ? <span className="text-wc-gold-400">{u.championPick}</span>
+                          : <span className="text-wc-navy-700">—</span>
+                        }
                       </td>
                     </tr>
                   );
@@ -183,9 +140,6 @@ export default async function StandingsPage() {
         )}
       </div>
 
-      <p className="text-xs text-wc-green-600 text-center">
-        Standings update automatically as match results come in.
-      </p>
     </div>
   );
 }
