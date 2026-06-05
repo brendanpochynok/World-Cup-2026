@@ -19,11 +19,12 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const picks = await prisma.bracketPick.findMany({
+  const rows = await prisma.bracketPick.findMany({
     where: { userId: user.userId },
+    select: { round: true, slot: true, team: true },
   });
 
-  return NextResponse.json({ picks });
+  return NextResponse.json({ picks: rows });
 }
 
 // DELETE: clear all bracket picks for current user
@@ -62,13 +63,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid team' }, { status: 400 });
     }
 
-    const pick = await prisma.bracketPick.upsert({
+    await prisma.bracketPick.upsert({
       where: { userId_round_slot: { userId: user.userId, round, slot } },
       update: { team },
       create: { userId: user.userId, round, slot, team },
     });
 
-    return NextResponse.json({ message: 'Pick saved', pick });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Save bracket pick error:', error);
     return NextResponse.json({ error: 'Failed to save pick' }, { status: 500 });

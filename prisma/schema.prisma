@@ -60,3 +60,12 @@ model MatchResult {
   result    String? // "home" | "draw" | "away" (null = not played)
   status    String  @default("scheduled") // "scheduled" | "live" | "finished"
 }
+
+model BracketResult {
+  id    Int    @id @default(autoincrement())
+  round String // "R32" | "R16" | "QF" | "SF" | "Final"
+  slot  Int    // slot number within that round
+  team  String // winning team name
+
+  @@unique([round, slot])
+}

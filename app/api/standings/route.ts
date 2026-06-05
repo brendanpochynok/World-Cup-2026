@@ -22,10 +22,8 @@ export async function GET() {
       prisma.user.findMany({
         include: { matchPicks: true, bracketPicks: true },
       }),
-      // matchId -> result ("home"|"draw"|"away"), only finished matches
       prisma.matchResult.findMany({ where: { status: 'finished', result: { not: null } } }),
-      // Bracket results would come from an admin source; placeholder empty for now
-      Promise.resolve([] as { round: string; slot: number; team: string }[]),
+      prisma.bracketResult.findMany(),
     ]);
 
     const resultMap = new Map(matchResults.map((r) => [r.matchId, r.result!]));
