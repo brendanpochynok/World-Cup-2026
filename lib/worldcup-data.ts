@@ -851,19 +851,9 @@ export function getMatch(matchId: string): GroupMatch | undefined {
 }
 
 // Check if a match is locked (started - within 1 hour of match date)
-export function isMatchLocked(match: GroupMatch, kickoffIso?: string | null): boolean {
-  const now = new Date();
-  if (kickoffIso) {
-    const kickoff = new Date(kickoffIso);
-    const matchDay = new Date(match.date + 'T00:00:00Z');
-    // Only trust the kickoff time if it's a valid date on or after the match day
-    // (guards against Polymarket returning a market-creation date instead of kick-off)
-    if (!isNaN(kickoff.getTime()) && kickoff >= matchDay) {
-      return now >= kickoff;
-    }
-  }
-  // Fallback: lock at midnight on match date (local time)
-  return now >= new Date(match.date + 'T00:00:00');
+export function isMatchLocked(_match: GroupMatch, kickoffIso?: string | null): boolean {
+  if (!kickoffIso) return false;
+  return new Date() >= new Date(kickoffIso);
 }
 
 // Knockout bracket rounds
