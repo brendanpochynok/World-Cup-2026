@@ -9,11 +9,11 @@ export default async function AppLayout({
 }) {
   const user = await getSessionUser();
 
-  let profile: { username: string; displayName: string | null; avatarUrl: string | null } | null = null;
+  let profile: { username: string; displayName: string | null; avatarUrl: string | null; isAdmin: boolean } | null = null;
   if (user) {
     profile = await prisma.user.findUnique({
       where: { id: user.userId },
-      select: { username: true, displayName: true, avatarUrl: true },
+      select: { username: true, displayName: true, avatarUrl: true, isAdmin: true },
     });
   }
 
@@ -23,6 +23,7 @@ export default async function AppLayout({
         username={profile?.username ?? user?.username ?? null}
         displayName={profile?.displayName}
         avatarUrl={profile?.avatarUrl}
+        isAdmin={profile?.isAdmin ?? false}
       />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
