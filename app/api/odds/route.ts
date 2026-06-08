@@ -90,6 +90,12 @@ function uniqueCodes(primary: string, team: string): string[] {
   return [primary, ...alts].filter((v, i, a) => a.indexOf(v) === i);
 }
 
+function shiftDate(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 async function fetchMatchOdds(
   match: (typeof GROUP_MATCHES)[0]
 ): Promise<{ matchId: string; odds: MatchOdds; kickoff: string | null } | null> {
@@ -100,12 +106,16 @@ async function fetchMatchOdds(
   const hCodes = uniqueCodes(hCode, match.home);
   const aCodes = uniqueCodes(aCode, match.away);
 
-  // Try all combinations of home/away codes × both slug orderings
+  // Try all combinations of home/away codes × ±1 day × both slug orderings
+  // Polymarket slugs use UTC dates; local match dates can differ by ±1 day
   const toTry: { slug: string; hCode: string; aCode: string }[] = [];
   for (const h of hCodes) {
     for (const a of aCodes) {
-      toTry.push({ slug: `fifwc-${h}-${a}-${match.date}`, hCode: h, aCode: a });
-      toTry.push({ slug: `fifwc-${a}-${h}-${match.date}`, hCode: h, aCode: a });
+      for (const delta of [0, 1, -1]) {
+        const d = shiftDate(match.date, delta);
+        toTry.push({ slug: `fifwc-${h}-${a}-${d}`, hCode: h, aCode: a });
+        toTry.push({ slug: `fifwc-${a}-${h}-${d}`, hCode: h, aCode: a });
+      }
     }
   }
 
