@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface NavbarProps {
-  username: string;
+  username: string | null;
   displayName?: string | null;
   avatarUrl?: string | null;
 }
@@ -74,6 +74,9 @@ export default function Navbar({ username, displayName, avatarUrl }: NavbarProps
     router.refresh();
   }
 
+  const isGuest = !username;
+  const label = displayName ?? username ?? '';
+
   return (
     <nav className="sticky top-0 z-50">
       {/* FIFA WC 2026 host nations gradient stripe */}
@@ -118,33 +121,48 @@ export default function Navbar({ username, displayName, avatarUrl }: NavbarProps
 
             {/* User area */}
             <div className="hidden md:flex items-center gap-3">
-              <Link
-                href="/app/profile"
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors group"
-              >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={displayName ?? username}
-                    className="w-7 h-7 rounded-lg object-cover border border-gray-200 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-lg bg-wc-blue-500/10 border border-wc-blue-200 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[11px] font-black text-wc-blue-500 uppercase leading-none">
-                      {(displayName ?? username).charAt(0)}
+              {isGuest ? (
+                <>
+                  <Link href="/login"
+                    className="text-[13px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+                    Sign in
+                  </Link>
+                  <Link href="/register"
+                    className="text-[12px] font-semibold bg-wc-blue-500 hover:bg-wc-blue-600 text-white px-3 py-1.5 rounded-lg transition-colors">
+                    Register
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/app/profile"
+                    className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors group"
+                  >
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={label}
+                        className="w-7 h-7 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-lg bg-wc-blue-500/10 border border-wc-blue-200 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[11px] font-black text-wc-blue-500 uppercase leading-none">
+                          {label.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-[13px] font-semibold group-hover:underline underline-offset-2">
+                      {label}
                     </span>
-                  </div>
-                )}
-                <span className="text-[13px] font-semibold group-hover:underline underline-offset-2">
-                  {displayName ?? username}
-                </span>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="text-[12px] text-gray-500 hover:text-gray-900 font-semibold transition-colors border border-gray-300 hover:border-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-              >
-                Sign out
-              </button>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="text-[12px] text-gray-500 hover:text-gray-900 font-semibold transition-colors border border-gray-300 hover:border-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+                  >
+                    Sign out
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Mobile hamburger */}
@@ -190,30 +208,45 @@ export default function Navbar({ username, displayName, avatarUrl }: NavbarProps
               })}
             </div>
             <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-              <Link
-                href="/app/profile"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
-              >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={displayName ?? username}
-                    className="w-7 h-7 rounded-lg object-cover border border-gray-200 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-lg bg-wc-blue-500/10 border border-wc-blue-200 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[11px] font-black text-wc-blue-500 uppercase leading-none">
-                      {(displayName ?? username).charAt(0)}
-                    </span>
-                  </div>
-                )}
-                <span className="text-sm font-semibold">{displayName ?? username}</span>
-              </Link>
-              <button onClick={handleLogout}
-                className="text-xs text-gray-500 hover:text-gray-900 font-semibold transition-colors">
-                Sign out
-              </button>
+              {isGuest ? (
+                <div className="flex items-center gap-3 w-full">
+                  <Link href="/login" onClick={() => setMobileOpen(false)}
+                    className="flex-1 text-center text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg py-2 hover:bg-gray-50 transition-colors">
+                    Sign in
+                  </Link>
+                  <Link href="/register" onClick={() => setMobileOpen(false)}
+                    className="flex-1 text-center text-sm font-semibold text-white bg-wc-blue-500 hover:bg-wc-blue-600 rounded-lg py-2 transition-colors">
+                    Register
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <Link
+                    href="/app/profile"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+                  >
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={label}
+                        className="w-7 h-7 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-lg bg-wc-blue-500/10 border border-wc-blue-200 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[11px] font-black text-wc-blue-500 uppercase leading-none">
+                          {label.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-sm font-semibold">{label}</span>
+                  </Link>
+                  <button onClick={handleLogout}
+                    className="text-xs text-gray-500 hover:text-gray-900 font-semibold transition-colors">
+                    Sign out
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

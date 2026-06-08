@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { GROUP_MATCHES } from '@/lib/worldcup-data';
+import { isAdminRequest } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const adminSecret = process.env.ADMIN_SECRET;
-
-  if (!adminSecret || authHeader !== `Bearer ${adminSecret}`) {
+  if (!await isAdminRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

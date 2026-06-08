@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ALL_TEAMS } from '@/lib/worldcup-data';
+import { isAdminRequest } from '@/lib/admin-auth';
 
 const VALID_ROUNDS = new Set(['R32', 'R16', 'QF', 'SF', 'Final']);
 const ROUND_MAX_SLOTS: Record<string, number> = {
@@ -12,21 +13,16 @@ const ROUND_MAX_SLOTS: Record<string, number> = {
 };
 const VALID_TEAMS = new Set(ALL_TEAMS);
 
-function isAdmin(request: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
-  return !!adminSecret && request.headers.get('authorization') === `Bearer ${adminSecret}`;
-}
-
 // GET: list all recorded bracket results
 export async function GET(request: NextRequest) {
-  if (!isAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const results = await prisma.bracketResult.findMany({ orderBy: [{ round: 'asc' }, { slot: 'asc' }] });
   return NextResponse.json({ results });
 }
 
 // POST: upsert a single bracket result { round, slot, team }
 export async function POST(request: NextRequest) {
-  if (!isAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const { round, slot, team } = (await request.json()) as { round: string; slot: number; team: string };
@@ -53,7 +49,7 @@ export async function POST(request: NextRequest) {
 
 // DELETE: clear all bracket results
 export async function DELETE(request: NextRequest) {
-  if (!isAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   await prisma.bracketResult.deleteMany();
   return NextResponse.json({ ok: true });
 }
