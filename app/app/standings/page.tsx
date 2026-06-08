@@ -46,6 +46,7 @@ export default async function StandingsPage() {
       groupPicksCount: user.matchPicks.length,
       bracketPicksCount: user.bracketPicks.length,
       championPick,
+      favoriteTeam: user.favoriteTeam ?? null,
       isMe: user.username === currentUser?.username,
     };
   });
