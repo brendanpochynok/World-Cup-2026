@@ -1,0 +1,42 @@
+import { getSessionUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { redirect } from 'next/navigation';
+import AdminPanel from './AdminPanel';
+
+export const dynamic = 'force-dynamic';
+
+export default async function AdminPage() {
+  const user = await getSessionUser();
+  if (!user) redirect('/login?from=/app/admin');
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: { isAdmin: true },
+  });
+  if (!dbUser?.isAdmin) redirect('/app/dashboard');
+
+  const [matchResults, bracketResults, poolConfig, playerCount] = await Promise.all([
+    prisma.matchResult.findMany(),
+    prisma.bracketResult.findMany(),
+    prisma.poolConfig.findUnique({ where: { id: 1 } }),
+    prisma.user.count(),
+  ]);
+
+  return (
+    <AdminPanel
+      matchResults={matchResults.map((r) => ({
+        matchId: r.matchId,
+        homeGoals: r.homeGoals,
+        awayGoals: r.awayGoals,
+        status: r.status,
+      }))}
+      bracketResults={bracketResults.map((r) => ({
+        round: r.round,
+        slot: r.slot,
+        team: r.team,
+      }))}
+      entryFee={poolConfig?.entryFeePerPlayer ?? 0}
+      playerCount={playerCount}
+    />
+  );
+}
