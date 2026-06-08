@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import LiveScoreCard from '@/components/LiveScoreCard';
 import type { MatchData } from '@/app/api/scores/route';
+import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
 function formatDateHeading(dateStr: string): string {
@@ -34,11 +35,12 @@ function SectionHeader({ label, live = false, count }: { label: string; live?: b
   );
 }
 
-function DateGroup({ date, matches, matchPicks, distribution, onPickChange }: {
+function DateGroup({ date, matches, matchPicks, distribution, oddsMap, onPickChange }: {
   date: string;
   matches: MatchData[];
   matchPicks: Record<string, string> | null;
   distribution: Record<string, PickDistribution>;
+  oddsMap: Record<string, MatchOdds>;
   onPickChange: (matchId: string, pick: string) => void;
 }) {
   return (
@@ -49,6 +51,7 @@ function DateGroup({ date, matches, matchPicks, distribution, onPickChange }: {
           <LiveScoreCard
             key={m.matchId}
             match={m}
+            odds={oddsMap[m.matchId] ?? null}
             currentPick={matchPicks?.[m.matchId] ?? null}
             distribution={distribution[m.matchId] ?? null}
             onPickChange={matchPicks !== null ? onPickChange : undefined}
@@ -69,6 +72,7 @@ export default function ScoresPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [matchPicks, setMatchPicks] = useState<Record<string, string> | null>(null);
   const [distribution, setDistribution] = useState<Record<string, PickDistribution>>({});
+  const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchScores = useCallback(async () => {
@@ -90,7 +94,7 @@ export default function ScoresPage() {
     }
   }, []);
 
-  // Fetch picks (null if not logged in) and distribution once on mount
+  // Fetch picks, distribution, and odds once on mount
   useEffect(() => {
     fetch('/api/picks/groups')
       .then((r) => r.ok ? r.json() : null)
@@ -100,6 +104,11 @@ export default function ScoresPage() {
     fetch('/api/picks/distribution')
       .then((r) => r.json())
       .then((d) => setDistribution(d))
+      .catch(() => {});
+
+    fetch('/api/odds')
+      .then((r) => r.json())
+      .then((d) => { if (d?.odds) setOddsMap(d.odds); })
       .catch(() => {});
   }, []);
 
@@ -263,6 +272,7 @@ export default function ScoresPage() {
                 {liveMatches.map((m) => (
                   <LiveScoreCard
                     key={m.matchId} match={m}
+                    odds={oddsMap[m.matchId] ?? null}
                     currentPick={matchPicks?.[m.matchId] ?? null}
                     distribution={distribution[m.matchId] ?? null}
                     onPickChange={matchPicks !== null ? handlePickChange : undefined}
@@ -280,6 +290,7 @@ export default function ScoresPage() {
                 {todayMatches.map((m) => (
                   <LiveScoreCard
                     key={m.matchId} match={m}
+                    odds={oddsMap[m.matchId] ?? null}
                     currentPick={matchPicks?.[m.matchId] ?? null}
                     distribution={distribution[m.matchId] ?? null}
                     onPickChange={matchPicks !== null ? handlePickChange : undefined}
@@ -295,7 +306,8 @@ export default function ScoresPage() {
               {upcomingDates.map((date) => (
                 <DateGroup
                   key={date} date={date} matches={upcomingMap.get(date)!}
-                  matchPicks={matchPicks} distribution={distribution} onPickChange={handlePickChange}
+                  matchPicks={matchPicks} distribution={distribution}
+                  oddsMap={oddsMap} onPickChange={handlePickChange}
                 />
               ))}
             </div>
@@ -353,7 +365,8 @@ export default function ScoresPage() {
                   {pastDates.map((date) => (
                     <DateGroup
                       key={date} date={date} matches={pastMap.get(date)!}
-                      matchPicks={matchPicks} distribution={distribution} onPickChange={handlePickChange}
+                      matchPicks={matchPicks} distribution={distribution}
+                      oddsMap={oddsMap} onPickChange={handlePickChange}
                     />
                   ))}
                 </div>
