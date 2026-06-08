@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic';
 interface UserScore {
   id: number;
   username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
   score: number;
   groupPicksCount: number;
   bracketPicksCount: number;
@@ -37,6 +39,8 @@ export default async function StandingsPage() {
     return {
       id: user.id,
       username: user.username,
+      displayName: user.displayName ?? null,
+      avatarUrl: user.avatarUrl ?? null,
       score: 0,
       groupPicksCount: user.matchPicks.length,
       bracketPicksCount: user.bracketPicks.length,
@@ -102,6 +106,7 @@ export default async function StandingsPage() {
               <tbody>
                 {scores.map((u, index) => {
                   const isMe = u.username === currentUser?.username;
+                  const label = u.displayName ?? u.username;
                   return (
                     <tr
                       key={u.id}
@@ -114,9 +119,33 @@ export default async function StandingsPage() {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2.5">
-                          <span className={`font-bold text-sm ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
-                            {u.username}
-                          </span>
+                          {u.avatarUrl ? (
+                            <img
+                              src={u.avatarUrl}
+                              alt={label}
+                              className="w-8 h-8 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                            />
+                          ) : (
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              isMe ? 'bg-wc-blue-500/10 border border-wc-blue-200' : 'bg-gray-100 border border-gray-200'
+                            }`}>
+                              <span className={`text-xs font-black uppercase leading-none ${
+                                isMe ? 'text-wc-blue-500' : 'text-gray-500'
+                              }`}>
+                                {label.charAt(0)}
+                              </span>
+                            </div>
+                          )}
+                          <div>
+                            <span className={`font-bold text-sm ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
+                              {label}
+                            </span>
+                            {u.displayName && (
+                              <span className="block text-[11px] text-gray-400 font-normal leading-tight">
+                                @{u.username}
+                              </span>
+                            )}
+                          </div>
                           {isMe && (
                             <span className="tag bg-wc-blue-500/10 text-wc-blue-600 border border-wc-blue-200">
                               you
