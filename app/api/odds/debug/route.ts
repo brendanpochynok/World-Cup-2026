@@ -14,50 +14,38 @@ async function probe(slug: string) {
     let parsed: unknown = null;
     try { parsed = JSON.parse(text); } catch { /* */ }
     const found = Array.isArray(parsed) && parsed.length > 0;
-    // If found, extract market slugs to verify team codes
     let markets: string[] = [];
     if (found && Array.isArray(parsed)) {
       const event = parsed[0] as { markets?: Array<{ slug?: string }> };
       markets = (event.markets ?? []).map((m) => m.slug ?? '').filter(Boolean);
     }
-    return { slug, status: res.status, found, markets };
+    return { slug, found, markets };
   } catch (err) {
-    return { slug, status: 0, found: false, markets: [], error: String(err) };
+    return { slug, found: false, markets: [], error: String(err) };
   }
 }
 
 export async function GET() {
-  // Corrected Group F schedule:
-  // F1: NLD vs JPN  2026-06-14  (confirmed from embed)
-  // F2: SWE vs TUN  2026-06-15
-  // F3: NLD vs SWE  2026-06-21
-  // F4: JPN vs TUN  2026-06-21
-  // F5: NLD vs TUN  2026-06-26
-  // F6: JPN vs SWE  2026-06-26
-
-  const slugsToTry = [
-    // F1 confirmed
-    'fifwc-nld-jpn-2026-06-14',
-    // F2 both orders
-    'fifwc-swe-tun-2026-06-15',
-    'fifwc-tun-swe-2026-06-15',
-    // F3 both orders
-    'fifwc-nld-swe-2026-06-21',
-    'fifwc-swe-nld-2026-06-21',
-    // F4 both orders
-    'fifwc-jpn-tun-2026-06-21',
-    'fifwc-tun-jpn-2026-06-21',
-    // F5 both orders
-    'fifwc-nld-tun-2026-06-26',
-    'fifwc-tun-nld-2026-06-26',
-    // F6 both orders
-    'fifwc-jpn-swe-2026-06-26',
-    'fifwc-swe-jpn-2026-06-26',
+  // Sweden code variants — probe F2 (Jun 15), F3 (Jun 21), F6 (Jun 26)
+  // nld/jpn/tun all confirmed. Only Sweden is unknown.
+  const sweVariants = ['swe', 'se', 'sv', 'sue', 'swd', 'swi', 'ned'];
+  const partnerCodes = [
+    { partner: 'tun', date: '2026-06-15' },  // F2
+    { partner: 'nld', date: '2026-06-21' },  // F3
+    { partner: 'jpn', date: '2026-06-26' },  // F6
   ];
+
+  const slugsToTry: string[] = [];
+  for (const v of sweVariants) {
+    for (const { partner, date } of partnerCodes) {
+      slugsToTry.push(`fifwc-${v}-${partner}-${date}`);
+      slugsToTry.push(`fifwc-${partner}-${v}-${date}`);
+    }
+  }
 
   const results = await Promise.all(slugsToTry.map(probe));
   const found = results.filter((r) => r.found);
   const notFound = results.filter((r) => !r.found).map((r) => r.slug);
 
-  return NextResponse.json({ found, not_found: notFound });
+  return NextResponse.json({ found, not_found_count: notFound.length });
 }
