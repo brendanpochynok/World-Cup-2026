@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { MatchData } from '@/app/api/scores/route';
 import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
@@ -37,6 +38,7 @@ interface LiveScoreCardProps {
 }
 
 export default function LiveScoreCard({ match, odds, currentPick, distribution, onPickChange }: LiveScoreCardProps) {
+  const [showPlayers, setShowPlayers] = useState(false);
   const { home, away, homeScore, awayScore, status, clock, group, matchNumber, venue, city, kickoffIso } = match;
   const isLive      = status === 'live';
   const isFinished  = status === 'finished';
@@ -200,6 +202,40 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
           </div>
         </div>
       )}
+
+      {/* Key Players toggle */}
+      <div className="mt-3 pt-2.5 border-t border-gray-100">
+        <button
+          onClick={() => setShowPlayers((p) => !p)}
+          className="w-full flex items-center justify-center gap-1 text-[10px] text-gray-400 font-semibold uppercase tracking-wider hover:text-gray-600 transition-colors"
+        >
+          Key Players
+          <svg className={`w-3 h-3 transition-transform duration-150 ${showPlayers ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showPlayers && (
+          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0">
+            <div className="space-y-1.5">
+              {homeMeta.players.map((p) => (
+                <div key={p.name} className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[9px] font-bold text-gray-400 bg-gray-100 rounded px-1 py-0.5 w-6 text-center flex-shrink-0">{p.position}</span>
+                  <span className="text-[11px] text-gray-700 font-medium truncate">{p.name}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              {awayMeta.players.map((p) => (
+                <div key={p.name} className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[9px] font-bold text-gray-400 bg-gray-100 rounded px-1 py-0.5 w-6 text-center flex-shrink-0">{p.position}</span>
+                  <span className="text-[11px] text-gray-700 font-medium truncate">{p.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
