@@ -2,10 +2,18 @@
 
 import type { MatchData } from '@/app/api/scores/route';
 
+function localTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+}
+
 export default function LiveScoreCard({ match }: { match: MatchData }) {
-  const { home, away, homeScore, awayScore, status, clock, group, matchNumber, venue, city } = match;
-  const isLive     = status === 'live';
-  const isFinished = status === 'finished';
+  const { home, away, homeScore, awayScore, status, clock, group, matchNumber, venue, city, kickoffIso } = match;
+  const isLive      = status === 'live';
+  const isFinished  = status === 'finished';
   const isScheduled = status === 'scheduled';
 
   return (
@@ -30,7 +38,9 @@ export default function LiveScoreCard({ match }: { match: MatchData }) {
           <span className="text-[11px] text-gray-400 font-bold">FT</span>
         )}
         {isScheduled && (
-          <span className="text-[11px] text-gray-400 font-bold">Upcoming</span>
+          <span className="text-[11px] text-gray-500 font-bold tabular-nums">
+            {kickoffIso ? localTime(kickoffIso) : 'TBD'}
+          </span>
         )}
       </div>
 
@@ -55,9 +65,12 @@ export default function LiveScoreCard({ match }: { match: MatchData }) {
         </div>
       </div>
 
-      {/* Footer: venue */}
-      <div className="mt-3 pt-2.5 border-t border-gray-100 text-center">
-        <span className="text-[11px] text-gray-400 truncate">{venue}, {city}</span>
+      {/* Footer: venue + city (+ kickoff time for finished matches) */}
+      <div className="mt-3 pt-2.5 border-t border-gray-100 text-center space-y-0.5">
+        {isFinished && kickoffIso && (
+          <div className="text-[11px] text-gray-400 font-medium">{localTime(kickoffIso)}</div>
+        )}
+        <div className="text-[11px] text-gray-400 truncate">{venue}, {city}</div>
       </div>
     </div>
   );
