@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GROUP_MATCHES } from '@/lib/worldcup-data';
+import { POLYMARKET_TEAM_CODES as TEAM_CODES } from '@/lib/polymarket-codes';
 
 export const revalidate = 300; // re-fetch every 5 minutes
 
@@ -10,57 +11,6 @@ export interface MatchOdds {
   source: 'polymarket';
 }
 
-// Polymarket abbreviations — sourced directly from event team data (June 2026)
-const TEAM_CODES: Record<string, string> = {
-  'Mexico':                   'mex',
-  'South Africa':             'rsa',
-  'South Korea':              'kr',   // Polymarket: "Korea Republic" = kr
-  'Czechia':                  'cze',
-  'Canada':                   'can',
-  'Switzerland':              'che',
-  'Qatar':                    'qat',
-  'Bosnia and Herzegovina':   'bih',
-  'Brazil':                   'bra',
-  'Morocco':                  'mar',
-  'Haiti':                    'hai',
-  'Scotland':                 'sco',
-  'United States':            'usa',
-  'Paraguay':                 'par',
-  'Australia':                'aus',
-  'Turkey':                   'tur',
-  'Germany':                  'ger',
-  'Curacao':                  'kor',  // Polymarket: "Curaçao" = kor (not a typo)
-  "Cote d'Ivoire":            'civ',
-  'Ecuador':                  'ecu',
-  'Netherlands':              'nld',  // Polymarket code confirmed from embed URL
-  'Japan':                    'jpn',
-  'Sweden':                   'swe',
-  'Tunisia':                  'tun',
-  'Belgium':                  'bel',
-  'Egypt':                    'egy',
-  'Iran':                     'irn',
-  'New Zealand':              'nzl',
-  'Spain':                    'esp',
-  'Cabo Verde':               'cvi',
-  'Saudi Arabia':             'ksa',
-  'Uruguay':                  'ury',
-  'France':                   'fra',
-  'Senegal':                  'sen',
-  'Norway':                   'nor',
-  'Iraq':                     'irq',
-  'Argentina':                'arg',
-  'Algeria':                  'alg',
-  'Austria':                  'aut',
-  'Jordan':                   'jor',
-  'Portugal':                 'prt',
-  'DR Congo':                 'cdr',
-  'Uzbekistan':               'uzb',
-  'Colombia':                 'col',
-  'England':                  'eng',
-  'Croatia':                  'hrv',
-  'Ghana':                    'gha',
-  'Panama':                   'pan',
-};
 
 const FETCH_HEADERS = {
   Accept: 'application/json',
