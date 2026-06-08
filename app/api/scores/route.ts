@@ -1,129 +1,132 @@
 import { NextResponse } from 'next/server';
+import { GROUP_MATCHES } from '@/lib/worldcup-data';
+import { prisma } from '@/lib/prisma';
 
 const ESPN_URL =
   'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
 
-// Module-level cache
-let cachedData: unknown = null;
-let cacheTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
-
-interface ESPNEvent {
-  id: string;
-  date: string;
-  competitions: Array<{
-    competitors: Array<{
-      homeAway: string;
-      team: { displayName: string };
-      score: string;
-    }>;
-    status: {
-      type: {
-        name: string;
-        state: string;
-        completed: boolean;
-      };
-      displayClock: string;
-    };
-  }>;
-  season?: {
-    slug: string;
-  };
-}
-
-interface Game {
-  id: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeScore: number;
-  awayScore: number;
-  status: string;
+export interface MatchData {
+  matchId: string;
+  group: string;
+  matchNumber: number;
+  date: string;       // YYYY-MM-DD
+  home: string;
+  away: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: 'scheduled' | 'live' | 'finished';
   clock: string;
-  date: string;
-  competition: string;
+  venue: string;
+  city: string;
 }
 
-function parseESPNData(data: { events?: ESPNEvent[] }): Game[] {
-  const events = data?.events || [];
-  return events.map((event) => {
-    const competition = event.competitions?.[0];
-    const competitors = competition?.competitors || [];
+let cache: { data: unknown; at: number } | null = null;
 
-    const home = competitors.find((c) => c.homeAway === 'home');
-    const away = competitors.find((c) => c.homeAway === 'away');
+function normalize(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
 
-    const statusType = competition?.status?.type;
-    let status = 'pre';
-    if (statusType?.state === 'in') status = 'in';
-    else if (statusType?.state === 'post') status = 'post';
-    else if (statusType?.name) status = statusType.name.toLowerCase();
+interface ESPNComp {
+  competitors: Array<{ homeAway: string; team: { displayName: string }; score: string }>;
+  status: { type: { state: string }; displayClock: string };
+}
 
-    return {
-      id: event.id,
-      homeTeam: home?.team?.displayName || 'TBD',
-      awayTeam: away?.team?.displayName || 'TBD',
-      homeScore: parseInt(home?.score || '0'),
-      awayScore: parseInt(away?.score || '0'),
-      status,
-      clock: competition?.status?.displayClock || '',
-      date: event.date,
-      competition: 'FIFA World Cup 2026',
-    };
-  });
+async function fetchESPNLive(): Promise<
+  Map<string, { homeScore: number; awayScore: number; status: 'live' | 'finished'; clock: string }>
+> {
+  const map = new Map<string, { homeScore: number; awayScore: number; status: 'live' | 'finished'; clock: string }>();
+  try {
+    const res = await fetch(ESPN_URL, {
+      headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) return map;
+    const data = await res.json();
+    const events: Array<{ competitions: ESPNComp[] }> = data?.events || [];
+    for (const event of events) {
+      const comp = event.competitions?.[0];
+      if (!comp) continue;
+      const home = comp.competitors.find((c) => c.homeAway === 'home');
+      const away = comp.competitors.find((c) => c.homeAway === 'away');
+      if (!home || !away) continue;
+      const state = comp.status?.type?.state;
+      if (state !== 'in' && state !== 'post') continue;
+      const key = normalize(home.team.displayName) + ':' + normalize(away.team.displayName);
+      map.set(key, {
+        homeScore: parseInt(home.score || '0'),
+        awayScore: parseInt(away.score || '0'),
+        status: state === 'in' ? 'live' : 'finished',
+        clock: comp.status?.displayClock || '',
+      });
+    }
+  } catch {
+    // ESPN unavailable — return empty map
+  }
+  return map;
 }
 
 export async function GET() {
   const now = Date.now();
+  const todayISO = new Date().toISOString().slice(0, 10);
 
-  // Return cached data if fresh
-  if (cachedData && now - cacheTime < CACHE_TTL_MS) {
-    return NextResponse.json(cachedData);
+  // Check if any game is live — use short cache if so
+  const hasCachedLive =
+    cache &&
+    typeof cache.data === 'object' &&
+    cache.data !== null &&
+    Array.isArray((cache.data as { matches?: MatchData[] }).matches) &&
+    (cache.data as { matches: MatchData[] }).matches.some((m) => m.status === 'live');
+  const ttl = hasCachedLive ? 30_000 : 60_000;
+
+  if (cache && now - cache.at < ttl) {
+    return NextResponse.json(cache.data);
   }
 
-  try {
-    const res = await fetch(ESPN_URL, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        Accept: 'application/json',
-      },
-      next: { revalidate: 60 },
-    });
+  const [dbResults, espnMap] = await Promise.all([
+    prisma.matchResult.findMany(),
+    fetchESPNLive(),
+  ]);
 
-    if (!res.ok) {
-      throw new Error(`ESPN API responded with ${res.status}`);
+  const dbMap = new Map(dbResults.map((r) => [r.matchId, r]));
+
+  const matches: MatchData[] = GROUP_MATCHES.map((m) => {
+    // Try ESPN (live/finished today)
+    if (m.date === todayISO) {
+      const key = normalize(m.home) + ':' + normalize(m.away);
+      const espn = espnMap.get(key);
+      if (espn) {
+        return {
+          matchId: m.matchId, group: m.group, matchNumber: m.matchNumber,
+          date: m.date, home: m.home, away: m.away,
+          homeScore: espn.homeScore, awayScore: espn.awayScore,
+          status: espn.status, clock: espn.clock,
+          venue: m.venue, city: m.city,
+        };
+      }
     }
 
-    const data = await res.json();
-    const games = parseESPNData(data);
+    // Try DB (admin-entered results)
+    const db = dbMap.get(m.matchId);
+    if (db && db.status !== 'scheduled') {
+      return {
+        matchId: m.matchId, group: m.group, matchNumber: m.matchNumber,
+        date: m.date, home: m.home, away: m.away,
+        homeScore: db.homeGoals ?? null, awayScore: db.awayGoals ?? null,
+        status: db.status as 'scheduled' | 'live' | 'finished',
+        clock: '', venue: m.venue, city: m.city,
+      };
+    }
 
-    const responseData = {
-      games,
-      fetchedAt: new Date().toISOString(),
-      cached: false,
+    // Scheduled
+    return {
+      matchId: m.matchId, group: m.group, matchNumber: m.matchNumber,
+      date: m.date, home: m.home, away: m.away,
+      homeScore: null, awayScore: null,
+      status: 'scheduled', clock: '', venue: m.venue, city: m.city,
     };
+  });
 
-    // Update cache
-    cachedData = responseData;
-    cacheTime = now;
-
-    return NextResponse.json(responseData);
-  } catch (error) {
-    console.error('ESPN API error:', error);
-
-    // Return cached data even if stale on error
-    if (cachedData) {
-      return NextResponse.json({ ...(cachedData as object), cached: true, stale: true });
-    }
-
-    // Return empty games on error
-    return NextResponse.json(
-      {
-        games: [],
-        error: 'Unable to fetch live scores. The ESPN API may be temporarily unavailable.',
-        fetchedAt: new Date().toISOString(),
-      },
-      { status: 200 } // Return 200 so client can show the error gracefully
-    );
-  }
+  const responseData = { matches, serverDate: todayISO, fetchedAt: new Date().toISOString() };
+  cache = { data: responseData, at: now };
+  return NextResponse.json(responseData);
 }

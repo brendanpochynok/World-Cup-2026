@@ -1,43 +1,57 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import LiveScoreCard from '@/components/LiveScoreCard';
+import type { MatchData } from '@/app/api/scores/route';
 
-interface Game {
-  id: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeScore: number;
-  awayScore: number;
-  status: string;
-  clock: string;
-  date: string;
-  competition: string;
+function formatDateHeading(dateStr: string): string {
+  // dateStr is YYYY-MM-DD; parse as UTC noon to avoid timezone edge cases
+  const d = new Date(dateStr + 'T12:00:00Z');
+  return d.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
+  });
 }
 
-function SectionHeader({ label, live = false }: { label: string; live?: boolean }) {
+function SectionHeader({ label, live = false, count }: { label: string; live?: boolean; count?: number }) {
   return (
-    <div className="flex items-center gap-2 mb-4">
+    <div className="flex items-center gap-2 mb-3">
       {live ? (
-        <div className="relative flex items-center justify-center w-5 h-5">
+        <div className="relative flex items-center justify-center w-5 h-5 flex-shrink-0">
           <span className="absolute inline-flex h-full w-full rounded-full bg-wc-red-500 opacity-20 animate-ping" />
           <span className="relative inline-flex w-2.5 h-2.5 rounded-full bg-wc-red-500" />
         </div>
       ) : (
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block flex-shrink-0" />
       )}
       <h2 className={`text-sm font-black uppercase tracking-[0.1em] ${live ? 'text-wc-red-500' : 'text-gray-500'}`}>
         {label}
       </h2>
+      {count !== undefined && (
+        <span className="text-xs text-gray-400 font-semibold tabular-nums">{count}</span>
+      )}
     </div>
   );
 }
 
+function DateGroup({ date, matches }: { date: string; matches: MatchData[] }) {
+  return (
+    <section className="space-y-3">
+      <SectionHeader label={formatDateHeading(date)} count={matches.length} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {matches.map((m) => <LiveScoreCard key={m.matchId} match={m} />)}
+      </div>
+    </section>
+  );
+}
+
 export default function ScoresPage() {
-  const [games, setGames] = useState<Game[]>([]);
+  const [matches, setMatches] = useState<MatchData[]>([]);
+  const [serverDate, setServerDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState('');
+  const [pastOpen, setPastOpen] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchScores = useCallback(async () => {
     try {
@@ -46,7 +60,8 @@ export default function ScoresPage() {
       if (data.error) {
         setError(data.error);
       } else {
-        setGames(data.games || []);
+        setMatches(data.matches ?? []);
+        setServerDate(data.serverDate ?? '');
         setLastUpdated(new Date());
         setError('');
       }
@@ -57,15 +72,56 @@ export default function ScoresPage() {
     }
   }, []);
 
+  // Set up polling; use shorter interval when live games are running
   useEffect(() => {
     fetchScores();
-    const interval = setInterval(fetchScores, 60000);
-    return () => clearInterval(interval);
   }, [fetchScores]);
 
-  const liveGames    = games.filter((g) => g.status === 'in' || g.status === '1' || g.status === '2');
-  const finishedGames = games.filter((g) => g.status === 'post');
-  const upcomingGames = games.filter((g) => g.status === 'pre');
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    const hasLive = matches.some((m) => m.status === 'live');
+    intervalRef.current = setInterval(fetchScores, hasLive ? 30_000 : 60_000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [fetchScores, matches]);
+
+  // Use serverDate as the "today" cutoff so server and client agree
+  const today = serverDate || new Date().toISOString().slice(0, 10);
+
+  const liveMatches = matches.filter((m) => m.status === 'live');
+
+  // Today's non-live matches
+  const todayMatches = matches.filter((m) => m.date === today && m.status !== 'live');
+
+  // Future dates grouped by date ascending
+  const upcomingMap = new Map<string, MatchData[]>();
+  for (const m of matches) {
+    if (m.date > today) {
+      const list = upcomingMap.get(m.date) ?? [];
+      list.push(m);
+      upcomingMap.set(m.date, list);
+    }
+  }
+  const upcomingDates = Array.from(upcomingMap.keys()).sort();
+
+  // Past dates (before today) grouped by date descending
+  const pastMap = new Map<string, MatchData[]>();
+  for (const m of matches) {
+    if (m.date < today) {
+      const list = pastMap.get(m.date) ?? [];
+      list.push(m);
+      pastMap.set(m.date, list);
+    }
+  }
+  const pastDates = Array.from(pastMap.keys()).sort().reverse(); // newest first
+  const pastTotal = pastDates.reduce((n, d) => n + (pastMap.get(d)?.length ?? 0), 0);
+
+  const showNothing =
+    !loading &&
+    liveMatches.length === 0 &&
+    todayMatches.length === 0 &&
+    upcomingDates.length === 0 &&
+    pastDates.length === 0 &&
+    !error;
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -93,7 +149,7 @@ export default function ScoresPage() {
         </button>
       </div>
 
-      {/* Error state */}
+      {/* Error */}
       {error && (
         <div className="card border-red-200 bg-red-50 flex items-start gap-3">
           <svg className="w-5 h-5 text-wc-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +162,7 @@ export default function ScoresPage() {
         </div>
       )}
 
-      {loading && !games.length ? (
+      {loading && matches.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 gap-3">
           <svg className="w-8 h-8 text-wc-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -115,42 +171,80 @@ export default function ScoresPage() {
           <span className="text-gray-500 text-sm font-medium">Loading scores…</span>
         </div>
       ) : (
-        <>
-          {liveGames.length > 0 && (
+        <div className="space-y-10">
+
+          {/* ─── Live Now ─── */}
+          {liveMatches.length > 0 && (
             <section>
               <SectionHeader label="Live Now" live />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {liveGames.map((game) => <LiveScoreCard key={game.id} {...game} />)}
+                {liveMatches.map((m) => <LiveScoreCard key={m.matchId} match={m} />)}
               </div>
             </section>
           )}
 
-          {upcomingGames.length > 0 && (
+          {/* ─── Today ─── */}
+          {todayMatches.length > 0 && (
             <section>
-              <SectionHeader label="Upcoming" />
+              <SectionHeader label={`Today · ${formatDateHeading(today)}`} count={todayMatches.length} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {upcomingGames.map((game) => <LiveScoreCard key={game.id} {...game} />)}
+                {todayMatches.map((m) => <LiveScoreCard key={m.matchId} match={m} />)}
               </div>
             </section>
           )}
 
-          {finishedGames.length > 0 && (
-            <section>
-              <SectionHeader label="Final Results" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {finishedGames.map((game) => <LiveScoreCard key={game.id} {...game} />)}
-              </div>
-            </section>
-          )}
-
-          {!loading && games.length === 0 && !error && (
-            <div className="card text-center py-16">
-              <h3 className="text-xl font-black text-gray-900 mb-2">No matches today</h3>
-              <p className="text-gray-500 text-sm">Group stage runs June 11 – June 27, 2026.</p>
-              <p className="text-gray-400 text-xs mt-1">Check back soon!</p>
+          {/* ─── Upcoming (grouped by date) ─── */}
+          {upcomingDates.length > 0 && (
+            <div className="space-y-8">
+              {upcomingDates.map((date) => (
+                <DateGroup key={date} date={date} matches={upcomingMap.get(date)!} />
+              ))}
             </div>
           )}
-        </>
+
+          {/* ─── No matches at all ─── */}
+          {showNothing && (
+            <div className="card text-center py-16">
+              <h3 className="text-xl font-black text-gray-900 mb-2">No matches scheduled</h3>
+              <p className="text-gray-500 text-sm">Group stage runs June 11 – June 27, 2026.</p>
+            </div>
+          )}
+
+          {/* ─── Past Scores (collapsed) ─── */}
+          {pastDates.length > 0 && (
+            <section>
+              <button
+                onClick={() => setPastOpen((o) => !o)}
+                className="w-full flex items-center justify-between gap-3 py-4 px-5 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
+                  <span className="text-sm font-black uppercase tracking-[0.1em] text-gray-500 group-hover:text-gray-700 transition-colors">
+                    Past Scores
+                  </span>
+                  <span className="text-xs text-gray-400 font-semibold tabular-nums">
+                    {pastTotal} match{pastTotal !== 1 ? 'es' : ''}
+                  </span>
+                </div>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${pastOpen ? 'rotate-180' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {pastOpen && (
+                <div className="mt-6 space-y-8">
+                  {pastDates.map((date) => (
+                    <DateGroup key={date} date={date} matches={pastMap.get(date)!} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+        </div>
       )}
     </div>
   );
