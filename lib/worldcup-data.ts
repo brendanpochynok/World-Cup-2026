@@ -420,7 +420,7 @@ export const GROUP_MATCHES: GroupMatch[] = [
     matchNumber: 2,
     home: 'Sweden',
     away: 'Tunisia',
-    date: '2026-06-15',
+    date: '2026-06-14',
     venue: 'Estadio Akron',
     city: 'Guadalajara',
   },
