@@ -25,9 +25,11 @@ export default async function DashboardPage() {
   const matchResults = await prisma.matchResult.findMany();
   const completedGroupMatches = matchResults.filter((r) => r.status === 'finished').length;
 
-  const allUsers = await prisma.user.findMany({ select: { id: true, username: true } });
+  const allUsers = await prisma.user.findMany({
+    select: { id: true, username: true, displayName: true, avatarUrl: true },
+  });
   const leaderboard = allUsers
-    .map((u) => ({ username: u.username, score: 0, id: u.id }))
+    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, score: 0 }))
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username))
     .slice(0, 5);
 
@@ -147,12 +149,30 @@ export default async function DashboardPage() {
           <div className="divide-y divide-gray-100">
             {leaderboard.map((entry, i) => {
               const isMe = entry.username === user.username;
+              const label = entry.displayName ?? entry.username;
               return (
                 <div key={entry.id}
-                  className={`flex items-center gap-4 py-3 ${isMe ? 'text-wc-blue-600' : ''}`}>
-                  <span className="text-gray-400 text-sm font-mono w-5 text-center flex-shrink-0">{i + 1}</span>
+                  className={`flex items-center gap-3 py-3 ${isMe ? 'text-wc-blue-600' : ''}`}>
+                  <span className="text-gray-400 text-sm font-mono w-4 text-center flex-shrink-0">{i + 1}</span>
+                  {entry.avatarUrl ? (
+                    <img
+                      src={entry.avatarUrl}
+                      alt={label}
+                      className="w-7 h-7 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      isMe ? 'bg-wc-blue-500/10 border border-wc-blue-200' : 'bg-gray-100 border border-gray-200'
+                    }`}>
+                      <span className={`text-[11px] font-black uppercase leading-none ${
+                        isMe ? 'text-wc-blue-500' : 'text-gray-500'
+                      }`}>
+                        {label.charAt(0)}
+                      </span>
+                    </div>
+                  )}
                   <span className={`flex-1 font-semibold text-sm ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
-                    {entry.username}
+                    {label}
                     {isMe && <span className="ml-2 text-xs text-gray-400 font-normal">(you)</span>}
                   </span>
                   <span className={`font-black tabular-nums ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
