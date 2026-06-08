@@ -1,6 +1,6 @@
 import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { GROUP_MATCHES, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
+import { GROUP_MATCHES, GROUPS, getTeamMeta, getFlagUrl, computeGroupStandings } from '@/lib/worldcup-data';
 import Link from 'next/link';
 
 function envAdminUsernames(): Set<string> {
@@ -45,6 +45,20 @@ export default async function DashboardPage() {
   const championMeta = championPick ? getTeamMeta(championPick) : null;
   const picksPct = Math.round((matchPicksCount / totalMatches) * 100);
   const groupsDone = matchPicksCount === totalMatches;
+
+  // Build real standings from finished match results
+  const realPicks: Record<string, string> = {};
+  for (const r of matchResults) {
+    if (r.status === 'finished' && r.homeGoals !== null && r.awayGoals !== null) {
+      realPicks[r.matchId] = r.homeGoals > r.awayGoals ? 'home' : r.homeGoals < r.awayGoals ? 'away' : 'draw';
+    }
+  }
+  const groupStandings = GROUPS.map((g) => ({
+    id: g.id,
+    name: g.name,
+    rows: computeGroupStandings(g.id, realPicks),
+  }));
+  const tournamentStarted = Object.keys(realPicks).length > 0;
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -186,6 +200,74 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ─── Live Group Standings ─── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="eyebrow mb-1">Real Results</p>
+            <h2 className="text-xl font-black text-gray-900">Group Standings</h2>
+          </div>
+          <Link href="/app/scores" className="text-wc-blue-500 hover:text-wc-blue-600 text-xs font-bold transition-colors">
+            Live scores →
+          </Link>
+        </div>
+
+        {!tournamentStarted ? (
+          <div className="card text-center py-10">
+            <div className="text-3xl mb-3">⚽</div>
+            <p className="font-black text-gray-900">Tournament kicks off June 11</p>
+            <p className="text-gray-400 text-sm mt-1">Standings will appear once matches are played</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {groupStandings.map(({ id, name, rows }) => (
+              <div key={id} className="card p-0 overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-widest text-gray-500">{name}</span>
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                    <span className="w-4 text-center">P</span>
+                    <span className="w-4 text-center">W</span>
+                    <span className="w-4 text-center">D</span>
+                    <span className="w-4 text-center">L</span>
+                    <span className="w-6 text-center">Pts</span>
+                  </div>
+                </div>
+                {rows.map((row, idx) => {
+                  const meta = getTeamMeta(row.team);
+                  const bg =
+                    idx < 2 ? 'bg-green-50' :
+                    idx === 2 ? 'bg-amber-50' : '';
+                  const nameColor =
+                    idx < 2 ? 'text-green-800' :
+                    idx === 2 ? 'text-amber-800' : 'text-gray-500';
+                  const ptsColor =
+                    idx < 2 ? 'text-green-700' :
+                    idx === 2 ? 'text-amber-700' : 'text-gray-600';
+                  return (
+                    <div key={row.team} className={`flex items-center gap-2 px-4 py-2 ${bg}`}>
+                      <span className="text-[10px] text-gray-400 w-3 tabular-nums flex-shrink-0">{idx + 1}</span>
+                      <img
+                        src={getFlagUrl(meta.flag)}
+                        alt={row.team}
+                        className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0 border border-gray-200/50"
+                      />
+                      <span className={`flex-1 text-xs font-semibold truncate ${nameColor}`}>{row.team}</span>
+                      <div className="flex items-center gap-2 text-[11px] tabular-nums flex-shrink-0">
+                        <span className="w-4 text-center text-gray-400">{row.p}</span>
+                        <span className="w-4 text-center text-gray-400">{row.w}</span>
+                        <span className="w-4 text-center text-gray-400">{row.d}</span>
+                        <span className="w-4 text-center text-gray-400">{row.l}</span>
+                        <span className={`w-6 text-center font-black ${ptsColor}`}>{row.pts}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* ─── Leaderboard ─── */}
       <div className="card">
