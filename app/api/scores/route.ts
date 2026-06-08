@@ -148,7 +148,7 @@ export async function GET() {
   const dbMap = new Map(dbResults.map((r) => [r.matchId, r]));
 
   const matches: MatchData[] = GROUP_MATCHES.map((m) => {
-    const kickoffIso = polyTimesMap.get(m.matchId) ?? null;
+    const kickoffIso = polyTimesMap.get(m.matchId) ?? m.kickoffIso;
     const espnKey = normalizeTeam(m.home) + ':' + normalizeTeam(m.away);
 
     // ESPN live/finished (today only)

@@ -29,8 +29,7 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
               <th className="text-left py-3.5 px-4 eyebrow text-left">Player</th>
               <th className="text-right py-3.5 px-4 eyebrow">Points</th>
               <th className="text-right py-3.5 px-4 eyebrow hidden sm:table-cell">Groups</th>
-              <th className="text-right py-3.5 px-4 eyebrow hidden md:table-cell">Bracket</th>
-              <th className="text-right py-3.5 px-5 eyebrow hidden md:table-cell">Champion</th>
+              <th className="text-right py-3.5 px-5 eyebrow hidden md:table-cell">Bracket</th>
             </tr>
           </thead>
           <tbody>
@@ -97,15 +96,8 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                   <td className="py-4 px-4 text-right text-gray-400 hidden sm:table-cell tabular-nums text-xs font-medium">
                     {u.groupPicksCount}/72
                   </td>
-                  <td className="py-4 px-4 text-right text-gray-400 hidden md:table-cell tabular-nums text-xs font-medium">
+                  <td className="py-4 px-5 text-right text-gray-400 hidden md:table-cell tabular-nums text-xs font-medium">
                     {u.bracketPicksCount}
-                  </td>
-                  <td className="py-4 px-5 text-right hidden md:table-cell">
-                    {u.championPick ? (
-                      <span className="text-wc-gold-500 font-semibold text-xs">{u.championPick}</span>
-                    ) : (
-                      <span className="text-gray-300 text-sm">—</span>
-                    )}
                   </td>
                 </tr>
               );
