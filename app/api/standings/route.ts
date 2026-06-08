@@ -32,11 +32,12 @@ export async function GET() {
     const standings = users.map((u) => {
       let score = 0;
 
-      // Group stage: +1 correct, -1 any wrong pick
+      // Group stage: +1 correct, 0 if result was draw (picked a side), -1 totally wrong
       for (const mp of u.matchPicks) {
         const actual = resultMap.get(mp.matchId);
         if (!actual) continue;
         if (mp.pick === actual) score += SCORING.groupCorrect;
+        else if (actual === 'draw') score += 0;
         else score += SCORING.groupWrong;
       }
 

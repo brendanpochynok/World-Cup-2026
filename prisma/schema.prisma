@@ -72,3 +72,8 @@ model BracketResult {
 
   @@unique([round, slot])
 }
+
+model PoolConfig {
+  id                Int   @id @default(1)
+  entryFeePerPlayer Float @default(0) // $ per player; 0 = no prize pool configured
+}

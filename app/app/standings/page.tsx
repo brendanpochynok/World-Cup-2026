@@ -15,14 +15,15 @@ interface UserScore {
 }
 
 const scoringRows = [
-  { label: 'Correct pick',  pts: '+1 pt',   positive: true  },
-  { label: 'Wrong pick',    pts: '−1 pt',   positive: false },
-  { label: 'Round of 32',   pts: '2 pts',   positive: true  },
-  { label: 'Round of 16',   pts: '3 pts',   positive: true  },
-  { label: 'Quarter-final', pts: '5 pts',   positive: true  },
-  { label: 'Semi-final',    pts: '8 pts',   positive: true  },
-  { label: 'Final',         pts: '13 pts',  positive: true  },
-  { label: 'Champion',      pts: '20 pts',  positive: true  },
+  { label: 'Correct pick',   pts: '+1 pt',  positive: true  },
+  { label: 'Result is draw', pts: '0 pts',  positive: true  },
+  { label: 'Totally wrong',  pts: '−1 pt',  positive: false },
+  { label: 'Round of 32',    pts: '2 pts',  positive: true  },
+  { label: 'Round of 16',    pts: '3 pts',  positive: true  },
+  { label: 'Quarter-final',  pts: '5 pts',  positive: true  },
+  { label: 'Semi-final',     pts: '8 pts',  positive: true  },
+  { label: 'Final',          pts: '13 pts', positive: true  },
+  { label: 'Champion',       pts: '20 pts', positive: true  },
 ] as const;
 
 export default async function StandingsPage() {
