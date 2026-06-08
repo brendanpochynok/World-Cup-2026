@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import LiveScoreCard from '@/components/LiveScoreCard';
 import type { MatchData } from '@/app/api/scores/route';
+import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
 function formatDateHeading(dateStr: string): string {
   // dateStr is YYYY-MM-DD; parse as UTC noon to avoid timezone edge cases
@@ -33,12 +34,26 @@ function SectionHeader({ label, live = false, count }: { label: string; live?: b
   );
 }
 
-function DateGroup({ date, matches }: { date: string; matches: MatchData[] }) {
+function DateGroup({ date, matches, matchPicks, distribution, onPickChange }: {
+  date: string;
+  matches: MatchData[];
+  matchPicks: Record<string, string> | null;
+  distribution: Record<string, PickDistribution>;
+  onPickChange: (matchId: string, pick: string) => void;
+}) {
   return (
     <section className="space-y-3">
       <SectionHeader label={formatDateHeading(date)} count={matches.length} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {matches.map((m) => <LiveScoreCard key={m.matchId} match={m} />)}
+        {matches.map((m) => (
+          <LiveScoreCard
+            key={m.matchId}
+            match={m}
+            currentPick={matchPicks?.[m.matchId] ?? null}
+            distribution={distribution[m.matchId] ?? null}
+            onPickChange={matchPicks !== null ? onPickChange : undefined}
+          />
+        ))}
       </div>
     </section>
   );
@@ -52,6 +67,8 @@ export default function ScoresPage() {
   const [error, setError] = useState('');
   const [pastOpen, setPastOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [matchPicks, setMatchPicks] = useState<Record<string, string> | null>(null);
+  const [distribution, setDistribution] = useState<Record<string, PickDistribution>>({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchScores = useCallback(async () => {
@@ -72,6 +89,28 @@ export default function ScoresPage() {
       setLoading(false);
     }
   }, []);
+
+  // Fetch picks (null if not logged in) and distribution once on mount
+  useEffect(() => {
+    fetch('/api/picks/groups')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.picks) setMatchPicks(d.picks); })
+      .catch(() => {});
+
+    fetch('/api/picks/distribution')
+      .then((r) => r.json())
+      .then((d) => setDistribution(d))
+      .catch(() => {});
+  }, []);
+
+  async function handlePickChange(matchId: string, pick: string) {
+    setMatchPicks((prev) => ({ ...(prev ?? {}), [matchId]: pick }));
+    await fetch('/api/picks/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matchId, pick }),
+    });
+  }
 
   // Set up polling; use shorter interval when live games are running
   useEffect(() => {
@@ -221,7 +260,14 @@ export default function ScoresPage() {
             <section>
               <SectionHeader label="Live Now" live />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {liveMatches.map((m) => <LiveScoreCard key={m.matchId} match={m} />)}
+                {liveMatches.map((m) => (
+                  <LiveScoreCard
+                    key={m.matchId} match={m}
+                    currentPick={matchPicks?.[m.matchId] ?? null}
+                    distribution={distribution[m.matchId] ?? null}
+                    onPickChange={matchPicks !== null ? handlePickChange : undefined}
+                  />
+                ))}
               </div>
             </section>
           )}
@@ -231,7 +277,14 @@ export default function ScoresPage() {
             <section>
               <SectionHeader label={`Today · ${formatDateHeading(today)}`} count={todayMatches.length} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {todayMatches.map((m) => <LiveScoreCard key={m.matchId} match={m} />)}
+                {todayMatches.map((m) => (
+                  <LiveScoreCard
+                    key={m.matchId} match={m}
+                    currentPick={matchPicks?.[m.matchId] ?? null}
+                    distribution={distribution[m.matchId] ?? null}
+                    onPickChange={matchPicks !== null ? handlePickChange : undefined}
+                  />
+                ))}
               </div>
             </section>
           )}
@@ -240,7 +293,10 @@ export default function ScoresPage() {
           {upcomingDates.length > 0 && (
             <div className="space-y-8">
               {upcomingDates.map((date) => (
-                <DateGroup key={date} date={date} matches={upcomingMap.get(date)!} />
+                <DateGroup
+                  key={date} date={date} matches={upcomingMap.get(date)!}
+                  matchPicks={matchPicks} distribution={distribution} onPickChange={handlePickChange}
+                />
               ))}
             </div>
           )}
@@ -295,7 +351,10 @@ export default function ScoresPage() {
               {effectivePastOpen && (
                 <div className="mt-6 space-y-8">
                   {pastDates.map((date) => (
-                    <DateGroup key={date} date={date} matches={pastMap.get(date)!} />
+                    <DateGroup
+                      key={date} date={date} matches={pastMap.get(date)!}
+                      matchPicks={matchPicks} distribution={distribution} onPickChange={handlePickChange}
+                    />
                   ))}
                 </div>
               )}

@@ -6,6 +6,7 @@ import {
   isMatchLocked, computeGroupStandings,
 } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
+import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
 interface GroupDetailModalProps {
   group: Group;
@@ -15,6 +16,7 @@ interface GroupDetailModalProps {
   oddsMap?: Record<string, MatchOdds>;
   kickoffTimes?: Record<string, string>;
   advancementScores?: Record<string, number>;
+  distribution?: Record<string, PickDistribution>;
 }
 
 function shortenName(name: string): string {
@@ -42,7 +44,7 @@ function pct(p: number) { return `${Math.round(p * 100)}%`; }
 
 export default function GroupDetailModal({
   group, matchPicks, onPickChange, onClose,
-  oddsMap = {}, kickoffTimes = {}, advancementScores,
+  oddsMap = {}, kickoffTimes = {}, advancementScores, distribution = {},
 }: GroupDetailModalProps) {
   const matches = getGroupMatches(group.id);
   const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
@@ -212,6 +214,40 @@ export default function GroupDetailModal({
                       </button>
                     ))}
                   </div>
+
+                  {/* Pool pick distribution — only shown after lock */}
+                  {(() => {
+                    const dist = distribution[match.matchId];
+                    if (!locked || !dist || dist.total === 0) return null;
+                    const items = [
+                      { key: 'home', label: shortenName(match.home), val: dist.home },
+                      { key: 'draw', label: 'Draw',                  val: dist.draw },
+                      { key: 'away', label: shortenName(match.away), val: dist.away },
+                    ];
+                    return (
+                      <div className="mt-3 pt-2.5 border-t border-gray-100">
+                        <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2">
+                          Pool picks · {dist.total} {dist.total === 1 ? 'player' : 'players'}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {items.map(({ key, label, val }) => (
+                            <div key={key} className="text-center">
+                              <div className={`text-sm font-black tabular-nums ${pick === key ? 'text-wc-blue-500' : 'text-gray-700'}`}>
+                                {Math.round(val * 100)}%
+                              </div>
+                              <div className="w-full h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${pick === key ? 'bg-wc-blue-400' : 'bg-gray-300'}`}
+                                  style={{ width: `${Math.round(val * 100)}%` }}
+                                />
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-1 truncate">{label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
