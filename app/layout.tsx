@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'World Cup 2026 Pool',
   description: 'Pick your FIFA World Cup 2026 winners',
+  icons: {
+    icon: '/trionda-ball/trionda-ball.png',
+  },
 };
 
 export default function RootLayout({
