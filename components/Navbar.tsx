@@ -6,6 +6,8 @@ import { useState } from 'react';
 
 interface NavbarProps {
   username: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
 }
 
 const navLinks = [
@@ -51,7 +53,7 @@ const navLinks = [
   },
 ];
 
-export default function Navbar({ username }: NavbarProps) {
+export default function Navbar({ username, displayName, avatarUrl }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -106,7 +108,27 @@ export default function Navbar({ username }: NavbarProps) {
 
             {/* User area */}
             <div className="hidden md:flex items-center gap-3">
-              <span className="text-gray-700 text-[13px] font-semibold">{username}</span>
+              <Link
+                href="/app/profile"
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors group"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName ?? username}
+                    className="w-7 h-7 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-lg bg-wc-blue-500/10 border border-wc-blue-200 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[11px] font-black text-wc-blue-500 uppercase leading-none">
+                      {(displayName ?? username).charAt(0)}
+                    </span>
+                  </div>
+                )}
+                <span className="text-[13px] font-semibold group-hover:underline underline-offset-2">
+                  {displayName ?? username}
+                </span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-[12px] text-gray-500 hover:text-gray-900 font-semibold transition-colors border border-gray-300 hover:border-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50"
@@ -158,7 +180,26 @@ export default function Navbar({ username }: NavbarProps) {
               })}
             </div>
             <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-              <span className="text-gray-700 text-sm font-semibold">{username}</span>
+              <Link
+                href="/app/profile"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName ?? username}
+                    className="w-7 h-7 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-lg bg-wc-blue-500/10 border border-wc-blue-200 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[11px] font-black text-wc-blue-500 uppercase leading-none">
+                      {(displayName ?? username).charAt(0)}
+                    </span>
+                  </div>
+                )}
+                <span className="text-sm font-semibold">{displayName ?? username}</span>
+              </Link>
               <button onClick={handleLogout}
                 className="text-xs text-gray-500 hover:text-gray-900 font-semibold transition-colors">
                 Sign out
