@@ -4,33 +4,46 @@ import { jwtVerify } from 'jose';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-prod';
 const COOKIE_NAME = 'session';
 
+// Routes that require a valid session
+const AUTH_REQUIRED = ['/app/picks', '/app/profile'];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect all /app/* routes
-  if (pathname.startsWith('/app')) {
-    const token = request.cookies.get(COOKIE_NAME)?.value;
+  if (!pathname.startsWith('/app')) return NextResponse.next();
 
-    if (!token) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('from', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  const isAuthRequired = AUTH_REQUIRED.some(
+    (p) => pathname === p || pathname.startsWith(p + '/'),
+  );
 
-    try {
-      const secret = new TextEncoder().encode(JWT_SECRET);
-      await jwtVerify(token, secret);
-      return NextResponse.next();
-    } catch {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('from', pathname);
-      const response = NextResponse.redirect(loginUrl);
-      response.cookies.delete(COOKIE_NAME);
-      return response;
-    }
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+
+  if (!token) {
+    if (!isAuthRequired) return NextResponse.next();
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('from', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  try {
+    const secret = new TextEncoder().encode(JWT_SECRET);
+    await jwtVerify(token, secret);
+    return NextResponse.next();
+  } catch {
+    // Invalid/expired token — clear cookie; redirect only auth-required routes
+    const dest = isAuthRequired
+      ? (() => {
+          const url = new URL('/login', request.url);
+          url.searchParams.set('from', pathname);
+          return url;
+        })()
+      : request.nextUrl;
+    const response = isAuthRequired
+      ? NextResponse.redirect(dest)
+      : NextResponse.next();
+    response.cookies.delete(COOKIE_NAME);
+    return response;
+  }
 }
 
 export const config = {

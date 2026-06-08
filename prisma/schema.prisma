@@ -18,6 +18,7 @@ model User {
   displayName     String?
   avatarUrl       String?           @db.Text
   favoriteTeam    String?
+  isAdmin         Boolean           @default(false)
   createdAt       DateTime          @default(now())
   matchPicks      MatchPick[]
   bracketPicks    BracketPick[]

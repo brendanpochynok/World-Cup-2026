@@ -1,5 +1,4 @@
 import { getSessionUser } from '@/lib/auth';
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Navbar from '@/components/Navbar';
 
@@ -10,19 +9,18 @@ export default async function AppLayout({
 }) {
   const user = await getSessionUser();
 
-  if (!user) {
-    redirect('/login');
+  let profile: { username: string; displayName: string | null; avatarUrl: string | null } | null = null;
+  if (user) {
+    profile = await prisma.user.findUnique({
+      where: { id: user.userId },
+      select: { username: true, displayName: true, avatarUrl: true },
+    });
   }
-
-  const profile = await prisma.user.findUnique({
-    where: { id: user.userId },
-    select: { username: true, displayName: true, avatarUrl: true },
-  });
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar
-        username={profile?.username ?? user.username}
+        username={profile?.username ?? user?.username ?? null}
         displayName={profile?.displayName}
         avatarUrl={profile?.avatarUrl}
       />
