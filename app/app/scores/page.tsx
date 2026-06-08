@@ -51,6 +51,7 @@ export default function ScoresPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState('');
   const [pastOpen, setPastOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchScores = useCallback(async () => {
@@ -87,14 +88,22 @@ export default function ScoresPage() {
   // Use serverDate as the "today" cutoff so server and client agree
   const today = serverDate || new Date().toISOString().slice(0, 10);
 
-  const liveMatches = matches.filter((m) => m.status === 'live');
+  // Apply search filter
+  const q = searchQuery.trim().toLowerCase();
+  const visible = q
+    ? matches.filter((m) =>
+        m.home.toLowerCase().includes(q) || m.away.toLowerCase().includes(q)
+      )
+    : matches;
+
+  const liveMatches = visible.filter((m) => m.status === 'live');
 
   // Today's non-live matches
-  const todayMatches = matches.filter((m) => m.date === today && m.status !== 'live');
+  const todayMatches = visible.filter((m) => m.date === today && m.status !== 'live');
 
   // Future dates grouped by date ascending
   const upcomingMap = new Map<string, MatchData[]>();
-  for (const m of matches) {
+  for (const m of visible) {
     if (m.date > today) {
       const list = upcomingMap.get(m.date) ?? [];
       list.push(m);
@@ -105,7 +114,7 @@ export default function ScoresPage() {
 
   // Past dates (before today) grouped by date descending
   const pastMap = new Map<string, MatchData[]>();
-  for (const m of matches) {
+  for (const m of visible) {
     if (m.date < today) {
       const list = pastMap.get(m.date) ?? [];
       list.push(m);
@@ -114,6 +123,9 @@ export default function ScoresPage() {
   }
   const pastDates = Array.from(pastMap.keys()).sort().reverse(); // newest first
   const pastTotal = pastDates.reduce((n, d) => n + (pastMap.get(d)?.length ?? 0), 0);
+
+  // Auto-open Past Scores when a search would reveal results there
+  const effectivePastOpen = pastOpen || q.length > 0;
 
   const showNothing =
     !loading &&
@@ -148,6 +160,37 @@ export default function ScoresPage() {
           {loading ? 'Loading…' : 'Refresh'}
         </button>
       </div>
+
+      {/* ─── Search bar ─── */}
+      {!loading && matches.length > 0 && (
+        <div className="relative">
+          <svg
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by team name…"
+            className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-wc-blue-400 focus:border-transparent transition bg-white"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+              aria-label="Clear search"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -202,15 +245,30 @@ export default function ScoresPage() {
             </div>
           )}
 
-          {/* ─── No matches at all ─── */}
+          {/* ─── No matches ─── */}
           {showNothing && (
             <div className="card text-center py-16">
-              <h3 className="text-xl font-black text-gray-900 mb-2">No matches scheduled</h3>
-              <p className="text-gray-500 text-sm">Group stage runs June 11 – June 27, 2026.</p>
+              {q ? (
+                <>
+                  <h3 className="text-xl font-black text-gray-900 mb-2">No matches found</h3>
+                  <p className="text-gray-500 text-sm">No team matches &ldquo;{searchQuery}&rdquo;.</p>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="mt-3 text-wc-blue-500 text-sm font-semibold hover:underline"
+                  >
+                    Clear search
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-xl font-black text-gray-900 mb-2">No matches scheduled</h3>
+                  <p className="text-gray-500 text-sm">Group stage runs June 11 – June 27, 2026.</p>
+                </>
+              )}
             </div>
           )}
 
-          {/* ─── Past Scores (collapsed) ─── */}
+          {/* ─── Past Scores (collapsed, auto-opens when searching) ─── */}
           {pastDates.length > 0 && (
             <section>
               <button
@@ -227,14 +285,14 @@ export default function ScoresPage() {
                   </span>
                 </div>
                 <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${pastOpen ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${effectivePastOpen ? 'rotate-180' : ''}`}
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              {pastOpen && (
+              {effectivePastOpen && (
                 <div className="mt-6 space-y-8">
                   {pastDates.map((date) => (
                     <DateGroup key={date} date={date} matches={pastMap.get(date)!} />
