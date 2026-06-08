@@ -6,6 +6,7 @@ import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
 import { GROUPS, GROUP_MATCHES, ALL_TEAMS, computeGroupStandings, getGroupMatches, getTeamMeta, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
+import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -42,6 +43,7 @@ export default function PicksPage() {
   const [bracketPicks, setBracketPicks] = useState<Record<string, string>>({});
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const [kickoffTimes, setKickoffTimes] = useState<Record<string, string>>({});
+  const [distribution, setDistribution] = useState<Record<string, PickDistribution>>({});
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -51,10 +53,11 @@ export default function PicksPage() {
 
   const fetchPicks = useCallback(async () => {
     try {
-      const [groupRes, bracketRes, oddsRes] = await Promise.all([
+      const [groupRes, bracketRes, oddsRes, distRes] = await Promise.all([
         fetch('/api/picks/groups'),
         fetch('/api/picks/bracket'),
         fetch('/api/odds'),
+        fetch('/api/picks/distribution'),
       ]);
       const groupData = await groupRes.json();
       if (groupData.picks) setMatchPicks(groupData.picks);
@@ -71,6 +74,9 @@ export default function PicksPage() {
       const oddsData = await oddsRes.json().catch(() => ({}));
       if (oddsData.odds) setOddsMap(oddsData.odds);
       if (oddsData.kickoffTimes) setKickoffTimes(oddsData.kickoffTimes);
+
+      const distData = await distRes.json().catch(() => ({}));
+      setDistribution(distData);
     } catch (err) {
       console.error('Error loading picks', err);
     } finally {
@@ -385,6 +391,7 @@ export default function PicksPage() {
             oddsMap={oddsMap}
             kickoffTimes={kickoffTimes}
             advancementScores={advancementScores}
+            distribution={distribution}
           />
         )}
       </section>
