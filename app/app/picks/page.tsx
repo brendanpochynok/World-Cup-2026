@@ -239,25 +239,37 @@ export default function PicksPage() {
       return standings[groupId] ? standings[groupId][pos] ?? null : null;
     }
 
-    const leftPairs: [string, number, string, number][] = [
-      ['A', 0, 'B', 1], ['C', 0, 'D', 1], ['E', 0, 'F', 1],
-      ['G', 0, 'H', 1], ['I', 0, 'J', 1], ['K', 0, 'L', 1],
+    // Fixed R32 pairings (no 3rd-place teams) — official 2026 FIFA bracket
+    // [group1, pos1, group2, pos2, slot]
+    // pos 0 = winner, pos 1 = runner-up
+    const fixedPairs: [string, number, string, number, number][] = [
+      ['A', 1, 'B', 1, 2],  // slot 2:  2A vs 2B
+      ['F', 0, 'C', 1, 3],  // slot 3:  1F vs 2C
+      ['E', 1, 'I', 1, 4],  // slot 4:  2E vs 2I
+      ['C', 0, 'F', 1, 5],  // slot 5:  1C vs 2F
+      ['K', 1, 'L', 1, 8],  // slot 8:  2K vs 2L
+      ['H', 0, 'J', 1, 9],  // slot 9:  1H vs 2J
+      ['J', 0, 'H', 1, 12], // slot 12: 1J vs 2H
+      ['D', 1, 'G', 1, 13], // slot 13: 2D vs 2G
     ];
-    for (let i = 0; i < leftPairs.length; i++) {
-      const [g1, p1, g2, p2] = leftPairs[i];
+    for (const [g1, p1, g2, p2, slot] of fixedPairs) {
       const t1 = team(g1, p1); const t2 = team(g2, p2);
-      if (t1 && t2) result[i] = [t1, t2];
+      if (t1 && t2) result[slot] = [t1, t2];
     }
 
-    const rightPairs: [string, number, string, number][] = [
-      ['A', 1, 'B', 0], ['C', 1, 'D', 0], ['E', 1, 'F', 0],
-      ['G', 1, 'H', 0], ['I', 1, 'J', 0], ['K', 1, 'L', 0],
+    // Winner vs 3rd-place slots — exact opponent determined after all group stage
+    // [group, winnerSlot] pairs ordered to match bracket slot indices
+    const thirdMatchups: [string, number][] = [
+      ['I', 0],  // slot 0:  1I vs 3rd*
+      ['E', 0],  // slot 1:  1E vs 3rd*
+      ['A', 0],  // slot 6:  1A vs 3rd*
+      ['L', 0],  // slot 7:  1L vs 3rd*
+      ['G', 0],  // slot 10: 1G vs 3rd*
+      ['D', 0],  // slot 11: 1D vs 3rd*
+      ['K', 0],  // slot 14: 1K vs 3rd*
+      ['B', 0],  // slot 15: 1B vs 3rd*
     ];
-    for (let i = 0; i < rightPairs.length; i++) {
-      const [g1, p1, g2, p2] = rightPairs[i];
-      const t1 = team(g1, p1); const t2 = team(g2, p2);
-      if (t1 && t2) result[8 + i] = [t1, t2];
-    }
+    const thirdSlots = [0, 1, 6, 7, 10, 11, 14, 15];
 
     const allGroupsDone = GROUPS.every((g) => standings[g.id]);
     if (allGroupsDone) {
@@ -273,10 +285,13 @@ export default function PicksPage() {
         if (sa !== undefined && sb !== undefined && sa !== sb) return sb - sa;
         return getTeamMeta(a.team).fifaRank - getTeamMeta(b.team).fifaRank;
       });
-      if (thirds[0] && thirds[1]) result[6]  = [thirds[0].team, thirds[1].team];
-      if (thirds[2] && thirds[3]) result[7]  = [thirds[2].team, thirds[3].team];
-      if (thirds[4] && thirds[5]) result[14] = [thirds[4].team, thirds[5].team];
-      if (thirds[6] && thirds[7]) result[15] = [thirds[6].team, thirds[7].team];
+      // Top 8 third-place teams face group winners (per official 2026 bracket)
+      for (let i = 0; i < 8 && i < thirds.length; i++) {
+        const slot = thirdSlots[i];
+        const [grp, pos] = thirdMatchups[i];
+        const winner = team(grp, pos);
+        if (winner) result[slot] = [winner, thirds[i].team];
+      }
     }
 
     return result;

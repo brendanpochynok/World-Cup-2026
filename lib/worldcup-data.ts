@@ -946,24 +946,24 @@ export const TEAM_FLAGS: Record<string, string> = {
 // Left half: R32 slots 0-7 → R16 slots 0-3 → QF slots 0-1 → SF slot 0 → Final
 // Right half: R32 slots 8-15 → R16 slots 4-7 → QF slots 2-3 → SF slot 1 → Final
 export const BRACKET_SLOTS: { round: string; slot: number; label: string }[] = [
-  // R32 - left half (slots 0-7)
-  { round: 'R32', slot: 0, label: '1A vs 2B' },
-  { round: 'R32', slot: 1, label: '1C vs 2D' },
-  { round: 'R32', slot: 2, label: '1E vs 2F' },
-  { round: 'R32', slot: 3, label: '1G vs 2H' },
-  { round: 'R32', slot: 4, label: '1I vs 2J' },
-  { round: 'R32', slot: 5, label: '1K vs 2L' },
-  { round: 'R32', slot: 6, label: '3rd Best (1)' },
-  { round: 'R32', slot: 7, label: '3rd Best (2)' },
+  // R32 - left half (slots 0-7) — per official 2026 FIFA bracket
+  { round: 'R32', slot: 0, label: '1I vs 3rd*' },
+  { round: 'R32', slot: 1, label: '1E vs 3rd*' },
+  { round: 'R32', slot: 2, label: '2A vs 2B' },
+  { round: 'R32', slot: 3, label: '1F vs 2C' },
+  { round: 'R32', slot: 4, label: '2E vs 2I' },
+  { round: 'R32', slot: 5, label: '1C vs 2F' },
+  { round: 'R32', slot: 6, label: '1A vs 3rd*' },
+  { round: 'R32', slot: 7, label: '1L vs 3rd*' },
   // R32 - right half (slots 8-15)
-  { round: 'R32', slot: 8,  label: '2A vs 1B' },
-  { round: 'R32', slot: 9,  label: '2C vs 1D' },
-  { round: 'R32', slot: 10, label: '2E vs 1F' },
-  { round: 'R32', slot: 11, label: '2G vs 1H' },
-  { round: 'R32', slot: 12, label: '2I vs 1J' },
-  { round: 'R32', slot: 13, label: '2K vs 1L' },
-  { round: 'R32', slot: 14, label: '3rd Best (3)' },
-  { round: 'R32', slot: 15, label: '3rd Best (4)' },
+  { round: 'R32', slot: 8,  label: '2K vs 2L' },
+  { round: 'R32', slot: 9,  label: '1H vs 2J' },
+  { round: 'R32', slot: 10, label: '1G vs 3rd*' },
+  { round: 'R32', slot: 11, label: '1D vs 3rd*' },
+  { round: 'R32', slot: 12, label: '1J vs 2H' },
+  { round: 'R32', slot: 13, label: '2D vs 2G' },
+  { round: 'R32', slot: 14, label: '1K vs 3rd*' },
+  { round: 'R32', slot: 15, label: '1B vs 3rd*' },
   // R16 - left half (slots 0-3)
   { round: 'R16', slot: 0, label: 'R16 Match 1' },
   { round: 'R16', slot: 1, label: 'R16 Match 2' },
