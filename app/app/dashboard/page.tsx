@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { GROUP_MATCHES, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
 import Link from 'next/link';
 
+function envAdminUsernames(): Set<string> {
+  const raw = process.env.ADMIN_USERNAME ?? '';
+  return new Set(raw.split(',').map((u) => u.trim().toLowerCase()).filter(Boolean));
+}
+
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
@@ -11,11 +16,12 @@ export default async function DashboardPage() {
   const matchResults = await prisma.matchResult.findMany();
   const completedGroupMatches = matchResults.filter((r) => r.status === 'finished').length;
 
+  const envAdmins = envAdminUsernames();
   const allUsers = await prisma.user.findMany({
     select: { id: true, username: true, displayName: true, avatarUrl: true, isAdmin: true },
   });
   const leaderboard = allUsers
-    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isAdmin: u.isAdmin, score: 0 }))
+    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isAdmin: u.isAdmin || envAdmins.has(u.username.toLowerCase()), score: 0 }))
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username))
     .slice(0, 5);
 

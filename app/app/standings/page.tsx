@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 
+function envAdminUsernames(): Set<string> {
+  const raw = process.env.ADMIN_USERNAME ?? '';
+  return new Set(raw.split(',').map((u) => u.trim().toLowerCase()).filter(Boolean));
+}
+
 export const dynamic = 'force-dynamic';
 
 interface UserScore {
@@ -36,6 +41,7 @@ export default async function StandingsPage() {
     orderBy: { createdAt: 'asc' },
   });
 
+  const envAdmins = envAdminUsernames();
   const scores: UserScore[] = users.map((user) => {
     const championPick = user.bracketPicks.find((p) => p.round === 'Final' && p.slot === 0)?.team ?? null;
     return {
@@ -43,7 +49,7 @@ export default async function StandingsPage() {
       username: user.username,
       displayName: user.displayName ?? null,
       avatarUrl: user.avatarUrl ?? null,
-      isAdmin: user.isAdmin,
+      isAdmin: user.isAdmin || envAdmins.has(user.username.toLowerCase()),
       score: 0,
       groupPicksCount: user.matchPicks.length,
       bracketPicksCount: user.bracketPicks.length,

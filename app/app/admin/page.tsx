@@ -1,5 +1,6 @@
 import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { isAdminUser } from '@/lib/admin-auth';
 import { redirect } from 'next/navigation';
 import AdminPanel from './AdminPanel';
 
@@ -9,11 +10,8 @@ export default async function AdminPage() {
   const user = await getSessionUser();
   if (!user) redirect('/login?from=/app/admin');
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.userId },
-    select: { isAdmin: true },
-  });
-  if (!dbUser?.isAdmin) redirect('/app/dashboard');
+  const admin = await isAdminUser(user.userId, user.username);
+  if (!admin) redirect('/app/dashboard');
 
   const [matchResults, bracketResults, poolConfig, playerCount] = await Promise.all([
     prisma.matchResult.findMany(),

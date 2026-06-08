@@ -1,5 +1,6 @@
 import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { isAdminUser } from '@/lib/admin-auth';
 import Navbar from '@/components/Navbar';
 
 export default async function AppLayout({
@@ -11,10 +12,14 @@ export default async function AppLayout({
 
   let profile: { username: string; displayName: string | null; avatarUrl: string | null; isAdmin: boolean } | null = null;
   if (user) {
-    profile = await prisma.user.findUnique({
+    const dbProfile = await prisma.user.findUnique({
       where: { id: user.userId },
       select: { username: true, displayName: true, avatarUrl: true, isAdmin: true },
     });
+    if (dbProfile) {
+      const admin = await isAdminUser(user.userId, user.username);
+      profile = { ...dbProfile, isAdmin: admin };
+    }
   }
 
   return (
