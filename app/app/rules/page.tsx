@@ -213,7 +213,7 @@ export default async function RulesPage() {
         </div>
 
         <p className="text-gray-600 text-sm leading-relaxed">
-          You earn points for each team you correctly pick to reach a given round — they don&apos;t need to win the whole tournament, just get that far. For example, if you pick France to reach the semi-finals and they do, you earn 8 pts even if they lose in the semis.
+          Points double each round — just like March Madness. You earn points for each match your picked team wins. For example, if you pick France to win their Semi-Final and they do, you earn 8 pts even if they lose in the Final.
         </p>
 
         <InfoBox>
