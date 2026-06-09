@@ -10,12 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#1d4ed8',
     background_color: '#f9fafb',
     icons: [
-      {
-        src: '/trionda-ball/trionda-ball.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any maskable',
-      },
+      { src: '/trionda-ball/trionda-ball.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/trionda-ball/trionda-ball.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
 }
