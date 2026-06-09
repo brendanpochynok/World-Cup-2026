@@ -18,10 +18,13 @@ export default async function DashboardPage() {
 
   const envAdmins = envAdminUsernames();
   const allUsers = await prisma.user.findMany({
-    select: { id: true, username: true, displayName: true, avatarUrl: true, isAdmin: true, favoriteTeam: true },
+    select: {
+      id: true, username: true, displayName: true, avatarUrl: true, isAdmin: true, favoriteTeam: true,
+      poolWins: { select: { trophyImage: true, poolName: true, year: true }, orderBy: { year: 'asc' } },
+    },
   });
   const leaderboard = allUsers
-    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isAdmin: u.isAdmin || envAdmins.has(u.username.toLowerCase()), favoriteTeam: u.favoriteTeam, score: 0 }))
+    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isAdmin: u.isAdmin || envAdmins.has(u.username.toLowerCase()), favoriteTeam: u.favoriteTeam, score: 0, trophies: u.poolWins }))
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username))
     .slice(0, 5);
 
@@ -320,6 +323,13 @@ export default async function DashboardPage() {
                         className="w-5 h-3.5 object-cover rounded-sm border border-gray-200/70 flex-shrink-0"
                       />
                     )}
+                    {entry.trophies.map((t, i) => (
+                      t.trophyImage ? (
+                        <img key={i} src={t.trophyImage} alt={t.poolName} title={`${t.poolName} ${t.year}`} className="w-5 h-5 object-contain flex-shrink-0" />
+                      ) : (
+                        <span key={i} title={`${t.poolName} ${t.year}`} className="text-base leading-none">🏆</span>
+                      )
+                    ))}
                     {entry.isAdmin && (
                       <svg aria-label="Admin" className="w-3.5 h-3.5 text-wc-gold-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />

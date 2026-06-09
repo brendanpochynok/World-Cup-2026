@@ -202,7 +202,16 @@ export default function ProfilePage() {
     <div className="max-w-2xl space-y-6">
       <div>
         <p className="eyebrow mb-2">Account</p>
-        <h1 className="text-3xl font-black text-gray-900">Your Profile</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-3xl font-black text-gray-900">Your Profile</h1>
+          {trophies.map((t, i) => (
+            t.trophyImage ? (
+              <img key={i} src={t.trophyImage} alt={t.poolName} title={`${t.poolName} ${t.year}`} className="w-9 h-9 object-contain flex-shrink-0" />
+            ) : (
+              <span key={i} title={`${t.poolName} ${t.year}`} className="text-3xl leading-none">🏆</span>
+            )
+          ))}
+        </div>
       </div>
 
       {/* ── Stats card ── */}
