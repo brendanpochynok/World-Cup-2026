@@ -102,12 +102,25 @@ export default async function StandingsPage() {
     if (prev !== undefined) scores[i].movement = prev - ranked[i].rank;
   }
 
-  // Live prize money
+  // Live prize money — tied players split the combined payout for the
+  // positions they occupy (e.g. two tied for 1st split 75%+25%, two tied
+  // for 2nd split the 25%)
   const entryFee = poolConfig?.entryFeePerPlayer ?? 0;
   const totalPot = entryFee * scores.length;
-  if (totalPot > 0) {
-    if (scores[0]) scores[0].prize = Math.floor(totalPot * 0.75);
-    if (scores[1]) scores[1].prize = Math.floor(totalPot * 0.25);
+  if (totalPot > 0 && scores.length > 0) {
+    const payouts = [Math.floor(totalPot * 0.75), Math.floor(totalPot * 0.25)];
+    let pos = 0;
+    while (pos < scores.length && pos < payouts.length) {
+      let end = pos;
+      while (end < scores.length && scores[end].score === scores[pos].score) end++;
+      let sum = 0;
+      for (let i = pos; i < end && i < payouts.length; i++) sum += payouts[i];
+      if (sum > 0) {
+        const each = Math.floor(sum / (end - pos));
+        for (let i = pos; i < end; i++) scores[i].prize = each;
+      }
+      pos = end;
+    }
   }
 
   const finishedMatches = matchResults.filter((r) => r.status === 'finished').length;
