@@ -16,11 +16,11 @@ const scoringRows = [
   { label: 'Correct pick',   pts: '+1 pt',  positive: true  },
   { label: 'Result is draw', pts: '0 pts',  positive: true  },
   { label: 'Totally wrong',  pts: '−1 pt',  positive: false },
-  { label: 'Round of 32',    pts: '2 pts',  positive: true  },
-  { label: 'Round of 16',    pts: '4 pts',  positive: true  },
-  { label: 'Quarter-final',  pts: '8 pts',  positive: true  },
-  { label: 'Semi-final',     pts: '16 pts', positive: true  },
-  { label: 'Final',          pts: '32 pts', positive: true  },
+  { label: 'Round of 32',    pts: '1 pt',   positive: true  },
+  { label: 'Round of 16',    pts: '2 pts',  positive: true  },
+  { label: 'Quarter-final',  pts: '4 pts',  positive: true  },
+  { label: 'Semi-final',     pts: '8 pts',  positive: true  },
+  { label: 'Final',          pts: '16 pts', positive: true  },
 ] as const;
 
 export default async function StandingsPage() {
