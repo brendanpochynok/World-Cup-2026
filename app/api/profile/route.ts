@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { ALL_TEAMS } from '@/lib/worldcup-data';
+
+const VALID_TEAMS = new Set(ALL_TEAMS);
 
 export async function GET() {
   const session = await getSessionUser();
@@ -33,7 +36,11 @@ export async function PATCH(req: NextRequest) {
   }
 
   if ('favoriteTeam' in body) {
-    updates.favoriteTeam = typeof body.favoriteTeam === 'string' ? body.favoriteTeam || null : null;
+    const v = typeof body.favoriteTeam === 'string' ? body.favoriteTeam : null;
+    if (v && !VALID_TEAMS.has(v)) {
+      return NextResponse.json({ error: 'Unknown team' }, { status: 400 });
+    }
+    updates.favoriteTeam = v || null;
   }
 
   if ('avatarUrl' in body) {

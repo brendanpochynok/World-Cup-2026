@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { calculateTotalScore } from '@/lib/scoring';
 import StandingsTable from '@/components/StandingsTable';
 import type { StandingsRow } from '@/components/StandingsTable';
 
@@ -29,15 +30,23 @@ const bracketScoringRows = [
 export default async function StandingsPage() {
   const currentUser = await getSessionUser();
 
-  const matchResults = await prisma.matchResult.findMany();
-  const users = await prisma.user.findMany({
-    include: {
-      matchPicks: true,
-      bracketPicks: true,
-      poolWins: { select: { trophyImage: true, poolName: true, year: true }, orderBy: { year: 'asc' } },
-    },
-    orderBy: { createdAt: 'asc' },
-  });
+  const [matchResults, bracketResults, users] = await Promise.all([
+    prisma.matchResult.findMany(),
+    prisma.bracketResult.findMany(),
+    prisma.user.findMany({
+      include: {
+        matchPicks: true,
+        bracketPicks: true,
+        poolWins: { select: { trophyImage: true, poolName: true, year: true }, orderBy: { year: 'asc' } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ]);
+
+  const resultMap = new Map(
+    matchResults.filter((r) => r.status === 'finished' && r.result).map((r) => [r.matchId, r.result!]),
+  );
+  const bracketMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
 
   const envAdmins = envAdminUsernames();
   const scores: UserScore[] = users.map((user) => {
@@ -48,7 +57,12 @@ export default async function StandingsPage() {
       displayName: user.displayName ?? null,
       avatarUrl: user.avatarUrl ?? null,
       isAdmin: user.isAdmin || envAdmins.has(user.username.toLowerCase()),
-      score: 0,
+      score: calculateTotalScore({
+        matchPicks: user.matchPicks,
+        bracketPicks: user.bracketPicks,
+        matchResults: resultMap,
+        bracketResults: bracketMap,
+      }),
       groupPicksCount: user.matchPicks.length,
       bracketPicksCount: user.bracketPicks.length,
       championPick,

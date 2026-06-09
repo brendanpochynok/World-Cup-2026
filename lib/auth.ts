@@ -3,6 +3,11 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-prod';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error(
+    'SECURITY WARNING: JWT_SECRET is not set in production — sessions are signed with a publicly known fallback secret. Set JWT_SECRET immediately.',
+  );
+}
 const COOKIE_NAME = 'session';
 
 export async function hashPassword(password: string): Promise<string> {

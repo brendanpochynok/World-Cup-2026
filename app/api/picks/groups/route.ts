@@ -5,6 +5,12 @@ import { GROUP_MATCHES } from '@/lib/worldcup-data';
 
 const VALID_MATCH_IDS = new Set(GROUP_MATCHES.map((m) => m.matchId));
 const VALID_PICKS = new Set(['home', 'draw', 'away']);
+const KICKOFF_MS = new Map(GROUP_MATCHES.map((m) => [m.matchId, new Date(m.kickoffIso).getTime()]));
+
+function isMatchLocked(matchId: string): boolean {
+  const kickoff = KICKOFF_MS.get(matchId);
+  return kickoff !== undefined && Date.now() >= kickoff;
+}
 
 // GET: return all match picks for current user as { [matchId]: "home"|"draw"|"away" }
 export async function GET() {
@@ -17,11 +23,14 @@ export async function GET() {
   return NextResponse.json({ picks: result });
 }
 
-// DELETE: clear all group picks for current user
+// DELETE: clear group picks for current user (locked matches are kept)
 export async function DELETE() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  await prisma.matchPick.deleteMany({ where: { userId: user.userId } });
+  const unlockedIds = GROUP_MATCHES.filter((m) => !isMatchLocked(m.matchId)).map((m) => m.matchId);
+  await prisma.matchPick.deleteMany({
+    where: { userId: user.userId, matchId: { in: unlockedIds } },
+  });
   return NextResponse.json({ ok: true });
 }
 
@@ -38,6 +47,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid matchId' }, { status: 400 });
     if (!VALID_PICKS.has(pick))
       return NextResponse.json({ error: 'Invalid pick' }, { status: 400 });
+    if (isMatchLocked(matchId))
+      return NextResponse.json({ error: 'Match has kicked off — pick is locked' }, { status: 423 });
 
     await prisma.matchPick.upsert({
       where: { userId_matchId: { userId: user.userId, matchId } },
