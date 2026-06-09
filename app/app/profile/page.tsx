@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ALL_TEAMS } from '@/lib/worldcup-data';
 import type { MeStats } from '@/app/api/me/stats/route';
+import type { PoolWinEntry } from '@/app/api/players/[username]/trophies/route';
 
 interface ProfileData {
   username: string;
@@ -10,75 +11,6 @@ interface ProfileData {
   avatarUrl: string | null;
   favoriteTeam: string | null;
   createdAt: string;
-}
-
-interface Badge {
-  id: string;
-  name: string;
-  desc: string;
-  icon: string;
-  earned: boolean;
-}
-
-function computeBadges(profile: ProfileData, stats: MeStats): Badge[] {
-  return [
-    {
-      id: 'photo',
-      name: 'Photo Ready',
-      desc: 'Uploaded a profile photo',
-      icon: '📸',
-      earned: !!profile.avatarUrl,
-    },
-    {
-      id: 'named',
-      name: 'Display Name',
-      desc: 'Set a display name',
-      icon: '✍️',
-      earned: !!profile.displayName,
-    },
-    {
-      id: 'fan',
-      name: 'True Fan',
-      desc: 'Set a favourite team',
-      icon: '❤️',
-      earned: !!profile.favoriteTeam,
-    },
-    {
-      id: 'all72',
-      name: 'All In',
-      desc: 'Made all 72 group stage picks',
-      icon: '📋',
-      earned: stats.groupPicksTotal >= 72,
-    },
-    {
-      id: 'bracket',
-      name: 'Bracket Filed',
-      desc: 'Completed the knockout bracket',
-      icon: '🏆',
-      earned: stats.bracketPicksCount >= 30,
-    },
-    {
-      id: 'tophalf',
-      name: 'Top Half',
-      desc: 'Sitting in the top half of the table',
-      icon: '📈',
-      earned: stats.totalPlayers > 1 && stats.rank <= Math.ceil(stats.totalPlayers / 2),
-    },
-    {
-      id: 'sharp',
-      name: 'Sharp',
-      desc: 'More correct group picks than wrong',
-      icon: '🎯',
-      earned: stats.groupSettled > 0 && stats.groupCorrect > stats.groupWrong,
-    },
-    {
-      id: 'leader',
-      name: 'Leader',
-      desc: 'Sitting in 1st place',
-      icon: '🥇',
-      earned: stats.rank === 1,
-    },
-  ];
 }
 
 function resizeImageToDataUrl(file: File): Promise<string> {
@@ -110,6 +42,7 @@ function resizeImageToDataUrl(file: File): Promise<string> {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stats, setStats] = useState<MeStats | null>(null);
+  const [trophies, setTrophies] = useState<PoolWinEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Profile form state
@@ -140,6 +73,11 @@ export default function ProfilePage() {
       setAvatarPreview(data.avatarUrl);
       if (statsData && 'score' in statsData) setStats(statsData);
       setLoading(false);
+      // Load trophies after we know the username
+      fetch(`/api/players/${data.username}/trophies`)
+        .then((r) => r.json())
+        .then((j) => { if (j.wins) setTrophies(j.wins); })
+        .catch(() => {});
     }).catch(() => setLoading(false));
   }, []);
 
@@ -304,35 +242,44 @@ export default function ProfilePage() {
       )}
 
       {/* ── Trophy cabinet ── */}
-      {profile && stats && (() => {
-        const badges = computeBadges(profile, stats);
-        const earned = badges.filter((b) => b.earned);
-        return (
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-black text-gray-900 text-lg">Trophy Cabinet</h2>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                {earned.length}/{badges.length} earned
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {badges.map((badge) => (
-                <div key={badge.id} className={`rounded-xl border px-3 py-3 transition-opacity ${
-                  badge.earned
-                    ? 'bg-wc-gold-50 border-wc-gold-200'
-                    : 'bg-gray-50 border-gray-200 opacity-40'
-                }`}>
-                  <div className="text-2xl mb-1.5">{badge.icon}</div>
-                  <div className={`text-xs font-black leading-tight ${badge.earned ? 'text-wc-gold-700' : 'text-gray-500'}`}>
-                    {badge.name}
-                  </div>
-                  <div className="text-[10px] text-gray-400 mt-0.5 leading-snug">{badge.desc}</div>
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-black text-gray-900 text-lg">Trophy Cabinet</h2>
+          {trophies.length > 0 && (
+            <span className="text-xs font-bold text-wc-gold-600 uppercase tracking-wider">
+              {trophies.length} {trophies.length === 1 ? 'trophy' : 'trophies'}
+            </span>
+          )}
+        </div>
+        {trophies.length === 0 ? (
+          <p className="text-sm text-gray-400">No trophies yet — win a pool to earn one!</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {trophies.map((trophy) => (
+              <div
+                key={trophy.id}
+                className="rounded-xl border border-wc-gold-200 bg-wc-gold-50 px-3 py-4 flex flex-col items-center gap-2 text-center"
+              >
+                {trophy.trophyImage ? (
+                  <img
+                    src={trophy.trophyImage}
+                    alt={trophy.poolName}
+                    className="w-16 h-16 object-contain"
+                  />
+                ) : (
+                  <span className="text-4xl">🏆</span>
+                )}
+                <div>
+                  <p className="text-xs font-black text-wc-gold-700 leading-tight">{trophy.poolName}</p>
+                  <p className="text-[10px] text-wc-gold-500 mt-0.5">
+                    {trophy.position === 1 ? '1st' : trophy.position === 2 ? '2nd' : '3rd'} place · {trophy.year}
+                  </p>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        );
-      })()}
+        )}
+      </div>
 
       {/* ── Profile card ── */}
       <form onSubmit={handleProfileSave} className="card space-y-6">

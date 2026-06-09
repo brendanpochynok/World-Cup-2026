@@ -16,14 +16,25 @@ interface BracketResultRow {
   team: string;
 }
 
+interface TrophyRow {
+  id: number;
+  poolName: string;
+  year: number;
+  position: number;
+  trophyImage: string | null;
+  awardedAt: string;
+  user: { username: string; displayName: string | null };
+}
+
 interface Props {
   matchResults: MatchResultRow[];
   bracketResults: BracketResultRow[];
   entryFee: number;
   playerCount: number;
+  users: { username: string; displayName: string | null }[];
 }
 
-type Tab = 'results' | 'bracket' | 'pool';
+type Tab = 'results' | 'bracket' | 'pool' | 'trophies';
 
 // ── per-match edit state ─────────────────────────────────────────────────────
 
@@ -89,8 +100,75 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export default function AdminPanel({ matchResults, bracketResults, entryFee, playerCount }: Props) {
+export default function AdminPanel({ matchResults, bracketResults, entryFee, playerCount, users }: Props) {
   const [tab, setTab] = useState<Tab>('results');
+
+  // ── trophies state ────────────────────────────────────────────────────────
+  const [trophies, setTrophies] = useState<TrophyRow[]>([]);
+  const [trophiesLoaded, setTrophiesLoaded] = useState(false);
+  const [trophyUsername, setTrophyUsername] = useState('');
+  const [trophyPool, setTrophyPool] = useState('');
+  const [trophyYear, setTrophyYear] = useState(String(new Date().getFullYear()));
+  const [trophyPosition, setTrophyPosition] = useState('1');
+  const [trophyImage, setTrophyImage] = useState('');
+  const [trophySaving, setTrophySaving] = useState(false);
+  const [trophyMsg, setTrophyMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function loadTrophies() {
+    const res = await fetch('/api/admin/trophies');
+    if (res.ok) {
+      const j = await res.json();
+      setTrophies(j.wins.map((w: TrophyRow) => ({ ...w, awardedAt: w.awardedAt })));
+      setTrophiesLoaded(true);
+    }
+  }
+
+  async function handleTrophyTab() {
+    setTab('trophies');
+    if (!trophiesLoaded) await loadTrophies();
+  }
+
+  async function awardTrophy() {
+    if (!trophyUsername || !trophyPool || !trophyYear) {
+      setTrophyMsg({ ok: false, text: 'Username, pool name and year are required.' });
+      return;
+    }
+    setTrophySaving(true);
+    setTrophyMsg(null);
+    const res = await fetch('/api/admin/trophies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: trophyUsername,
+        poolName: trophyPool,
+        year: Number(trophyYear),
+        position: Number(trophyPosition) || 1,
+        trophyImage: trophyImage || null,
+      }),
+    });
+    if (res.ok) {
+      setTrophyMsg({ ok: true, text: 'Trophy awarded!' });
+      setTrophyUsername('');
+      setTrophyPool('');
+      setTrophyImage('');
+      setTrophyPosition('1');
+      await loadTrophies();
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setTrophyMsg({ ok: false, text: j.error ?? 'Award failed.' });
+    }
+    setTrophySaving(false);
+  }
+
+  async function deleteTrophy(id: number) {
+    if (!confirm('Delete this trophy?')) return;
+    const res = await fetch('/api/admin/trophies', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) setTrophies((prev) => prev.filter((t) => t.id !== id));
+  }
   const [matchStates, setMatchStates] = useState<Record<string, MatchEditState>>(() =>
     initMatchStates(matchResults),
   );
@@ -222,10 +300,11 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
 
   // ── render ─────────────────────────────────────────────────────────────────
 
-  const tabs: { id: Tab; label: string }[] = [
+  const tabs: { id: Tab; label: string; onClick?: () => void }[] = [
     { id: 'results', label: 'Match Results' },
     { id: 'bracket', label: 'Bracket' },
     { id: 'pool', label: 'Pool Config' },
+    { id: 'trophies', label: 'Trophies', onClick: handleTrophyTab },
   ];
 
   return (
@@ -243,7 +322,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={t.onClick ?? (() => setTab(t.id))}
             className={`px-4 py-2.5 text-sm font-semibold transition-colors relative ${
               tab === t.id
                 ? 'text-wc-blue-500'
@@ -386,6 +465,129 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Tab: Trophies ── */}
+      {tab === 'trophies' && (
+        <div className="space-y-6">
+          {/* Award form */}
+          <div className="card space-y-4">
+            <h2 className="font-black text-gray-900">Award a Trophy</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Username</span>
+                <select
+                  value={trophyUsername}
+                  onChange={(e) => setTrophyUsername(e.target.value)}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-wc-blue-300 bg-white"
+                >
+                  <option value="">— select user —</option>
+                  {users.map((u) => (
+                    <option key={u.username} value={u.username}>
+                      {u.username}{u.displayName ? ` (${u.displayName})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pool name</span>
+                <input
+                  type="text"
+                  placeholder="e.g. Masters 2026 Golf Pool"
+                  value={trophyPool}
+                  onChange={(e) => setTrophyPool(e.target.value)}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-wc-blue-300"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Year</span>
+                <input
+                  type="number"
+                  value={trophyYear}
+                  onChange={(e) => setTrophyYear(e.target.value)}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-wc-blue-300"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Position</span>
+                <select
+                  value={trophyPosition}
+                  onChange={(e) => setTrophyPosition(e.target.value)}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-wc-blue-300 bg-white"
+                >
+                  <option value="1">1st place</option>
+                  <option value="2">2nd place</option>
+                  <option value="3">3rd place</option>
+                </select>
+              </label>
+
+              <label className="block sm:col-span-2">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Trophy image path</span>
+                <input
+                  type="text"
+                  placeholder="/images/world-cup-trophy.png"
+                  value={trophyImage}
+                  onChange={(e) => setTrophyImage(e.target.value)}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-wc-blue-300 font-mono"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Leave blank to use default trophy icon.</p>
+              </label>
+            </div>
+
+            {trophyMsg && (
+              <p className={`text-sm font-semibold ${trophyMsg.ok ? 'text-wc-green-600' : 'text-red-500'}`}>
+                {trophyMsg.text}
+              </p>
+            )}
+
+            <button
+              onClick={awardTrophy}
+              disabled={trophySaving}
+              className="btn-primary text-sm disabled:opacity-60"
+            >
+              {trophySaving ? 'Awarding…' : 'Award Trophy'}
+            </button>
+          </div>
+
+          {/* Existing trophies */}
+          <div className="card space-y-3">
+            <h2 className="font-black text-gray-900">Existing Trophies</h2>
+            {trophies.length === 0 ? (
+              <p className="text-sm text-gray-400">No trophies awarded yet.</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {trophies.map((t) => (
+                  <div key={t.id} className="flex items-center gap-3 py-3">
+                    {t.trophyImage ? (
+                      <img src={t.trophyImage} alt="" className="w-10 h-10 object-contain flex-shrink-0" />
+                    ) : (
+                      <span className="text-2xl flex-shrink-0">🏆</span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">
+                        {t.user.displayName ?? t.user.username}
+                        <span className="text-gray-400 font-normal ml-1">@{t.user.username}</span>
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {t.poolName} · {t.year} · {t.position === 1 ? '1st' : t.position === 2 ? '2nd' : '3rd'} place
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deleteTrophy(t.id)}
+                      className="text-xs text-red-400 hover:text-red-600 font-semibold transition-colors flex-shrink-0"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

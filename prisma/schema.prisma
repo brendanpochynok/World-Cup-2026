@@ -23,6 +23,7 @@ model User {
   matchPicks      MatchPick[]
   bracketPicks    BracketPick[]
   tiebreakerPicks TiebreakerPick[]
+  poolWins        PoolWin[]
 }
 
 model MatchPick {
@@ -76,5 +77,16 @@ model BracketResult {
 
 model PoolConfig {
   id                Int   @id @default(1)
-  entryFeePerPlayer Float @default(0) // $ per player; 0 = no prize pool configured
+  entryFeePerPlayer Float @default(0)
+}
+
+model PoolWin {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  poolName    String
+  year        Int
+  position    Int      @default(1)
+  trophyImage String?  // path like "/images/world-cup-trophy.png"
+  awardedAt   DateTime @default(now())
 }
