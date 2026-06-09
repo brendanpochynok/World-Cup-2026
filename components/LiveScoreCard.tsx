@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { MatchData } from '@/app/api/scores/route';
 import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
@@ -29,6 +29,14 @@ function shortenName(name: string): string {
 
 function pct(p: number) { return `${Math.round(p * 100)}%`; }
 
+function formatCountdown(iso: string): string | null {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return null;
+  const m = Math.floor(ms / 60_000);
+  const h = Math.floor(m / 60);
+  return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+}
+
 interface LiveScoreCardProps {
   match: MatchData;
   odds?: MatchOdds | null;
@@ -39,12 +47,21 @@ interface LiveScoreCardProps {
 
 export default function LiveScoreCard({ match, odds, currentPick, distribution, onPickChange }: LiveScoreCardProps) {
   const [showPlayers, setShowPlayers] = useState(false);
+  const [countdown, setCountdown] = useState<string | null>(null);
   const { home, away, homeScore, awayScore, status, clock, group, matchNumber, venue, city, kickoffIso } = match;
   const isLive      = status === 'live';
   const isFinished  = status === 'finished';
   const isScheduled = status === 'scheduled';
 
   const locked = kickoffIso ? new Date() >= new Date(kickoffIso) : (isLive || isFinished);
+
+  useEffect(() => {
+    if (!isScheduled || !kickoffIso) return;
+    const update = () => setCountdown(formatCountdown(kickoffIso));
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, [isScheduled, kickoffIso]);
   const canPick = !locked && !!onPickChange;
 
   const homeMeta = getTeamMeta(home);
@@ -147,7 +164,11 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
 
       {/* Pick buttons — unlocked + logged in */}
       {canPick && (
-        <div className="mt-3 grid grid-cols-3 gap-1.5">
+        <div className="mt-3">
+        {countdown && (
+          <p className="text-[10px] text-amber-500 font-semibold text-center mb-1.5">Locks in {countdown}</p>
+        )}
+        <div className="grid grid-cols-3 gap-1.5">
           {options.map(({ value, label }) => (
             <button
               key={value}
@@ -161,6 +182,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
               {label}
             </button>
           ))}
+        </div>
         </div>
       )}
 

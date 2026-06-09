@@ -35,6 +35,7 @@ function shortenName(name: string): string {
 
 export default function PlayerPicksModal({ username, displayName, onClose }: Props) {
   const [picks, setPicks] = useState<PlayerPickEntry[] | null>(null);
+  const [myPicks, setMyPicks] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState('');
 
   const label = displayName ?? username;
@@ -45,6 +46,13 @@ export default function PlayerPicksModal({ username, displayName, onClose }: Pro
       .then((d) => setPicks(d.picks ?? []))
       .catch(() => setError('Failed to load picks'));
   }, [username]);
+
+  useEffect(() => {
+    fetch('/api/picks/groups')
+      .then((r) => r.json())
+      .then((d) => setMyPicks(d.picks ?? {}))
+      .catch(() => {});
+  }, []);
 
   const handleKey = useCallback((e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }, [onClose]);
   useEffect(() => {
@@ -59,6 +67,7 @@ export default function PlayerPicksModal({ username, displayName, onClose }: Pro
   const correct = picks?.filter((p) => p.result && p.pick === p.result).length ?? 0;
   const wrong   = picks?.filter((p) => p.result && p.pick !== p.result).length ?? 0;
   const score   = correct - wrong;
+  const agreed  = (picks && myPicks) ? picks.filter((p) => myPicks[p.matchId] === p.pick).length : null;
 
   return (
     <>
@@ -85,6 +94,12 @@ export default function PlayerPicksModal({ username, displayName, onClose }: Pro
                       <span className={`font-black ${score > 0 ? 'text-wc-green-600' : score < 0 ? 'text-wc-red-500' : 'text-gray-500'}`}>
                         {score > 0 ? '+' : ''}{score} pts
                       </span>
+                    </>
+                  )}
+                  {agreed !== null && (
+                    <>
+                      <span className="mx-1.5 text-gray-300">·</span>
+                      <span className="text-wc-blue-500 font-semibold">you agree on {agreed}/{picks.length}</span>
                     </>
                   )}
                 </p>
@@ -168,6 +183,11 @@ export default function PlayerPicksModal({ username, displayName, onClose }: Pro
                             )}
                             {isWrong && (
                               <span className="text-[11px] font-black text-wc-red-500">−1</span>
+                            )}
+                            {myPicks && (
+                              <span className={`text-[11px] font-black ${myPicks[entry.matchId] === entry.pick ? 'text-wc-blue-400' : 'text-gray-300'}`} title={myPicks[entry.matchId] === entry.pick ? 'Same pick' : 'Different pick'}>
+                                {myPicks[entry.matchId] === entry.pick ? '=' : '≠'}
+                              </span>
                             )}
                           </div>
                         </div>
