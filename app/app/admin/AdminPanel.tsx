@@ -182,6 +182,8 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
   const [seeding, startSeeding] = useTransition();
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ synced: number; unmatched: string[] } | null>(null);
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [autoFillResult, setAutoFillResult] = useState<{ filled: number; message?: string } | null>(null);
 
   // ── seed ──────────────────────────────────────────────────────────────────
 
@@ -190,6 +192,20 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
       await fetch('/api/admin/seed', { method: 'POST' });
       window.location.reload();
     });
+  }
+
+  // ── Auto-fill missing picks ───────────────────────────────────────────────
+
+  async function handleAutoFill() {
+    setAutoFilling(true);
+    setAutoFillResult(null);
+    try {
+      const res = await fetch('/api/admin/auto-picks', { method: 'POST' });
+      const j = await res.json();
+      setAutoFillResult({ filled: j.filled ?? 0, message: j.message });
+    } finally {
+      setAutoFilling(false);
+    }
   }
 
   // ── ESPN sync ─────────────────────────────────────────────────────────────
@@ -369,6 +385,14 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
                 )}
               </button>
               <button
+                onClick={handleAutoFill}
+                disabled={autoFilling}
+                className="btn-secondary text-xs whitespace-nowrap flex items-center gap-1.5"
+                title="Auto-pick the FIFA-ranked favourite for any player who missed a locked match"
+              >
+                {autoFilling ? 'Filling…' : 'Auto-fill missing picks'}
+              </button>
+              <button
                 onClick={handleSeed}
                 disabled={seeding}
                 className="btn-secondary text-xs whitespace-nowrap"
@@ -391,6 +415,20 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
                   Could not match: {syncResult.unmatched.join(', ')}
                 </span>
               )}
+            </div>
+          )}
+
+          {autoFillResult && (
+            <div className={`rounded-xl px-4 py-3 text-sm ${
+              autoFillResult.filled > 0
+                ? 'bg-wc-blue-50 border border-wc-blue-200 text-wc-blue-700'
+                : 'bg-gray-50 border border-gray-200 text-gray-600'
+            }`}>
+              {autoFillResult.message
+                ? autoFillResult.message
+                : autoFillResult.filled > 0
+                  ? `✓ Auto-filled ${autoFillResult.filled} missing pick${autoFillResult.filled !== 1 ? 's' : ''} with the FIFA-ranked favourite.`
+                  : 'No missing picks — all players have picked every locked match.'}
             </div>
           )}
 
