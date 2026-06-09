@@ -14,6 +14,23 @@ function lockDate(iso: string): string {
   });
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="card space-y-4">
+      <h2 className="font-black text-gray-900 text-lg">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function InfoBox({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-4 py-3 text-xs text-wc-blue-700 font-medium leading-relaxed">
+      {children}
+    </div>
+  );
+}
+
 export default async function RulesPage() {
   const [playerCount, poolConfig] = await Promise.all([
     prisma.user.count(),
@@ -66,12 +83,9 @@ export default async function RulesPage() {
       )}
 
       {/* Overview */}
-      <div className="card space-y-3">
-        <h2 className="font-black text-gray-900 text-lg">Overview</h2>
+      <Section title="Overview">
         <p className="text-gray-600 text-sm leading-relaxed">
-          Make predictions for every group stage match, fill in your knockout bracket, and pick the
-          tournament champion. Points are tallied as results come in — whoever has the most points
-          when the final whistle blows wins the pool.
+          The pool has two parts: <strong className="text-gray-800">group stage picks</strong> and a <strong className="text-gray-800">knockout bracket</strong>. You score points in both — whoever has the most points after the final whistle on July 19 wins the pool.
         </p>
         <div className="grid grid-cols-2 gap-2 pt-1">
           {[
@@ -86,62 +100,162 @@ export default async function RulesPage() {
             </div>
           ))}
         </div>
-      </div>
+      </Section>
+
+      {/* Tournament format */}
+      <Section title="Tournament Format">
+        <p className="text-gray-600 text-sm leading-relaxed">
+          The 2026 World Cup uses an expanded 48-team format across three host countries — USA, Canada, and Mexico.
+        </p>
+        <div className="space-y-2.5">
+          {[
+            {
+              step: '1',
+              title: 'Group Stage',
+              desc: '48 teams split into 12 groups of 4. Each team plays the other 3 teams in their group once — 6 matches per group, 72 total.',
+            },
+            {
+              step: '2',
+              title: 'Who advances?',
+              desc: 'The top 2 teams from each group advance automatically (24 teams). The best 8 third-place finishers across all 12 groups also advance — giving 32 teams total in the knockout stage.',
+            },
+            {
+              step: '3',
+              title: 'Knockout Rounds',
+              desc: 'Single-elimination from Round of 32 → Round of 16 → Quarter-Finals → Semi-Finals → Final. One loss and you\'re out.',
+            },
+          ].map(({ step, title, desc }) => (
+            <div key={step} className="flex gap-3">
+              <div className="w-6 h-6 rounded-full bg-wc-blue-500 text-white text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                {step}
+              </div>
+              <div>
+                <div className="text-sm font-bold text-gray-800">{title}</div>
+                <div className="text-sm text-gray-500 mt-0.5 leading-relaxed">{desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
 
       {/* Group stage scoring */}
-      <div className="card space-y-4">
-        <h2 className="font-black text-gray-900 text-lg">Group Stage Picks</h2>
+      <Section title="Group Stage Picks">
         <p className="text-gray-600 text-sm leading-relaxed">
-          For each of the 72 group stage matches you predict the result: Home win, Draw, or Away win.
+          For each of the 72 group stage matches, predict the result: <strong className="text-gray-800">Home win</strong>, <strong className="text-gray-800">Draw</strong>, or <strong className="text-gray-800">Away win</strong>. Picks for each match lock individually at kick-off — you can change your mind right up until the whistle blows.
         </p>
+
         <div className="space-y-2">
           {[
-            { label: 'Correct result', pts: `+${SCORING.groupCorrect} pt`, note: 'Exact match', color: 'text-wc-green-600', bg: 'bg-wc-green-50 border-wc-green-200' },
-            { label: 'Match ends in a draw', pts: '0 pts', note: 'You picked a side', color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200' },
-            { label: 'Totally wrong', pts: `${SCORING.groupWrong} pt`, note: 'Picked home, away won (or vice versa)', color: 'text-wc-red-500', bg: 'bg-red-50 border-red-100' },
-          ].map(({ label, pts, note, color, bg }) => (
+            {
+              label: 'Correct result',
+              example: 'You picked Home win → Home wins',
+              pts: `+${SCORING.groupCorrect} pt`,
+              color: 'text-wc-green-600',
+              bg: 'bg-wc-green-50 border-wc-green-200',
+            },
+            {
+              label: 'Match ends in a draw, you didn\'t pick draw',
+              example: 'You picked Home win or Away win → Draw',
+              pts: '0 pts',
+              color: 'text-gray-500',
+              bg: 'bg-gray-50 border-gray-200',
+            },
+            {
+              label: 'Wrong result',
+              example: 'You picked Home win → Away wins (or vice versa)',
+              pts: `${SCORING.groupWrong} pt`,
+              color: 'text-wc-red-500',
+              bg: 'bg-red-50 border-red-100',
+            },
+          ].map(({ label, example, pts, color, bg }) => (
             <div key={label} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${bg}`}>
               <div>
                 <div className="text-sm font-semibold text-gray-800">{label}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{note}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{example}</div>
               </div>
               <span className={`font-black text-lg tabular-nums ml-4 flex-shrink-0 ${color}`}>{pts}</span>
             </div>
           ))}
         </div>
-        <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-4 py-3 text-xs text-wc-blue-700 font-medium">
-          <strong>Pick locking:</strong> Each match locks individually at its scheduled kick-off time.
-          You can change a pick right up until the match starts.
-        </div>
-      </div>
+
+        <InfoBox>
+          <strong>Why 0 pts for a draw you didn&apos;t pick?</strong> Draws are genuinely hard to predict — penalising you for not calling one would be harsh. If you correctly pick a draw you still earn +1 pt.
+        </InfoBox>
+
+        <InfoBox>
+          <strong>Group picks matter a lot.</strong> With 72 matches at ±1 pt each, your group stage total can swing by up to 144 points between players. Don&apos;t ignore them just because the bracket feels more exciting.
+        </InfoBox>
+      </Section>
 
       {/* Bracket scoring */}
-      <div className="card space-y-4">
-        <h2 className="font-black text-gray-900 text-lg">Knockout Bracket Picks</h2>
+      <Section title="Knockout Bracket Picks">
         <p className="text-gray-600 text-sm leading-relaxed">
-          Predict which teams advance through the knockout rounds. Points increase each round —
-          a correct semi-final pick is worth more than a correct round-of-32 pick.
+          Before the knockout stage begins, you fill in a full bracket predicting which team wins each match all the way to the final. Points increase significantly each round — getting a semi-final right is worth more than four correct Round-of-32 picks.
         </p>
+
         <div className="space-y-2">
           {BRACKET_ROUNDS.map((r) => (
             <div key={r.id} className="flex items-center justify-between px-4 py-3 rounded-xl border bg-gray-50 border-gray-200">
-              <span className="text-sm font-semibold text-gray-800">{r.name}</span>
-              <span className="font-black text-lg text-wc-gold-500 tabular-nums ml-4">{r.points} pts</span>
+              <div>
+                <span className="text-sm font-semibold text-gray-800">{r.name}</span>
+                <span className="text-xs text-gray-400 ml-2">({r.slots / 2} matches)</span>
+              </div>
+              <span className="font-black text-lg text-wc-gold-500 tabular-nums ml-4">{r.points} pts each</span>
             </div>
           ))}
           <div className="flex items-center justify-between px-4 py-3 rounded-xl border bg-wc-gold-50 border-wc-gold-200">
             <div>
               <div className="text-sm font-semibold text-gray-800">Tournament Champion</div>
-              <div className="text-xs text-gray-400 mt-0.5">Correct champion pick bonus</div>
+              <div className="text-xs text-gray-400 mt-0.5">Bonus for picking the overall winner</div>
             </div>
             <span className="font-black text-lg text-wc-gold-500 tabular-nums ml-4">{SCORING.champion} pts</span>
           </div>
         </div>
-        <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-4 py-3 text-xs text-wc-blue-700 font-medium">
-          <strong>Bracket lock:</strong> All bracket picks freeze on <strong>{lockDate(BRACKET_LOCK_ISO)}</strong> when
-          the first Round of 32 match kicks off. Make sure your bracket is complete before then.
+
+        <p className="text-gray-600 text-sm leading-relaxed">
+          You earn points for each team you correctly pick to reach a given round — they don&apos;t need to win the whole tournament, just get that far. For example, if you pick France to reach the semi-finals and they do, you earn 8 pts even if they lose in the semis.
+        </p>
+
+        <InfoBox>
+          <strong>Bracket lock:</strong> All bracket picks freeze on <strong>{lockDate(BRACKET_LOCK_ISO)}</strong> when the first Round of 32 match kicks off. Make sure your bracket is complete before then — you won&apos;t be able to change anything after that.
+        </InfoBox>
+      </Section>
+
+      {/* Quick tips */}
+      <Section title="Quick Tips">
+        <div className="space-y-3">
+          {[
+            {
+              icon: '⚡',
+              tip: 'Fill in all 72 group picks before June 11',
+              detail: 'Matches start immediately and lock at kick-off — a missed pick is a guaranteed 0.',
+            },
+            {
+              icon: '🏆',
+              tip: 'The champion pick is worth 20 points',
+              detail: 'That\'s 20 correct group picks worth of points in one slot. Think carefully — but don\'t overthink it.',
+            },
+            {
+              icon: '📈',
+              tip: 'Bracket points snowball',
+              detail: 'A team you correctly back all the way to the final earns 2+3+5+8+13 = 31 points on top of the 20-pt champion bonus.',
+            },
+            {
+              icon: '🎲',
+              tip: 'Consider picking a surprise or two',
+              detail: 'If everyone picks the same favourites, no one separates. A well-placed upset pick can leapfrog you up the standings.',
+            },
+          ].map(({ icon, tip, detail }) => (
+            <div key={tip} className="flex gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+              <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
+              <div>
+                <div className="text-sm font-bold text-gray-800">{tip}</div>
+                <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">{detail}</div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      </Section>
 
       {/* CTA */}
       <div className="flex gap-3">
