@@ -167,6 +167,13 @@ export default async function RulesPage() {
               color: 'text-wc-red-500',
               bg: 'bg-red-50 border-red-100',
             },
+            {
+              label: 'You picked draw, match has a winner',
+              example: 'You picked Draw → Home wins or Away wins',
+              pts: `${SCORING.groupWrong} pt`,
+              color: 'text-wc-red-500',
+              bg: 'bg-red-50 border-red-100',
+            },
           ].map(({ label, example, pts, color, bg }) => (
             <div key={label} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${bg}`}>
               <div>
@@ -178,13 +185,6 @@ export default async function RulesPage() {
           ))}
         </div>
 
-        <InfoBox>
-          <strong>Why 0 pts for a draw you didn&apos;t pick?</strong> Draws are genuinely hard to predict — penalising you for not calling one would be harsh. If you correctly pick a draw you still earn +1 pt.
-        </InfoBox>
-
-        <InfoBox>
-          <strong>Group picks matter a lot.</strong> With 72 matches at ±1 pt each, your group stage total can swing by up to 144 points between players. Don&apos;t ignore them just because the bracket feels more exciting.
-        </InfoBox>
       </Section>
 
       {/* Bracket scoring */}
