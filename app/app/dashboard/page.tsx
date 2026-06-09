@@ -1,6 +1,7 @@
 import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { GROUP_MATCHES, GROUPS, getTeamMeta, getFlagUrl, computeGroupStandings } from '@/lib/worldcup-data';
+import { GROUP_MATCHES, GROUPS, SCORING, getTeamMeta, getFlagUrl, computeGroupStandings } from '@/lib/worldcup-data';
+import { calculateTotalScore } from '@/lib/scoring';
 import Link from 'next/link';
 
 function envAdminUsernames(): Set<string> {
@@ -17,16 +18,38 @@ export default async function DashboardPage() {
   const completedGroupMatches = matchResults.filter((r) => r.status === 'finished').length;
 
   const envAdmins = envAdminUsernames();
-  const allUsers = await prisma.user.findMany({
-    select: {
-      id: true, username: true, displayName: true, avatarUrl: true, isAdmin: true, favoriteTeam: true,
-      poolWins: { select: { trophyImage: true, poolName: true, year: true }, orderBy: { year: 'asc' } },
-    },
+  const [allUsers, bracketResults] = await Promise.all([
+    prisma.user.findMany({
+      select: {
+        id: true, username: true, displayName: true, avatarUrl: true, isAdmin: true, favoriteTeam: true,
+        matchPicks: { select: { matchId: true, pick: true } },
+        bracketPicks: { select: { round: true, slot: true, team: true } },
+        poolWins: { select: { trophyImage: true, poolName: true, year: true }, orderBy: { year: 'asc' } },
+      },
+    }),
+    prisma.bracketResult.findMany(),
+  ]);
+
+  const resultMap = new Map(
+    matchResults.filter((r) => r.status === 'finished' && r.result).map((r) => [r.matchId, r.result!]),
+  );
+  const bracketMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
+  const scoreOf = (u: typeof allUsers[number]) => calculateTotalScore({
+    matchPicks: u.matchPicks,
+    bracketPicks: u.bracketPicks,
+    matchResults: resultMap,
+    bracketResults: bracketMap,
   });
+
   const leaderboard = allUsers
-    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isAdmin: u.isAdmin || envAdmins.has(u.username.toLowerCase()), favoriteTeam: u.favoriteTeam, score: 0, trophies: u.poolWins }))
+    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isAdmin: u.isAdmin || envAdmins.has(u.username.toLowerCase()), favoriteTeam: u.favoriteTeam, score: scoreOf(u), trophies: u.poolWins }))
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username))
     .slice(0, 5);
+
+  const myScore = user ? (() => {
+    const me = allUsers.find((u) => u.id === user.userId);
+    return me ? scoreOf(me) : 0;
+  })() : 0;
 
   // User-specific data (only fetched when logged in)
   let matchPicksCount = 0;
@@ -94,7 +117,7 @@ export default async function DashboardPage() {
       {user ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Your Points', value: '0', sub: 'tournament score' },
+            { label: 'Your Points', value: `${myScore}`, sub: 'tournament score' },
             { label: 'Group Picks', value: `${matchPicksCount}`, sub: `of ${totalMatches} matches` },
             { label: 'Bracket Picks', value: `${bracketPicksCount}`, sub: 'knockout slots' },
             { label: 'Matches Played', value: `${completedGroupMatches}`, sub: 'group stage' },
@@ -154,7 +177,7 @@ export default async function DashboardPage() {
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-wc-gold-400" />
             <div className="flex items-start justify-between mb-4">
               <h3 className="font-black text-gray-900">Champion Pick</h3>
-              <span className="text-wc-gold-500 text-xs font-bold">20 pts</span>
+              <span className="text-wc-gold-500 text-xs font-bold">{SCORING.final} pts</span>
             </div>
 
             {championPick && championMeta ? (
@@ -172,7 +195,7 @@ export default async function DashboardPage() {
             ) : (
               <div className="py-4 mb-4 text-center border border-dashed border-gray-200 rounded-xl">
                 <p className="text-gray-500 text-sm font-medium">No champion picked yet</p>
-                <p className="text-gray-400 text-xs mt-0.5">Worth 20 pts if correct</p>
+                <p className="text-gray-400 text-xs mt-0.5">Worth {SCORING.final} pts if correct</p>
               </div>
             )}
 
