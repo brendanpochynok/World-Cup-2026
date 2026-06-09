@@ -44,38 +44,20 @@ export function calculateBracketPickPoints(
   }
 }
 
-export function calculateChampionPickPoints(
-  pickedTeam: string,
-  actualChampion: string | null
-): number {
-  if (!actualChampion) return 0;
-  return pickedTeam === actualChampion ? SCORING.champion : 0;
-}
-
 export function calculateTotalScore(params: {
   matchPicks: Array<{ matchId: string; pick: string }>;
   bracketPicks: Array<{ round: string; slot: number; team: string }>;
-  // matchId -> "home"|"draw"|"away"
   matchResults: Map<string, string>;
-  // "round-slot" -> team
   bracketResults: Map<string, string>;
-  champion: string | null;
 }): number {
   let total = 0;
-
   for (const mp of params.matchPicks) {
-    const actual = params.matchResults.get(mp.matchId) ?? null;
-    total += calculateMatchPickPoints(mp.pick, actual);
+    total += calculateMatchPickPoints(mp.pick, params.matchResults.get(mp.matchId) ?? null);
   }
-
   for (const bp of params.bracketPicks) {
     const actualTeam = params.bracketResults.get(`${bp.round}-${bp.slot}`) ?? null;
     total += calculateBracketPickPoints(bp.round, bp.team, actualTeam);
   }
-
-  const finalPick = params.bracketPicks.find((p) => p.round === 'Final' && p.slot === 0);
-  if (finalPick) total += calculateChampionPickPoints(finalPick.team, params.champion);
-
   return total;
 }
 

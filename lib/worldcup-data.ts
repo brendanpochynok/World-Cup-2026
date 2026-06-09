@@ -932,11 +932,11 @@ export function isMatchLocked(_match: GroupMatch, kickoffIso?: string | null): b
 
 // Knockout bracket rounds
 export const BRACKET_ROUNDS = [
-  { id: 'R32', name: 'Round of 32', slots: 32, points: 1 },
-  { id: 'R16', name: 'Round of 16', slots: 16, points: 2 },
-  { id: 'QF', name: 'Quarter-Finals', slots: 8, points: 4 },
-  { id: 'SF', name: 'Semi-Finals', slots: 4, points: 8 },
-  { id: 'Final', name: 'Final', slots: 2, points: 16 },
+  { id: 'R32', name: 'Round of 32', slots: 32, points: 2 },
+  { id: 'R16', name: 'Round of 16', slots: 16, points: 4 },
+  { id: 'QF', name: 'Quarter-Finals', slots: 8, points: 8 },
+  { id: 'SF', name: 'Semi-Finals', slots: 4, points: 16 },
+  { id: 'Final', name: 'Final', slots: 2, points: 32 },
 ];
 
 export const SCORING = {
@@ -946,12 +946,11 @@ export const SCORING = {
   groupRank2: 3,
   groupRank3: 2,
   groupRank4: 1,
-  r32: 1,
-  r16: 2,
-  qf: 4,
-  sf: 8,
-  final: 16,
-  champion: 32,
+  r32: 2,
+  r16: 4,
+  qf: 8,
+  sf: 16,
+  final: 32,
 };
 
 // Bracket lock: all picks freeze when the first R32 game kicks off.

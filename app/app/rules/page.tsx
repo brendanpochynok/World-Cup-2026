@@ -203,17 +203,10 @@ export default async function RulesPage() {
               <span className="font-black text-lg text-wc-gold-500 tabular-nums ml-4">{r.points} pts each</span>
             </div>
           ))}
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl border bg-wc-gold-50 border-wc-gold-200">
-            <div>
-              <div className="text-sm font-semibold text-gray-800">Tournament Champion</div>
-              <div className="text-xs text-gray-400 mt-0.5">Bonus for picking the overall winner</div>
-            </div>
-            <span className="font-black text-lg text-wc-gold-500 tabular-nums ml-4">{SCORING.champion} pts</span>
-          </div>
         </div>
 
         <p className="text-gray-600 text-sm leading-relaxed">
-          Points double each round — just like March Madness. You earn points for each match your picked team wins. For example, if you pick France to win their Semi-Final and they do, you earn 8 pts even if they lose in the Final.
+          Points double each round — just like March Madness. You earn points for each match your picked team wins. For example, if you pick France to win their Semi-Final and they do, you earn 16 pts even if they lose in the Final.
         </p>
 
         <InfoBox>

@@ -47,10 +47,7 @@ export async function GET() {
         if (actual && bp.team === actual) score += ROUND_POINTS[bp.round] ?? 0;
       }
 
-      // Champion bonus (Final slot 0)
       const finalPick = u.bracketPicks.find((p) => p.round === 'Final' && p.slot === 0);
-      const champion = bracketMap.get('Final-0') ?? null;
-      if (finalPick && champion && finalPick.team === champion) score += SCORING.champion;
 
       return {
         userId: u.id,
