@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import type { PlayerPickEntry } from '@/app/api/players/[username]/picks/route';
+import type { PlayerPickEntry, BracketPickEntry } from '@/app/api/players/[username]/picks/route';
+import { BRACKET_ROUNDS } from '@/lib/worldcup-data';
 
 interface Props {
   username: string;
   displayName: string | null;
+  avatarUrl?: string | null;
   onClose: () => void;
 }
 
@@ -33,8 +35,11 @@ function shortenName(name: string): string {
   return map[name] ?? (name.length > 13 ? name.slice(0, 12) + '…' : name);
 }
 
-export default function PlayerPicksModal({ username, displayName, onClose }: Props) {
+export default function PlayerPicksModal({ username, displayName, avatarUrl: avatarProp, onClose }: Props) {
   const [picks, setPicks] = useState<PlayerPickEntry[] | null>(null);
+  const [bracketPicks, setBracketPicks] = useState<BracketPickEntry[] | null>(null);
+  const [bracketLocked, setBracketLocked] = useState(false);
+  const [resolvedAvatar, setResolvedAvatar] = useState<string | null>(avatarProp ?? null);
   const [myPicks, setMyPicks] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState('');
 
@@ -43,9 +48,14 @@ export default function PlayerPicksModal({ username, displayName, onClose }: Pro
   useEffect(() => {
     fetch(`/api/players/${encodeURIComponent(username)}/picks`)
       .then((r) => r.json())
-      .then((d) => setPicks(d.picks ?? []))
+      .then((d) => {
+        setPicks(d.picks ?? []);
+        setBracketPicks(d.bracketPicks ?? []);
+        setBracketLocked(d.bracketLocked ?? false);
+        if (!avatarProp && d.avatarUrl) setResolvedAvatar(d.avatarUrl);
+      })
       .catch(() => setError('Failed to load picks'));
-  }, [username]);
+  }, [username, avatarProp]);
 
   useEffect(() => {
     fetch('/api/picks/groups')
@@ -79,6 +89,14 @@ export default function PlayerPicksModal({ username, displayName, onClose }: Pro
 
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {resolvedAvatar ? (
+                <img src={resolvedAvatar} alt={label} className="w-10 h-10 rounded-xl object-cover border border-gray-200 flex-shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-black text-gray-500 uppercase">{label.charAt(0)}</span>
+                </div>
+              )}
             <div>
               <h2 className="text-gray-900 font-black text-lg">{label}&rsquo;s Picks</h2>
               {picks !== null && picks.length > 0 && (
@@ -104,6 +122,7 @@ export default function PlayerPicksModal({ username, displayName, onClose }: Pro
                   )}
                 </p>
               )}
+            </div>
             </div>
             <button onClick={onClose}
               className="text-gray-400 hover:text-gray-700 transition-colors p-1.5 rounded-lg hover:bg-gray-100"
@@ -137,6 +156,45 @@ export default function PlayerPicksModal({ username, displayName, onClose }: Pro
                 <p className="text-gray-400 text-xs mt-1">Picks become visible once a match kicks off.</p>
               </div>
             )}
+
+            {/* Bracket picks */}
+            {bracketLocked && bracketPicks !== null && bracketPicks.length > 0 && (() => {
+              const byRound = new Map<string, BracketPickEntry[]>();
+              for (const bp of bracketPicks) {
+                const list = byRound.get(bp.round) ?? [];
+                list.push(bp);
+                byRound.set(bp.round, list);
+              }
+              return (
+                <div className="rounded-xl border border-wc-gold-200 overflow-hidden">
+                  <div className="bg-wc-gold-50 px-3 py-2 border-b border-wc-gold-200">
+                    <span className="text-wc-gold-700 text-xs font-bold uppercase tracking-wider">Bracket Picks</span>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {BRACKET_ROUNDS.slice().reverse().map((r) => {
+                      const rPicks = byRound.get(r.id);
+                      if (!rPicks || rPicks.length === 0) return null;
+                      return (
+                        <div key={r.id} className="px-3 py-2.5">
+                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{r.name}</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {rPicks.map((bp) => (
+                              <span key={`${bp.round}-${bp.slot}`} className={`text-xs font-semibold px-2 py-0.5 rounded-lg border ${
+                                bp.correct === true  ? 'bg-wc-green-50 text-wc-green-700 border-wc-green-200'
+                                : bp.correct === false ? 'bg-red-50 text-wc-red-600 border-red-200'
+                                : 'bg-wc-gold-50 text-wc-gold-700 border-wc-gold-200'
+                              }`}>
+                                {shortenName(bp.team)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Picks grouped by group */}
             {groupKeys.map((groupId) => {

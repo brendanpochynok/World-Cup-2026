@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ALL_TEAMS } from '@/lib/worldcup-data';
+import type { MeStats } from '@/app/api/me/stats/route';
 
 interface ProfileData {
   username: string;
@@ -39,6 +40,7 @@ function resizeImageToDataUrl(file: File): Promise<string> {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [stats, setStats] = useState<MeStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Profile form state
@@ -59,16 +61,17 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch('/api/profile')
-      .then((r) => r.json())
-      .then((data: ProfileData) => {
-        setProfile(data);
-        setDisplayName(data.displayName ?? '');
-        setFavoriteTeam(data.favoriteTeam ?? '');
-        setAvatarPreview(data.avatarUrl);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch('/api/profile').then((r) => r.json()),
+      fetch('/api/me/stats').then((r) => r.json()).catch(() => null),
+    ]).then(([data, statsData]: [ProfileData, MeStats | null]) => {
+      setProfile(data);
+      setDisplayName(data.displayName ?? '');
+      setFavoriteTeam(data.favoriteTeam ?? '');
+      setAvatarPreview(data.avatarUrl);
+      if (statsData && 'score' in statsData) setStats(statsData);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -194,6 +197,42 @@ export default function ProfilePage() {
         <p className="eyebrow mb-2">Account</p>
         <h1 className="text-3xl font-black text-gray-900">Your Profile</h1>
       </div>
+
+      {/* ── Stats card ── */}
+      {stats && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-black text-gray-900 text-lg">Your Stats</h2>
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              #{stats.rank} of {stats.totalPlayers}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-3 py-3">
+              <div className="text-[10px] font-bold text-wc-blue-500 uppercase tracking-wider mb-0.5">Rank</div>
+              <div className="text-2xl font-black text-wc-blue-600">#{stats.rank}</div>
+              <div className="text-[10px] text-wc-blue-400 mt-0.5">of {stats.totalPlayers} players</div>
+            </div>
+            <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-3 py-3">
+              <div className="text-[10px] font-bold text-wc-gold-600 uppercase tracking-wider mb-0.5">Score</div>
+              <div className="text-2xl font-black text-wc-gold-600">{stats.score}</div>
+              <div className="text-[10px] text-wc-gold-400 mt-0.5">points</div>
+            </div>
+            <div className="rounded-xl bg-wc-green-50 border border-wc-green-200 px-3 py-3">
+              <div className="text-[10px] font-bold text-wc-green-600 uppercase tracking-wider mb-0.5">Group picks</div>
+              <div className="text-2xl font-black text-wc-green-600">{stats.groupCorrect}</div>
+              <div className="text-[10px] text-wc-green-500 mt-0.5">
+                correct · {stats.groupWrong} wrong
+              </div>
+            </div>
+            <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">
+              <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Bracket</div>
+              <div className="text-2xl font-black text-gray-700">{stats.bracketPicksCount}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">picks made</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Profile card ── */}
       <form onSubmit={handleProfileSave} className="card space-y-6">

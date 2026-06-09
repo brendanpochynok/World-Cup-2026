@@ -121,6 +121,7 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
         <PlayerPicksModal
           username={selected.username}
           displayName={selected.displayName}
+          avatarUrl={selected.avatarUrl}
           onClose={() => setSelected(null)}
         />
       )}
