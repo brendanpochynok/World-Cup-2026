@@ -221,42 +221,6 @@ export default async function RulesPage() {
         </InfoBox>
       </Section>
 
-      {/* Quick tips */}
-      <Section title="Quick Tips">
-        <div className="space-y-3">
-          {[
-            {
-              icon: '⚡',
-              tip: 'Fill in all 72 group picks before June 11',
-              detail: 'Matches start immediately and lock at kick-off — a missed pick is a guaranteed 0.',
-            },
-            {
-              icon: '🏆',
-              tip: 'The champion pick is worth 20 points',
-              detail: 'That\'s 20 correct group picks worth of points in one slot. Think carefully — but don\'t overthink it.',
-            },
-            {
-              icon: '📈',
-              tip: 'Bracket points snowball',
-              detail: 'A team you correctly back all the way to the final earns 2+3+5+8+13 = 31 points on top of the 20-pt champion bonus.',
-            },
-            {
-              icon: '🎲',
-              tip: 'Consider picking a surprise or two',
-              detail: 'If everyone picks the same favourites, no one separates. A well-placed upset pick can leapfrog you up the standings.',
-            },
-          ].map(({ icon, tip, detail }) => (
-            <div key={tip} className="flex gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-              <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
-              <div>
-                <div className="text-sm font-bold text-gray-800">{tip}</div>
-                <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">{detail}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
       {/* CTA */}
       <div className="flex gap-3">
         <Link href="/app/picks" className="btn-primary text-sm">
