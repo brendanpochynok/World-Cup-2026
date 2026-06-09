@@ -28,7 +28,11 @@ export default async function StandingsPage() {
 
   const matchResults = await prisma.matchResult.findMany();
   const users = await prisma.user.findMany({
-    include: { matchPicks: true, bracketPicks: true },
+    include: {
+      matchPicks: true,
+      bracketPicks: true,
+      poolWins: { select: { trophyImage: true, poolName: true, year: true }, orderBy: { year: 'asc' } },
+    },
     orderBy: { createdAt: 'asc' },
   });
 
@@ -47,6 +51,7 @@ export default async function StandingsPage() {
       championPick,
       favoriteTeam: user.favoriteTeam ?? null,
       isMe: user.username === currentUser?.username,
+      trophies: user.poolWins,
     };
   });
 
