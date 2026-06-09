@@ -51,7 +51,7 @@ export async function GET() {
   const sorted = users.map((u) => ({ id: u.id, score: calcScore(u) }))
     .sort((a, b) => b.score - a.score);
 
-  const myUser = users.find((u) => u.id === me.id);
+  const myUser = users.find((u) => u.id === me.userId);
   if (!myUser) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   let groupCorrect = 0, groupWrong = 0, groupSettled = 0;
@@ -65,7 +65,7 @@ export async function GET() {
 
   return NextResponse.json({
     score: calcScore(myUser),
-    rank: sorted.findIndex((s) => s.id === me.id) + 1,
+    rank: sorted.findIndex((s) => s.id === me.userId) + 1,
     totalPlayers: users.length,
     groupCorrect,
     groupWrong,
