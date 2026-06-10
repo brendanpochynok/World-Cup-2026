@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
-import { GROUPS, GROUP_MATCHES, ALL_TEAMS, computeGroupStandings, getGroupMatches, getTeamMeta, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
+import { GROUPS, GROUP_MATCHES, ALL_TEAMS, SCORING, computeGroupStandings, getGroupMatches, getTeamMeta, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
@@ -417,7 +417,7 @@ export default function PicksPage() {
           <div>
             <h2 className="text-xl font-black text-gray-900">Knockout Bracket</h2>
             <p className="text-gray-400 text-xs mt-0.5">
-              March Madness style · R32=2 · R16=3 · QF=5 · SF=8 · Final=13 · Champion=20 pts
+              March Madness style · R32={SCORING.r32} · R16={SCORING.r16} · QF={SCORING.qf} · SF={SCORING.sf} · Final={SCORING.final} pts
             </p>
           </div>
           <BracketLockBadge />
