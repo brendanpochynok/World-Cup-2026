@@ -44,7 +44,7 @@ export default function BracketView({ picks, results }: Props) {
       <div className="flex gap-3 min-w-[640px]">
         {COLUMNS.map((col) => (
           <div key={col.id} className="flex-1 flex flex-col">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">
               {col.label}
             </p>
             <div className="flex-1 flex flex-col justify-around gap-1.5">

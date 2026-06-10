@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import { SCORING, BRACKET_ROUNDS, GROUP_MATCHES, BRACKET_LOCK_ISO, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
 import BracketView from '@/components/BracketView';
+import TrophyIcon from '@/components/TrophyIcon';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,20 +117,20 @@ export default async function PlayerProfilePage({
       {/* Profile header */}
       <div className="card flex items-center gap-5">
         {user.avatarUrl ? (
-          <img src={user.avatarUrl} alt={label} className="w-20 h-20 rounded-2xl object-cover border-2 border-gray-200 flex-shrink-0" />
+          <img src={user.avatarUrl} alt={label} className="w-20 h-20 rounded-xl object-cover border-2 border-gray-200 flex-shrink-0" />
         ) : (
-          <div className="w-20 h-20 rounded-2xl bg-wc-blue-500/10 border-2 border-wc-blue-200 flex items-center justify-center flex-shrink-0">
-            <span className="text-3xl font-black text-wc-blue-500 uppercase">{label.charAt(0)}</span>
+          <div className="w-20 h-20 rounded-xl bg-wc-blue-500/10 border-2 border-wc-blue-200 flex items-center justify-center flex-shrink-0">
+            <span className="text-3xl font-bold text-wc-blue-500 uppercase">{label.charAt(0)}</span>
           </div>
         )}
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-black text-gray-900 truncate">{label}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 truncate">{label}</h1>
             {user.poolWins.map((w, i) => (
               w.trophyImage ? (
                 <img key={i} src={w.trophyImage} alt={w.poolName} title={`${w.poolName} ${w.year}`} className="w-8 h-8 object-contain flex-shrink-0" />
               ) : (
-                <span key={i} title={`${w.poolName} ${w.year}`} className="text-2xl leading-none">🏆</span>
+                <span key={i} title={`${w.poolName} ${w.year}`}><TrophyIcon className="w-7 h-7 text-wc-gold-400" /></span>
               )
             ))}
           </div>
@@ -156,22 +157,22 @@ export default async function PlayerProfilePage({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-3 py-3">
           <div className="text-[10px] font-bold text-wc-blue-500 uppercase tracking-wider mb-0.5">Rank</div>
-          <div className="text-2xl font-black text-wc-blue-600">#{rank}</div>
+          <div className="text-2xl font-bold text-wc-blue-600">#{rank}</div>
           <div className="text-[10px] text-wc-blue-400 mt-0.5">of {totalPlayers}</div>
         </div>
         <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-3 py-3">
           <div className="text-[10px] font-bold text-wc-gold-600 uppercase tracking-wider mb-0.5">Score</div>
-          <div className="text-2xl font-black text-wc-gold-600">{myScore}</div>
+          <div className="text-2xl font-bold text-wc-gold-600">{myScore}</div>
           <div className="text-[10px] text-wc-gold-400 mt-0.5">points</div>
         </div>
         <div className="rounded-xl bg-wc-green-50 border border-wc-green-200 px-3 py-3">
           <div className="text-[10px] font-bold text-wc-green-600 uppercase tracking-wider mb-0.5">Correct</div>
-          <div className="text-2xl font-black text-wc-green-600">{correct}</div>
+          <div className="text-2xl font-bold text-wc-green-600">{correct}</div>
           <div className="text-[10px] text-wc-green-500 mt-0.5">group picks</div>
         </div>
         <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-3">
           <div className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-0.5">Wrong</div>
-          <div className="text-2xl font-black text-red-500">{wrong}</div>
+          <div className="text-2xl font-bold text-red-500">{wrong}</div>
           <div className="text-[10px] text-red-300 mt-0.5">group picks</div>
         </div>
       </div>
@@ -179,17 +180,17 @@ export default async function PlayerProfilePage({
       {/* Trophy cabinet */}
       {user.poolWins.length > 0 && (
         <div className="card">
-          <h2 className="font-black text-gray-900 text-lg mb-4">Trophy Cabinet</h2>
+          <h2 className="font-bold text-gray-900 text-lg mb-4">Trophy Cabinet</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {user.poolWins.map((w) => (
               <div key={w.id} className="rounded-xl border border-wc-gold-200 bg-wc-gold-50 px-3 py-4 flex flex-col items-center gap-2 text-center">
                 {w.trophyImage ? (
                   <img src={w.trophyImage} alt={w.poolName} className="w-16 h-16 object-contain" />
                 ) : (
-                  <span className="text-4xl">🏆</span>
+                  <TrophyIcon className="w-12 h-12 text-wc-gold-400" />
                 )}
                 <div>
-                  <p className="text-xs font-black text-wc-gold-700 leading-tight">{w.poolName}</p>
+                  <p className="text-xs font-bold text-wc-gold-700 leading-tight">{w.poolName}</p>
                   <p className="text-[10px] text-wc-gold-500 mt-0.5">
                     {w.position === 1 ? '1st' : w.position === 2 ? '2nd' : '3rd'} place · {w.year}
                   </p>
@@ -203,11 +204,11 @@ export default async function PlayerProfilePage({
       {/* Group picks */}
       {lockedPicks.length > 0 && (
         <div className="card">
-          <h2 className="font-black text-gray-900 text-lg mb-4">Group Stage Picks</h2>
+          <h2 className="font-bold text-gray-900 text-lg mb-4">Group Stage Picks</h2>
           <div className="space-y-4">
             {Array.from(groupedPicks.entries()).sort().map(([group, picks]) => (
               <div key={group}>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Group {group}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Group {group}</p>
                 <div className="space-y-1.5">
                   {picks.map((p) => {
                     const isCorrect = p.result && p.pick === p.result;
@@ -218,7 +219,7 @@ export default async function PlayerProfilePage({
                         isWrong   ? 'bg-red-50 border border-red-100' :
                                     'bg-gray-50 border border-gray-100'
                       }`}>
-                        <span className={`font-black w-3 flex-shrink-0 ${
+                        <span className={`font-bold w-3 flex-shrink-0 ${
                           isCorrect ? 'text-wc-green-500' : isWrong ? 'text-red-400' : 'text-gray-300'
                         }`}>
                           {isCorrect ? '✓' : isWrong ? '✗' : '·'}
@@ -249,7 +250,7 @@ export default async function PlayerProfilePage({
       {user.bracketPicks.length > 0 && (isOwnProfile || Date.now() >= new Date(BRACKET_LOCK_ISO).getTime()) && (
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-black text-gray-900 text-lg">Knockout Bracket</h2>
+            <h2 className="font-bold text-gray-900 text-lg">Knockout Bracket</h2>
             {isOwnProfile && Date.now() < new Date(BRACKET_LOCK_ISO).getTime() && (
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                 Only you can see this until brackets lock

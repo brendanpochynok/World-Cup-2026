@@ -131,8 +131,7 @@ export default async function StandingsPage() {
 
       {/* ─── Header ─── */}
       <div>
-        <p className="eyebrow mb-1.5">Pool Leaderboard</p>
-        <h1 className="text-3xl font-black text-gray-900">Standings</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Standings</h1>
         <p className="text-gray-500 text-sm mt-1.5">
           {finishedMatches} match{finishedMatches !== 1 ? 'es' : ''} completed
           <span className="text-gray-300 mx-2">·</span>
@@ -152,7 +151,7 @@ export default async function StandingsPage() {
       <div className="card space-y-4">
         <h3 className="eyebrow">Scoring System</h3>
         <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Group Stage</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Group Stage</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {groupScoringRows.map(({ label, pts, positive }) => (
               <div key={label}
@@ -160,18 +159,18 @@ export default async function StandingsPage() {
                   positive ? 'bg-gray-50 border-gray-200' : 'bg-red-50 border-red-100'
                 }`}>
                 <span className="text-gray-600 text-xs font-medium">{label}</span>
-                <span className={`font-black text-sm ml-2 ${positive ? 'text-wc-gold-500' : 'text-wc-red-500'}`}>{pts}</span>
+                <span className={`font-bold text-sm ml-2 ${positive ? 'text-wc-gold-500' : 'text-wc-red-500'}`}>{pts}</span>
               </div>
             ))}
           </div>
         </div>
         <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Bracket Stage</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bracket Stage</p>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {bracketScoringRows.map(({ label, pts }) => (
               <div key={label} className="flex items-center justify-between px-3 py-2.5 rounded-xl border bg-gray-50 border-gray-200">
                 <span className="text-gray-600 text-xs font-medium">{label}</span>
-                <span className="font-black text-sm ml-2 text-wc-gold-500">{pts}</span>
+                <span className="font-bold text-sm ml-2 text-wc-gold-500">{pts}</span>
               </div>
             ))}
           </div>
@@ -182,7 +181,7 @@ export default async function StandingsPage() {
       <div className="card overflow-hidden p-0">
         {scores.length === 0 ? (
           <div className="text-center py-16 px-5">
-            <p className="text-gray-900 font-black text-lg mb-1">No players yet</p>
+            <p className="text-gray-900 font-bold text-lg mb-1">No players yet</p>
             <p className="text-gray-500 text-sm">Invite friends to join the pool!</p>
           </div>
         ) : (

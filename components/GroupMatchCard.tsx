@@ -91,7 +91,7 @@ export default function GroupMatchCard({
           {home}
         </span>
         {status === 'finished' || status === 'live' ? (
-          <span className="text-gray-900 font-black text-lg px-2 min-w-[3rem] text-center tabular-nums">
+          <span className="text-gray-900 font-bold text-lg px-2 min-w-[3rem] text-center tabular-nums">
             {homeGoals ?? 0} – {awayGoals ?? 0}
           </span>
         ) : (

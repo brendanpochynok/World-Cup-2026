@@ -70,12 +70,12 @@ export default function GroupDetailModal({
 
       <div role="dialog" aria-modal="true" aria-label={`${group.name} match picks`}
         className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-50 p-0 sm:p-4">
-        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-xl max-h-[92vh] flex flex-col shadow-2xl border border-gray-200">
+        <div className="bg-white rounded-t-xl sm:rounded-xl w-full sm:max-w-xl max-h-[92vh] flex flex-col shadow-2xl">
 
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0">
+          <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-xl flex-shrink-0">
             <div>
-              <h2 className="text-gray-900 font-black text-lg">{group.name}</h2>
+              <h2 className="text-gray-900 font-bold text-lg">{group.name}</h2>
               <p className="text-gray-400 text-xs mt-0.5">
                 {pickedCount}/{matches.length} picks · correct +1 · wrong −1
               </p>
@@ -232,7 +232,7 @@ export default function GroupDetailModal({
                         <div className="grid grid-cols-3 gap-2">
                           {items.map(({ key, label, val }) => (
                             <div key={key} className="text-center">
-                              <div className={`text-sm font-black tabular-nums ${pick === key ? 'text-wc-blue-500' : 'text-gray-700'}`}>
+                              <div className={`text-sm font-bold tabular-nums ${pick === key ? 'text-wc-blue-500' : 'text-gray-700'}`}>
                                 {Math.round(val * 100)}%
                               </div>
                               <div className="w-full h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden">
