@@ -41,21 +41,20 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
       {/* Rainbow stripe */}
-      <div className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-wc-blue-500 via-wc-green-500 to-wc-red-500 z-10" />
 
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-10">
           <img src="/trionda-ball/trionda-ball.png" alt="Trionda" className="w-20 h-20 object-contain mx-auto mb-4" />
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">World Cup 2026</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">World Cup 2026</h1>
           <p className="text-gray-400 text-xs mt-1.5 tracking-[0.15em] uppercase font-semibold">Join the Pool</p>
         </div>
 
         {/* Card */}
-        <div className="relative bg-white border border-gray-200 rounded-2xl p-7 shadow-lg">
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-wc-blue-500 rounded-t-2xl" style={{ borderRadius: '16px 16px 0 0' }} />
+        <div className="relative bg-white border border-gray-200 rounded-xl p-7 shadow-lg">
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-wc-blue-500 rounded-t-xl" style={{ borderRadius: '16px 16px 0 0' }} />
 
-          <h2 className="text-xl font-black text-gray-900 mb-6">Create account</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Create account</h2>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 mb-5 text-sm">

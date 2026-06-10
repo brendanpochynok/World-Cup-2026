@@ -74,10 +74,10 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
   ];
 
   return (
-    <div className={`relative rounded-2xl border p-4 bg-white shadow-sm transition-all ${
+    <div className={`relative rounded-xl border p-4 bg-white shadow-sm transition-all ${
       isLive ? 'border-wc-red-200' : 'border-gray-200'
     }`}>
-      {isLive && <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl bg-wc-red-500" />}
+      {isLive && <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl bg-wc-red-500" />}
 
       {/* Top row: group + status */}
       <div className="flex items-center justify-between mb-3">
@@ -85,7 +85,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
           Group {group} · Match {matchNumber}
         </span>
         {isLive && (
-          <span className="flex items-center gap-1.5 text-[11px] bg-wc-red-50 text-wc-red-500 border border-wc-red-200 px-2 py-0.5 rounded-full font-black flex-shrink-0">
+          <span className="flex items-center gap-1.5 text-[11px] bg-wc-red-50 text-wc-red-500 border border-wc-red-200 px-2 py-0.5 rounded-full font-bold flex-shrink-0">
             <span className="w-1.5 h-1.5 bg-wc-red-500 rounded-full animate-pulse" />
             LIVE{clock ? ` ${clock}′` : ''}
           </span>
@@ -114,9 +114,9 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
         {/* Score / VS */}
         <div className="px-2 text-center flex-shrink-0 min-w-[3.5rem]">
           {isScheduled ? (
-            <div className="text-gray-300 text-sm font-black">VS</div>
+            <div className="text-gray-300 text-sm font-bold">VS</div>
           ) : (
-            <div className={`text-2xl font-black tabular-nums leading-none ${isLive ? 'text-wc-red-500' : 'text-gray-900'}`}>
+            <div className={`text-2xl font-bold tabular-nums leading-none ${isLive ? 'text-wc-red-500' : 'text-gray-900'}`}>
               {homeScore}–{awayScore}
             </div>
           )}
@@ -139,7 +139,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
         <div className="grid grid-cols-3 gap-1.5 mb-3">
           {options.map(({ value, label, prob }) => (
             <div key={value} className="text-center">
-              <div className="text-[11px] font-black tabular-nums text-gray-700">
+              <div className="text-[11px] font-bold tabular-nums text-gray-700">
                 {prob !== null ? pct(prob) : '—'}
               </div>
               <div className="w-full h-1 rounded-full bg-gray-100 mt-0.5 overflow-hidden">
@@ -208,7 +208,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
               const isMyPick = currentPick === value;
               return (
                 <div key={value} className="text-center">
-                  <div className={`text-xs font-black tabular-nums ${isMyPick ? 'text-wc-blue-500' : 'text-gray-600'}`}>
+                  <div className={`text-xs font-bold tabular-nums ${isMyPick ? 'text-wc-blue-500' : 'text-gray-600'}`}>
                     {Math.round(val * 100)}%
                   </div>
                   <div className="w-full h-1 rounded-full bg-gray-100 mt-0.5 overflow-hidden">

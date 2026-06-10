@@ -86,20 +86,20 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
 
       <div role="dialog" aria-modal="true" aria-label={`${label}'s picks`}
         className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-50 p-0 sm:p-4">
-        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] flex flex-col shadow-2xl border border-gray-200">
+        <div className="bg-white rounded-t-xl sm:rounded-xl w-full sm:max-w-lg max-h-[90vh] flex flex-col shadow-2xl">
 
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0">
+          <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-xl flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               {resolvedAvatar ? (
                 <img src={resolvedAvatar} alt={label} className="w-10 h-10 rounded-xl object-cover border border-gray-200 flex-shrink-0" />
               ) : (
                 <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-black text-gray-500 uppercase">{label.charAt(0)}</span>
+                  <span className="text-sm font-bold text-gray-500 uppercase">{label.charAt(0)}</span>
                 </div>
               )}
             <div>
-              <h2 className="text-gray-900 font-black text-lg">{label}&rsquo;s Picks</h2>
+              <h2 className="text-gray-900 font-bold text-lg">{label}&rsquo;s Picks</h2>
               {picks !== null && picks.length > 0 && (
                 <p className="text-gray-400 text-xs mt-0.5">
                   {picks.length} locked pick{picks.length !== 1 ? 's' : ''}
@@ -110,7 +110,7 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
                       <span className="mx-1 text-gray-300">/</span>
                       <span className="text-wc-red-500 font-semibold">{wrong} wrong</span>
                       <span className="mx-1.5 text-gray-300">·</span>
-                      <span className={`font-black ${score > 0 ? 'text-wc-green-600' : score < 0 ? 'text-wc-red-500' : 'text-gray-500'}`}>
+                      <span className={`font-bold ${score > 0 ? 'text-wc-green-600' : score < 0 ? 'text-wc-red-500' : 'text-gray-500'}`}>
                         {score > 0 ? '+' : ''}{score} pts
                       </span>
                     </>
@@ -244,13 +244,13 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
                               {pickLabel}
                             </span>
                             {isCorrect && (
-                              <span className="text-[11px] font-black text-wc-green-600">+1</span>
+                              <span className="text-[11px] font-bold text-wc-green-600">+1</span>
                             )}
                             {isWrong && (
-                              <span className="text-[11px] font-black text-wc-red-500">−1</span>
+                              <span className="text-[11px] font-bold text-wc-red-500">−1</span>
                             )}
                             {myPicks && (
-                              <span className={`text-[11px] font-black ${myPicks[entry.matchId] === entry.pick ? 'text-wc-blue-400' : 'text-gray-300'}`} title={myPicks[entry.matchId] === entry.pick ? 'Same pick' : 'Different pick'}>
+                              <span className={`text-[11px] font-bold ${myPicks[entry.matchId] === entry.pick ? 'text-wc-blue-400' : 'text-gray-300'}`} title={myPicks[entry.matchId] === entry.pick ? 'Same pick' : 'Different pick'}>
                                 {myPicks[entry.matchId] === entry.pick ? '=' : '≠'}
                               </span>
                             )}

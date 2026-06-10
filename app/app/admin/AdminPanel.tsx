@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { GROUP_MATCHES, GROUPS, ALL_TEAMS, BRACKET_ROUNDS } from '@/lib/worldcup-data';
+import TrophyIcon from '@/components/TrophyIcon';
 
 interface MatchResultRow {
   matchId: string;
@@ -335,8 +336,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
       {/* Header */}
       <div className="flex items-end gap-3">
         <div>
-          <p className="eyebrow mb-1.5">Admin Panel</p>
-          <h1 className="text-3xl font-black text-gray-900">Tournament Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Tournament Management</h1>
         </div>
       </div>
 
@@ -469,7 +469,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
           {BRACKET_ROUNDS.map((round) => (
             <div key={round.id} className="card space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-black text-gray-900">{round.name}</h2>
+                <h2 className="font-bold text-gray-900">{round.name}</h2>
                 <span className="text-xs text-gray-400 font-semibold">{round.slots} slots</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -518,7 +518,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
         <div className="space-y-6">
           {/* Award form */}
           <div className="card space-y-4">
-            <h2 className="font-black text-gray-900">Award a Trophy</h2>
+            <h2 className="font-bold text-gray-900">Award a Trophy</h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block">
@@ -601,7 +601,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
 
           {/* Existing trophies */}
           <div className="card space-y-3">
-            <h2 className="font-black text-gray-900">Existing Trophies</h2>
+            <h2 className="font-bold text-gray-900">Existing Trophies</h2>
             {trophies.length === 0 ? (
               <p className="text-sm text-gray-400">No trophies awarded yet.</p>
             ) : (
@@ -611,7 +611,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
                     {t.trophyImage ? (
                       <img src={t.trophyImage} alt="" className="w-10 h-10 object-contain flex-shrink-0" />
                     ) : (
-                      <span className="text-2xl flex-shrink-0">🏆</span>
+                      <TrophyIcon className="w-8 h-8 text-wc-gold-400 flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900">
@@ -641,7 +641,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
         <div className="space-y-6">
         <div className="card max-w-sm space-y-5">
           <div>
-            <h2 className="font-black text-gray-900 mb-1">Entry Fee</h2>
+            <h2 className="font-bold text-gray-900 mb-1">Entry Fee</h2>
             <p className="text-sm text-gray-500">Set the buy-in per player. Set to 0 for a free pool.</p>
           </div>
 
@@ -667,7 +667,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
               <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">{playerCount} players × ${parseFloat(feeInput) || 0}</span>
-                  <span className="font-black text-gray-900">${totalPool.toLocaleString()}</span>
+                  <span className="font-bold text-gray-900">${totalPool.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>1st place (75%)</span>
@@ -699,7 +699,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
         {/* ── Entry fee vote results ── */}
         <div className="card max-w-sm space-y-4">
           <div>
-            <h2 className="font-black text-gray-900 mb-1">Entry Fee Vote</h2>
+            <h2 className="font-bold text-gray-900 mb-1">Entry Fee Vote</h2>
             <p className="text-sm text-gray-500">
               {feeVotes.length} of {playerCount} player{playerCount !== 1 ? 's' : ''} voted
             </p>
@@ -770,7 +770,7 @@ function GroupSection({
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left"
       >
         <div className="flex items-center gap-3">
-          <span className="font-black text-gray-900">{group.name}</span>
+          <span className="font-bold text-gray-900">{group.name}</span>
           <span className="text-xs text-gray-400">{group.teams.join(' · ')}</span>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">

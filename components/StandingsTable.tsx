@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import PlayerPicksModal from './PlayerPicksModal';
 import { getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
+import TrophyIcon from '@/components/TrophyIcon';
 
 export interface TrophyMeta {
   trophyImage: string | null;
@@ -60,10 +61,10 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                 >
                   <td className="py-4 px-5">
                     <span className="inline-flex items-center gap-1.5">
-                      <span className="font-black text-sm text-gray-400 tabular-nums">{index + 1}</span>
+                      <span className="font-bold text-sm text-gray-400 tabular-nums">{index + 1}</span>
                       {u.movement != null && u.movement !== 0 && (
                         <span
-                          className={`text-[10px] font-black tabular-nums ${u.movement > 0 ? 'text-wc-green-600' : 'text-red-500'}`}
+                          className={`text-[10px] font-bold tabular-nums ${u.movement > 0 ? 'text-wc-green-600' : 'text-red-500'}`}
                           title={`${u.movement > 0 ? 'Up' : 'Down'} ${Math.abs(u.movement)} since yesterday`}
                         >
                           {u.movement > 0 ? '▲' : '▼'}{Math.abs(u.movement)}
@@ -83,7 +84,7 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                           u.isMe ? 'bg-wc-blue-500/10 border border-wc-blue-200' : 'bg-gray-100 border border-gray-200'
                         }`}>
-                          <span className={`text-xs font-black uppercase leading-none ${
+                          <span className={`text-xs font-bold uppercase leading-none ${
                             u.isMe ? 'text-wc-blue-500' : 'text-gray-500'
                           }`}>
                             {label.charAt(0)}
@@ -111,7 +112,7 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                                 className="w-5 h-5 object-contain flex-shrink-0"
                               />
                             ) : (
-                              <span key={i} title={`${t.poolName} ${t.year}`} className="text-base leading-none">🏆</span>
+                              <span key={i} title={`${t.poolName} ${t.year}`}><TrophyIcon className="w-4 h-4 text-wc-gold-400" /></span>
                             )
                           ))}
                           {u.isAdmin && (
@@ -129,12 +130,12 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                     </div>
                   </td>
                   <td className="py-4 px-4 text-right">
-                    <span className={`font-black text-xl tabular-nums ${index === 0 ? 'text-wc-gold-500' : 'text-gray-900'}`}>
+                    <span className={`font-bold text-xl tabular-nums ${index === 0 ? 'text-wc-gold-500' : 'text-gray-900'}`}>
                       {u.score}
                     </span>
                     <span className="text-gray-400 text-xs font-normal ml-1">pts</span>
                     {u.prize != null && (
-                      <span className="block text-[11px] font-black text-wc-gold-600 mt-0.5">
+                      <span className="block text-[11px] font-bold text-wc-gold-600 mt-0.5">
                         ${u.prize.toLocaleString()}
                       </span>
                     )}

@@ -25,7 +25,7 @@ function SectionHeader({ label, live = false, count }: { label: string; live?: b
       ) : (
         <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block flex-shrink-0" />
       )}
-      <h2 className={`text-sm font-black uppercase tracking-[0.1em] ${live ? 'text-wc-red-500' : 'text-gray-500'}`}>
+      <h2 className={`text-sm font-bold uppercase tracking-[0.1em] ${live ? 'text-wc-red-500' : 'text-gray-500'}`}>
         {label}
       </h2>
       {count !== undefined && (
@@ -189,8 +189,7 @@ export default function ScoresPage() {
       {/* ─── Header ─── */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="eyebrow mb-1.5">Real-time</p>
-          <h1 className="text-3xl font-black text-gray-900">Scores</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Scores</h1>
           <p className="text-gray-500 text-sm mt-1">
             {lastUpdated
               ? `Updated ${lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
@@ -318,7 +317,7 @@ export default function ScoresPage() {
             <div className="card text-center py-16">
               {q ? (
                 <>
-                  <h3 className="text-xl font-black text-gray-900 mb-2">No matches found</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">No matches found</h3>
                   <p className="text-gray-500 text-sm">No team matches &ldquo;{searchQuery}&rdquo;.</p>
                   <button
                     onClick={() => setSearchQuery('')}
@@ -329,7 +328,7 @@ export default function ScoresPage() {
                 </>
               ) : (
                 <>
-                  <h3 className="text-xl font-black text-gray-900 mb-2">No matches scheduled</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">No matches scheduled</h3>
                   <p className="text-gray-500 text-sm">Group stage runs June 11 – June 27, 2026.</p>
                 </>
               )}
@@ -341,11 +340,11 @@ export default function ScoresPage() {
             <section>
               <button
                 onClick={() => setPastOpen((o) => !o)}
-                className="w-full flex items-center justify-between gap-3 py-4 px-5 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors group"
+                className="w-full flex items-center justify-between gap-3 py-4 px-5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
-                  <span className="text-sm font-black uppercase tracking-[0.1em] text-gray-500 group-hover:text-gray-700 transition-colors">
+                  <span className="text-sm font-bold uppercase tracking-[0.1em] text-gray-500 group-hover:text-gray-700 transition-colors">
                     Past Scores
                   </span>
                   <span className="text-xs text-gray-400 font-semibold tabular-nums">

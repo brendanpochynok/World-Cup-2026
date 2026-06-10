@@ -17,7 +17,7 @@ function lockDate(iso: string): string {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="card space-y-4">
-      <h2 className="font-black text-gray-900 text-lg">{title}</h2>
+      <h2 className="font-bold text-gray-900 text-lg">{title}</h2>
       {children}
     </div>
   );
@@ -48,8 +48,7 @@ export default async function RulesPage() {
 
       {/* Header */}
       <div>
-        <p className="eyebrow mb-2">Pool</p>
-        <h1 className="text-4xl font-black text-gray-900 leading-tight">How it works</h1>
+        <h1 className="text-4xl font-bold text-gray-900 leading-tight">How it works</h1>
         <p className="text-gray-500 text-sm mt-2">
           FIFA World Cup 2026™ · June 11 – July 19, 2026
         </p>
@@ -62,7 +61,7 @@ export default async function RulesPage() {
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="eyebrow mb-1">Prize Pool</p>
-              <div className="text-4xl font-black text-gray-900">{fmt(totalPool)}</div>
+              <div className="text-4xl font-bold text-gray-900">{fmt(totalPool)}</div>
               <p className="text-gray-400 text-xs mt-1">{playerCount} players × {fmt(entryFee)} entry</p>
             </div>
             <svg className="w-8 h-8 text-wc-gold-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
@@ -72,11 +71,11 @@ export default async function RulesPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-4 py-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-wc-gold-600 mb-1">1st Place · 75%</p>
-              <p className="text-2xl font-black text-wc-gold-600">{fmt(prize1st)}</p>
+              <p className="text-2xl font-bold text-wc-gold-600">{fmt(prize1st)}</p>
             </div>
             <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">2nd Place · 25%</p>
-              <p className="text-2xl font-black text-gray-700">{fmt(prize2nd)}</p>
+              <p className="text-2xl font-bold text-gray-700">{fmt(prize2nd)}</p>
             </div>
           </div>
         </div>
@@ -96,7 +95,7 @@ export default async function RulesPage() {
           ].map(({ label, value }) => (
             <div key={label} className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
               <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{label}</div>
-              <div className="text-lg font-black text-gray-900 mt-0.5">{value}</div>
+              <div className="text-lg font-bold text-gray-900 mt-0.5">{value}</div>
             </div>
           ))}
         </div>
@@ -126,7 +125,7 @@ export default async function RulesPage() {
             },
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-wc-blue-500 text-white text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded-full bg-wc-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                 {step}
               </div>
               <div>
@@ -180,7 +179,7 @@ export default async function RulesPage() {
                 <div className="text-sm font-semibold text-gray-800">{label}</div>
                 <div className="text-xs text-gray-400 mt-0.5">{example}</div>
               </div>
-              <span className={`font-black text-lg tabular-nums ml-4 flex-shrink-0 ${color}`}>{pts}</span>
+              <span className={`font-bold text-lg tabular-nums ml-4 flex-shrink-0 ${color}`}>{pts}</span>
             </div>
           ))}
         </div>
@@ -200,7 +199,7 @@ export default async function RulesPage() {
                 <span className="text-sm font-semibold text-gray-800">{r.name}</span>
                 <span className="text-xs text-gray-400 ml-2">({r.slots / 2} matches)</span>
               </div>
-              <span className="font-black text-lg text-wc-gold-500 tabular-nums ml-4">{r.points} pts each</span>
+              <span className="font-bold text-lg text-wc-gold-500 tabular-nums ml-4">{r.points} pts each</span>
             </div>
           ))}
         </div>

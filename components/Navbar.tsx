@@ -81,7 +81,6 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
   return (
     <nav className="sticky top-0 z-50">
       {/* FIFA WC 2026 host nations gradient stripe */}
-      <div className="h-[3px] bg-gradient-to-r from-wc-blue-500 via-wc-green-500 to-wc-red-500" />
 
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -91,7 +90,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
             <Link href="/app/dashboard" className="flex items-center gap-2.5 flex-shrink-0">
               <img src="/trionda-ball/trionda-ball.png" alt="Trionda" className="w-9 h-9 object-contain flex-shrink-0" />
               <div className="hidden sm:block leading-none">
-                <span className="text-gray-900 font-black text-[13px] tracking-tight block">WC 2026</span>
+                <span className="text-gray-900 font-bold text-[13px] tracking-tight block">WC 2026</span>
                 <span className="text-gray-400 text-[10px] uppercase tracking-[0.12em] font-semibold">Pool Picks</span>
               </div>
             </Link>
@@ -168,7 +167,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
                       />
                     ) : (
                       <div className="w-7 h-7 rounded-lg bg-wc-blue-500/10 border border-wc-blue-200 flex items-center justify-center flex-shrink-0">
-                        <span className="text-[11px] font-black text-wc-blue-500 uppercase leading-none">
+                        <span className="text-[11px] font-bold text-wc-blue-500 uppercase leading-none">
                           {label.charAt(0)}
                         </span>
                       </div>
@@ -280,7 +279,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
                       />
                     ) : (
                       <div className="w-7 h-7 rounded-lg bg-wc-blue-500/10 border border-wc-blue-200 flex items-center justify-center flex-shrink-0">
-                        <span className="text-[11px] font-black text-wc-blue-500 uppercase leading-none">
+                        <span className="text-[11px] font-bold text-wc-blue-500 uppercase leading-none">
                           {label.charAt(0)}
                         </span>
                       </div>

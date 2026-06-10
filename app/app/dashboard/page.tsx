@@ -4,6 +4,7 @@ import { GROUP_MATCHES, GROUPS, SCORING, getTeamMeta, getFlagUrl, computeGroupSt
 import { calculateTotalScore } from '@/lib/scoring';
 import Link from 'next/link';
 import EntryFeeVoteModal from '@/components/EntryFeeVoteModal';
+import TrophyIcon from '@/components/TrophyIcon';
 
 function envAdminUsernames(): Set<string> {
   const raw = process.env.ADMIN_USERNAME ?? '';
@@ -96,8 +97,7 @@ export default async function DashboardPage() {
       {/* ─── Header ─── */}
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="eyebrow mb-2">FIFA World Cup 2026™</p>
-          <h1 className="text-4xl font-black text-gray-900 leading-tight">
+          <h1 className="text-4xl font-bold text-gray-900 leading-tight">
             {user ? (
               <>Welcome, <span className="text-wc-blue-500">{user.username}</span></>
             ) : (
@@ -127,7 +127,7 @@ export default async function DashboardPage() {
             { label: 'Matches Played', value: `${completedGroupMatches}`, sub: 'group stage' },
           ].map(({ label, value, sub }) => (
             <div key={label} className="card">
-              <div className="text-4xl font-black text-gray-900 tabular-nums leading-none">{value}</div>
+              <div className="text-4xl font-bold text-gray-900 tabular-nums leading-none">{value}</div>
               <div className="text-gray-500 text-xs font-bold uppercase tracking-wider mt-3">{label}</div>
               <div className="text-gray-400 text-xs mt-0.5">{sub}</div>
             </div>
@@ -140,7 +140,7 @@ export default async function DashboardPage() {
             { label: 'Matches Played', value: `${completedGroupMatches}`, sub: 'group stage' },
           ].map(({ label, value, sub }) => (
             <div key={label} className="card">
-              <div className="text-4xl font-black text-gray-900 tabular-nums leading-none">{value}</div>
+              <div className="text-4xl font-bold text-gray-900 tabular-nums leading-none">{value}</div>
               <div className="text-gray-500 text-xs font-bold uppercase tracking-wider mt-3">{label}</div>
               <div className="text-gray-400 text-xs mt-0.5">{sub}</div>
             </div>
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
           {/* Progress */}
           <div className="card space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-black text-gray-900">Group Stage Picks</h3>
+              <h3 className="font-bold text-gray-900">Group Stage Picks</h3>
               <span className="text-gray-400 text-sm tabular-nums">{matchPicksCount}/{totalMatches}</span>
             </div>
             <div>
@@ -180,7 +180,7 @@ export default async function DashboardPage() {
           <div className="card relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-wc-gold-400" />
             <div className="flex items-start justify-between mb-4">
-              <h3 className="font-black text-gray-900">Champion Pick</h3>
+              <h3 className="font-bold text-gray-900">Champion Pick</h3>
               <span className="text-wc-gold-500 text-xs font-bold">{SCORING.final} pts</span>
             </div>
 
@@ -192,7 +192,7 @@ export default async function DashboardPage() {
                   className="w-14 h-10 object-cover rounded-lg shadow-sm flex-shrink-0 border border-gray-200"
                 />
                 <div>
-                  <div className="text-xl font-black text-gray-900">{championPick}</div>
+                  <div className="text-xl font-bold text-gray-900">{championPick}</div>
                   <div className="text-gray-400 text-xs mt-0.5">FIFA Rank #{championMeta.fifaRank}</div>
                 </div>
               </div>
@@ -211,10 +211,9 @@ export default async function DashboardPage() {
       ) : (
         /* Guest CTA */
         <div className="card relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-wc-blue-500 via-wc-green-500 to-wc-red-500" />
           <div className="flex flex-col sm:flex-row items-center gap-6 py-2">
             <div className="flex-1">
-              <h3 className="font-black text-gray-900 text-lg">Join the pool and make your picks</h3>
+              <h3 className="font-bold text-gray-900 text-lg">Join the pool and make your picks</h3>
               <p className="text-gray-500 text-sm mt-1">
                 Predict every match, fill your bracket, and compete for the prize pool.
               </p>
@@ -235,8 +234,7 @@ export default async function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="eyebrow mb-1">Real Results</p>
-            <h2 className="text-xl font-black text-gray-900">Group Standings</h2>
+            <h2 className="text-xl font-bold text-gray-900">Group Standings</h2>
           </div>
           <Link href="/app/scores" className="text-wc-blue-500 hover:text-wc-blue-600 text-xs font-bold transition-colors">
             Live scores →
@@ -245,8 +243,7 @@ export default async function DashboardPage() {
 
         {!tournamentStarted ? (
           <div className="card text-center py-10">
-            <div className="text-3xl mb-3">⚽</div>
-            <p className="font-black text-gray-900">Tournament kicks off June 11</p>
+            <p className="font-bold text-gray-900">Tournament kicks off June 11</p>
             <p className="text-gray-400 text-sm mt-1">Standings will appear once matches are played</p>
           </div>
         ) : (
@@ -254,7 +251,7 @@ export default async function DashboardPage() {
             {groupStandings.map(({ id, name, rows }) => (
               <div key={id} className="card p-0 overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-widest text-gray-500">{name}</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-gray-500">{name}</span>
                   <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                     <span className="w-4 text-center">P</span>
                     <span className="w-4 text-center">W</span>
@@ -288,7 +285,7 @@ export default async function DashboardPage() {
                         <span className="w-4 text-center text-gray-400">{row.w}</span>
                         <span className="w-4 text-center text-gray-400">{row.d}</span>
                         <span className="w-4 text-center text-gray-400">{row.l}</span>
-                        <span className={`w-6 text-center font-black ${ptsColor}`}>{row.pts}</span>
+                        <span className={`w-6 text-center font-bold ${ptsColor}`}>{row.pts}</span>
                       </div>
                     </div>
                   );
@@ -302,7 +299,7 @@ export default async function DashboardPage() {
       {/* ─── Leaderboard ─── */}
       <div className="card">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-black text-gray-900">Leaderboard</h3>
+          <h3 className="font-bold text-gray-900">Leaderboard</h3>
           <Link href="/app/standings"
             className="text-wc-blue-500 hover:text-wc-blue-600 text-xs font-bold transition-colors">
             Full standings →
@@ -333,7 +330,7 @@ export default async function DashboardPage() {
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       isMe ? 'bg-wc-blue-500/10 border border-wc-blue-200' : 'bg-gray-100 border border-gray-200'
                     }`}>
-                      <span className={`text-[11px] font-black uppercase leading-none ${
+                      <span className={`text-[11px] font-bold uppercase leading-none ${
                         isMe ? 'text-wc-blue-500' : 'text-gray-500'
                       }`}>
                         {entryLabel.charAt(0)}
@@ -354,7 +351,7 @@ export default async function DashboardPage() {
                       t.trophyImage ? (
                         <img key={i} src={t.trophyImage} alt={t.poolName} title={`${t.poolName} ${t.year}`} className="w-5 h-5 object-contain flex-shrink-0" />
                       ) : (
-                        <span key={i} title={`${t.poolName} ${t.year}`} className="text-base leading-none">🏆</span>
+                        <span key={i} title={`${t.poolName} ${t.year}`}><TrophyIcon className="w-4 h-4 text-wc-gold-400" /></span>
                       )
                     ))}
                     {entry.isAdmin && (
@@ -364,7 +361,7 @@ export default async function DashboardPage() {
                     )}
                     {isMe && <span className="text-xs text-gray-400 font-normal">(you)</span>}
                   </span>
-                  <span className={`font-black tabular-nums ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
+                  <span className={`font-bold tabular-nums ${isMe ? 'text-wc-blue-600' : 'text-gray-900'}`}>
                     {entry.score}
                     <span className="text-gray-400 text-xs font-normal ml-1">pts</span>
                   </span>

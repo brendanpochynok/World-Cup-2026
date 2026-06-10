@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ALL_TEAMS } from '@/lib/worldcup-data';
 import type { MeStats } from '@/app/api/me/stats/route';
 import type { PoolWinEntry } from '@/app/api/players/[username]/trophies/route';
+import TrophyIcon from '@/components/TrophyIcon';
 
 interface ProfileData {
   username: string;
@@ -202,14 +203,13 @@ export default function ProfilePage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <p className="eyebrow mb-2">Account</p>
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-3xl font-black text-gray-900">Your Profile</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Your Profile</h1>
           {trophies.map((t, i) => (
             t.trophyImage ? (
               <img key={i} src={t.trophyImage} alt={t.poolName} title={`${t.poolName} ${t.year}`} className="w-9 h-9 object-contain flex-shrink-0" />
             ) : (
-              <span key={i} title={`${t.poolName} ${t.year}`} className="text-3xl leading-none">🏆</span>
+              <span key={i} title={`${t.poolName} ${t.year}`}><TrophyIcon className="w-8 h-8 text-wc-gold-400" /></span>
             )
           ))}
           {profile && (
@@ -224,7 +224,7 @@ export default function ProfilePage() {
       {stats && (
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-black text-gray-900 text-lg">Your Stats</h2>
+            <h2 className="font-bold text-gray-900 text-lg">Your Stats</h2>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
               #{stats.rank} of {stats.totalPlayers}
             </span>
@@ -232,24 +232,24 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-3 py-3">
               <div className="text-[10px] font-bold text-wc-blue-500 uppercase tracking-wider mb-0.5">Rank</div>
-              <div className="text-2xl font-black text-wc-blue-600">#{stats.rank}</div>
+              <div className="text-2xl font-bold text-wc-blue-600">#{stats.rank}</div>
               <div className="text-[10px] text-wc-blue-400 mt-0.5">of {stats.totalPlayers} players</div>
             </div>
             <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-3 py-3">
               <div className="text-[10px] font-bold text-wc-gold-600 uppercase tracking-wider mb-0.5">Score</div>
-              <div className="text-2xl font-black text-wc-gold-600">{stats.score}</div>
+              <div className="text-2xl font-bold text-wc-gold-600">{stats.score}</div>
               <div className="text-[10px] text-wc-gold-400 mt-0.5">points</div>
             </div>
             <div className="rounded-xl bg-wc-green-50 border border-wc-green-200 px-3 py-3">
               <div className="text-[10px] font-bold text-wc-green-600 uppercase tracking-wider mb-0.5">Group picks</div>
-              <div className="text-2xl font-black text-wc-green-600">{stats.groupCorrect}</div>
+              <div className="text-2xl font-bold text-wc-green-600">{stats.groupCorrect}</div>
               <div className="text-[10px] text-wc-green-500 mt-0.5">
                 correct · {stats.groupWrong} wrong
               </div>
             </div>
             <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">
               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Bracket</div>
-              <div className="text-2xl font-black text-gray-700">{stats.bracketPicksCount}</div>
+              <div className="text-2xl font-bold text-gray-700">{stats.bracketPicksCount}</div>
               <div className="text-[10px] text-gray-400 mt-0.5">picks made</div>
             </div>
           </div>
@@ -259,7 +259,7 @@ export default function ProfilePage() {
       {/* ── Trophy cabinet ── */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-black text-gray-900 text-lg">Trophy Cabinet</h2>
+          <h2 className="font-bold text-gray-900 text-lg">Trophy Cabinet</h2>
           {trophies.length > 0 && (
             <span className="text-xs font-bold text-wc-gold-600 uppercase tracking-wider">
               {trophies.length} {trophies.length === 1 ? 'trophy' : 'trophies'}
@@ -282,10 +282,10 @@ export default function ProfilePage() {
                     className="w-16 h-16 object-contain"
                   />
                 ) : (
-                  <span className="text-4xl">🏆</span>
+                  <TrophyIcon className="w-12 h-12 text-wc-gold-400" />
                 )}
                 <div>
-                  <p className="text-xs font-black text-wc-gold-700 leading-tight">{trophy.poolName}</p>
+                  <p className="text-xs font-bold text-wc-gold-700 leading-tight">{trophy.poolName}</p>
                   <p className="text-[10px] text-wc-gold-500 mt-0.5">
                     {trophy.position === 1 ? '1st' : trophy.position === 2 ? '2nd' : '3rd'} place · {trophy.year}
                   </p>
@@ -298,14 +298,14 @@ export default function ProfilePage() {
 
       {/* ── Profile card ── */}
       <form onSubmit={handleProfileSave} className="card space-y-6">
-        <h2 className="font-black text-gray-900 text-lg">Profile</h2>
+        <h2 className="font-bold text-gray-900 text-lg">Profile</h2>
 
         {/* Avatar */}
         <div className="flex items-center gap-5">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-dashed border-gray-300 hover:border-wc-blue-400 transition-colors flex-shrink-0 group focus:outline-none focus:ring-2 focus:ring-wc-blue-400"
+            className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 hover:border-wc-blue-400 transition-colors flex-shrink-0 group focus:outline-none focus:ring-2 focus:ring-wc-blue-400"
           >
             {avatarPreview ? (
               <>
@@ -409,7 +409,7 @@ export default function ProfilePage() {
 
       {/* ── Account info ── */}
       <div className="card space-y-4">
-        <h2 className="font-black text-gray-900 text-lg">Account</h2>
+        <h2 className="font-bold text-gray-900 text-lg">Account</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -425,7 +425,7 @@ export default function ProfilePage() {
 
       {/* ── Change password ── */}
       <form onSubmit={handlePasswordChange} className="card space-y-4">
-        <h2 className="font-black text-gray-900 text-lg">Change password</h2>
+        <h2 className="font-bold text-gray-900 text-lg">Change password</h2>
 
         <div>
           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">

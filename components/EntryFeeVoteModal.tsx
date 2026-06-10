@@ -68,13 +68,12 @@ export default function EntryFeeVoteModal({ playerCount }: Props) {
 
       <div role="dialog" aria-modal="true" aria-label="Entry fee vote"
         className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-50 p-0 sm:p-4">
-        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
+        <div className="bg-white rounded-t-xl sm:rounded-xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
 
           {/* Header */}
           <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between gap-4">
             <div>
-              <p className="eyebrow mb-1">Pool Announcement</p>
-              <h2 className="text-xl font-black text-gray-900">Vote on the entry fee</h2>
+              <h2 className="text-xl font-bold text-gray-900">Vote on the entry fee</h2>
               <p className="text-gray-500 text-sm mt-1">
                 Help decide what everyone pays to enter the pool.
               </p>
@@ -91,8 +90,10 @@ export default function EntryFeeVoteModal({ playerCount }: Props) {
             /* Post-vote: show current tallies */
             <div className="px-6 py-6 space-y-4">
               <div className="text-center">
-                <div className="text-3xl mb-2">✅</div>
-                <p className="font-black text-gray-900">Vote recorded!</p>
+                <svg className="w-9 h-9 text-wc-green-500 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <p className="font-bold text-gray-900">Vote recorded!</p>
                 <p className="text-gray-500 text-sm mt-1">Here&apos;s where the pool stands:</p>
               </div>
               {tallies && (
@@ -131,7 +132,7 @@ export default function EntryFeeVoteModal({ playerCount }: Props) {
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}>
                     <div className="flex items-center justify-between">
-                      <span className={`font-black text-base ${isSelected ? 'text-wc-blue-600' : 'text-gray-900'}`}>
+                      <span className={`font-bold text-base ${isSelected ? 'text-wc-blue-600' : 'text-gray-900'}`}>
                         {label}
                       </span>
                       {isSelected && (
@@ -144,15 +145,15 @@ export default function EntryFeeVoteModal({ playerCount }: Props) {
                       <div className="grid grid-cols-3 gap-2 mt-2.5">
                         <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-1.5">
                           <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Total Pot</div>
-                          <div className="text-sm font-black text-gray-900 tabular-nums">{fmt(pot)}</div>
+                          <div className="text-sm font-bold text-gray-900 tabular-nums">{fmt(pot)}</div>
                         </div>
                         <div className="rounded-lg bg-wc-gold-50 border border-wc-gold-200 px-2.5 py-1.5">
                           <div className="text-[9px] font-bold uppercase tracking-wider text-wc-gold-600">1st · 75%</div>
-                          <div className="text-sm font-black text-wc-gold-600 tabular-nums">{fmt(Math.floor(pot * 0.75))}</div>
+                          <div className="text-sm font-bold text-wc-gold-600 tabular-nums">{fmt(Math.floor(pot * 0.75))}</div>
                         </div>
                         <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-1.5">
                           <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">2nd · 25%</div>
-                          <div className="text-sm font-black text-gray-700 tabular-nums">{fmt(Math.floor(pot * 0.25))}</div>
+                          <div className="text-sm font-bold text-gray-700 tabular-nums">{fmt(Math.floor(pot * 0.25))}</div>
                         </div>
                       </div>
                     ) : (

@@ -319,8 +319,7 @@ export default function PicksPage() {
       {/* ─── Page Header ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="eyebrow mb-1">FIFA World Cup 2026™</p>
-          <h1 className="text-3xl font-black text-gray-900">My Picks</h1>
+          <h1 className="text-3xl font-bold text-gray-900">My Picks</h1>
           <p className="text-gray-500 text-sm mt-1.5">
             <span className="text-gray-900 font-semibold">{pickedMatches}</span>
             <span className="text-gray-400">/{totalMatches}</span>
@@ -385,7 +384,7 @@ export default function PicksPage() {
       {/* ─── Group Stage ─── */}
       <section>
         <div className="mb-5">
-          <h2 className="text-xl font-black text-gray-900">Group Stage</h2>
+          <h2 className="text-xl font-bold text-gray-900">Group Stage</h2>
           <p className="text-gray-400 text-xs mt-0.5">
             Click any group to pick match results · Top 2 + 8 best 3rd-place advance
           </p>
@@ -415,7 +414,7 @@ export default function PicksPage() {
       <section>
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-5">
           <div>
-            <h2 className="text-xl font-black text-gray-900">Knockout Bracket</h2>
+            <h2 className="text-xl font-bold text-gray-900">Knockout Bracket</h2>
             <p className="text-gray-400 text-xs mt-0.5">
               March Madness style · R32={SCORING.r32} · R16={SCORING.r16} · QF={SCORING.qf} · SF={SCORING.sf} · Final={SCORING.final} pts
             </p>
@@ -423,7 +422,7 @@ export default function PicksPage() {
           <BracketLockBadge />
         </div>
 
-        <div className={`bg-white border rounded-2xl overflow-x-auto shadow-sm ${isBracketLocked() ? 'border-gray-300' : 'border-gray-200'}`}>
+        <div className={`bg-white border rounded-xl overflow-x-auto shadow-sm ${isBracketLocked() ? 'border-gray-300' : 'border-gray-200'}`}>
           <KnockoutBracket
             picks={bracketPicks}
             onChange={handleBracketChange}
