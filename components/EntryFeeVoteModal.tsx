@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { calculatePayouts } from '@/lib/payouts';
 
 interface Props {
   playerCount: number;
@@ -149,11 +150,11 @@ export default function EntryFeeVoteModal({ playerCount }: Props) {
                         </div>
                         <div className="rounded-lg bg-wc-gold-50 border border-wc-gold-200 px-2.5 py-1.5">
                           <div className="text-[11px] font-bold text-wc-gold-600">1st · 75%</div>
-                          <div className="text-sm font-bold text-wc-gold-600 tabular-nums">{fmt(Math.floor(pot * 0.75))}</div>
+                          <div className="text-sm font-bold text-wc-gold-600 tabular-nums">{fmt(calculatePayouts(pot)[0])}</div>
                         </div>
                         <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-1.5">
                           <div className="text-[11px] font-bold text-gray-400">2nd · 25%</div>
-                          <div className="text-sm font-bold text-gray-700 tabular-nums">{fmt(Math.floor(pot * 0.25))}</div>
+                          <div className="text-sm font-bold text-gray-700 tabular-nums">{fmt(calculatePayouts(pot)[1])}</div>
                         </div>
                       </div>
                     ) : (

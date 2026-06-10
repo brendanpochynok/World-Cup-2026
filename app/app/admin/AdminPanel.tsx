@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { GROUP_MATCHES, GROUPS, ALL_TEAMS, BRACKET_ROUNDS } from '@/lib/worldcup-data';
+import { calculatePayouts } from '@/lib/payouts';
 import TrophyIcon from '@/components/TrophyIcon';
 
 interface MatchResultRow {
@@ -321,6 +322,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
   }
 
   const totalPool = (parseFloat(feeInput) || 0) * playerCount;
+  const [prize1st, prize2nd] = calculatePayouts(totalPool);
 
   // ── render ─────────────────────────────────────────────────────────────────
 
@@ -671,11 +673,11 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
                 </div>
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>1st place (75%)</span>
-                  <span className="font-bold text-wc-gold-600">${Math.floor(totalPool * 0.75).toLocaleString()}</span>
+                  <span className="font-bold text-wc-gold-600">${prize1st.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>2nd place (25%)</span>
-                  <span className="font-bold text-gray-600">${Math.floor(totalPool * 0.25).toLocaleString()}</span>
+                  <span className="font-bold text-gray-600">${prize2nd.toLocaleString()}</span>
                 </div>
               </div>
             )}
