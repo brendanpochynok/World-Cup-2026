@@ -14,8 +14,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { username: string } }
 ) {
+  // Route params arrive URL-encoded; decode for emoji/special-char usernames
   const user = await prisma.user.findUnique({
-    where: { username: params.username },
+    where: { username: decodeURIComponent(params.username) },
     select: { id: true },
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });

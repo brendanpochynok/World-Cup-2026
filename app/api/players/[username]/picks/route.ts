@@ -28,7 +28,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { username: string } }
 ) {
-  const { username } = params;
+  // Route params arrive URL-encoded; decode for emoji/special-char usernames
+  const username = decodeURIComponent(params.username);
 
   const user = await prisma.user.findUnique({
     where: { username },

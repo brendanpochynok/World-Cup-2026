@@ -37,11 +37,14 @@ export default async function PlayerProfilePage({
 }: {
   params: { username: string };
 }) {
+  // Route params arrive URL-encoded; emoji/special chars in usernames
+  // (e.g. flag emoji) won't match the DB without decoding
+  const username = decodeURIComponent(params.username);
   const sessionUser = await getSessionUser();
-  const isOwnProfile = sessionUser?.username === params.username;
+  const isOwnProfile = sessionUser?.username === username;
 
   const user = await prisma.user.findUnique({
-    where: { username: params.username },
+    where: { username },
     include: {
       matchPicks: true,
       bracketPicks: true,
