@@ -1,0 +1,27 @@
+{
+  "name": "World Cup 2026 Pool",
+  "short_name": "WC26 Pool",
+  "description": "Pick every match, fill your bracket, and compete with friends for the pot.",
+  "start_url": "/app/dashboard",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#1d4ed8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/trionda-ball/trionda-ball.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/trionda-ball/trionda-ball.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["games", "sports"],
+  "lang": "en-US"
+}
