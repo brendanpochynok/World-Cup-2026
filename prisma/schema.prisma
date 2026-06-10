@@ -25,6 +25,7 @@ model User {
   tiebreakerPicks TiebreakerPick[]
   poolWins        PoolWin[]
   rankSnapshots   RankSnapshot[]
+  feeVote         FeeVote?
 }
 
 model MatchPick {
@@ -90,6 +91,14 @@ model RankSnapshot {
   score  Int
 
   @@unique([userId, date])
+}
+
+model FeeVote {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id])
+  choice    String // "10" | "20" | "none"
+  createdAt DateTime @default(now())
 }
 
 model PoolWin {

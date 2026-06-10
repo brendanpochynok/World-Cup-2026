@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { GROUP_MATCHES, GROUPS, SCORING, getTeamMeta, getFlagUrl, computeGroupStandings } from '@/lib/worldcup-data';
 import { calculateTotalScore } from '@/lib/scoring';
 import Link from 'next/link';
+import EntryFeeVoteModal from '@/components/EntryFeeVoteModal';
 
 function envAdminUsernames(): Set<string> {
   const raw = process.env.ADMIN_USERNAME ?? '';
@@ -88,6 +89,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8 max-w-5xl">
+
+      {/* Entry fee vote popup — shows until the user casts a vote */}
+      {user && <EntryFeeVoteModal playerCount={allUsers.length} />}
 
       {/* ─── Header ─── */}
       <div className="flex items-end justify-between gap-4">
