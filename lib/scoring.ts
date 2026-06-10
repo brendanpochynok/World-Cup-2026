@@ -17,14 +17,14 @@ export interface BracketPickResult {
   correct: boolean;
 }
 
-// +1 correct pick, 0 if result was a draw (regardless of pick), -1 if totally wrong
+// +1 correct, 0 if result was a draw (but you picked a side), -1 if totally wrong
 export function calculateMatchPickPoints(
   pick: string,
   actualResult: string | null
 ): number {
   if (!actualResult) return 0;
-  if (actualResult === 'draw') return 0; // draws always score 0 — rules page
   if (pick === actualResult) return SCORING.groupCorrect;
+  if (actualResult === 'draw') return 0; // picked a side but match drew — no penalty
   return SCORING.groupWrong;
 }
 
