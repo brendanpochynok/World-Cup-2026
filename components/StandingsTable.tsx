@@ -120,11 +120,6 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                             </svg>
                           )}
                         </Link>
-                        {u.displayName && (
-                          <span className="block text-[11px] text-gray-400 font-normal leading-tight">
-                            @{u.username}
-                          </span>
-                        )}
                       </div>
                       {u.isMe && (
                         <span className="tag bg-wc-blue-500/10 text-wc-blue-600 border border-wc-blue-200">
