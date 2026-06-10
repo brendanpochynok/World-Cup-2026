@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
 import { ALL_TEAMS } from '@/lib/worldcup-data';
-import type { MeStats } from '@/app/api/me/stats/route';
-import type { PoolWinEntry } from '@/app/api/players/[username]/trophies/route';
-import TrophyIcon from '@/components/TrophyIcon';
+
+interface BreakdownData {
+  groupCorrect: number;
+  groupWrong: number;
+  groupDraw: number;
+  bracketHits: { round: string; hits: number; points: number }[];
+  total: number;
+}
 
 interface ProfileData {
   username: string;
@@ -43,8 +47,7 @@ function resizeImageToDataUrl(file: File): Promise<string> {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [stats, setStats] = useState<MeStats | null>(null);
-  const [trophies, setTrophies] = useState<PoolWinEntry[]>([]);
+  const [breakdown, setBreakdown] = useState<BreakdownData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Profile form state
@@ -67,19 +70,14 @@ export default function ProfilePage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/profile').then((r) => r.json()),
-      fetch('/api/me/stats').then((r) => r.json()).catch(() => null),
-    ]).then(([data, statsData]: [ProfileData, MeStats | null]) => {
-      setProfile(data);
-      setDisplayName(data.displayName ?? '');
-      setFavoriteTeam(data.favoriteTeam ?? '');
-      setAvatarPreview(data.avatarUrl);
-      if (statsData && 'score' in statsData) setStats(statsData);
+      fetch('/api/picks/breakdown').then((r) => r.json()).catch(() => null),
+    ]).then(([profileData, breakdownData]: [ProfileData, BreakdownData | null]) => {
+      setProfile(profileData);
+      setDisplayName(profileData.displayName ?? '');
+      setFavoriteTeam(profileData.favoriteTeam ?? '');
+      setAvatarPreview(profileData.avatarUrl);
+      if (breakdownData) setBreakdown(breakdownData);
       setLoading(false);
-      // Load trophies after we know the username
-      fetch(`/api/players/${data.username}/trophies`)
-        .then((r) => r.json())
-        .then((j) => { if (j.wins) setTrophies(j.wins); })
-        .catch(() => {});
     }).catch(() => setLoading(false));
   }, []);
 
@@ -203,109 +201,20 @@ export default function ProfilePage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-3xl font-bold text-gray-900">Your Profile</h1>
-          {trophies.map((t, i) => (
-            t.trophyImage ? (
-              <img key={i} src={t.trophyImage} alt={t.poolName} title={`${t.poolName} ${t.year}`} className="w-9 h-9 object-contain flex-shrink-0" />
-            ) : (
-              <span key={i} title={`${t.poolName} ${t.year}`}><TrophyIcon className="w-8 h-8 text-wc-gold-400" /></span>
-            )
-          ))}
-          {profile && (
-            <Link href={`/app/players/${profile.username}`} className="text-xs font-semibold text-wc-blue-500 hover:underline ml-1">
-              View public profile
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* ── Stats card ── */}
-      {stats && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-900 text-lg">Your Stats</h2>
-            <span className="text-xs font-bold text-gray-400">
-              #{stats.rank} of {stats.totalPlayers}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-3 py-3">
-              <div className="text-[11px] font-bold text-wc-blue-500 mb-0.5">Rank</div>
-              <div className="text-2xl font-bold text-wc-blue-600">#{stats.rank}</div>
-              <div className="text-[11px] text-wc-blue-400 mt-0.5">of {stats.totalPlayers} players</div>
-            </div>
-            <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-3 py-3">
-              <div className="text-[11px] font-bold text-wc-gold-600 mb-0.5">Score</div>
-              <div className="text-2xl font-bold text-wc-gold-600">{stats.score}</div>
-              <div className="text-[11px] text-wc-gold-400 mt-0.5">points</div>
-            </div>
-            <div className="rounded-xl bg-wc-green-50 border border-wc-green-200 px-3 py-3">
-              <div className="text-[11px] font-bold text-wc-green-600 mb-0.5">Group picks</div>
-              <div className="text-2xl font-bold text-wc-green-600">{stats.groupCorrect}</div>
-              <div className="text-[11px] text-wc-green-500 mt-0.5">
-                correct · {stats.groupWrong} wrong
-              </div>
-            </div>
-            <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">
-              <div className="text-[11px] font-bold text-gray-500 mb-0.5">Bracket</div>
-              <div className="text-2xl font-bold text-gray-700">{stats.bracketPicksCount}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">picks made</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Trophy cabinet ── */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-gray-900 text-lg">Trophy Cabinet</h2>
-          {trophies.length > 0 && (
-            <span className="text-xs font-bold text-wc-gold-600">
-              {trophies.length} {trophies.length === 1 ? 'trophy' : 'trophies'}
-            </span>
-          )}
-        </div>
-        {trophies.length === 0 ? (
-          <p className="text-sm text-gray-400">No trophies yet — win a pool to earn one.</p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {trophies.map((trophy) => (
-              <div
-                key={trophy.id}
-                className="rounded-xl border border-wc-gold-200 bg-wc-gold-50 px-3 py-4 flex flex-col items-center gap-2 text-center"
-              >
-                {trophy.trophyImage ? (
-                  <img
-                    src={trophy.trophyImage}
-                    alt={trophy.poolName}
-                    className="w-16 h-16 object-contain"
-                  />
-                ) : (
-                  <TrophyIcon className="w-12 h-12 text-wc-gold-400" />
-                )}
-                <div>
-                  <p className="text-xs font-bold text-wc-gold-700 leading-tight">{trophy.poolName}</p>
-                  <p className="text-[11px] text-wc-gold-500 mt-0.5">
-                    {trophy.position === 1 ? '1st' : trophy.position === 2 ? '2nd' : '3rd'} place · {trophy.year}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <p className="eyebrow mb-2">Account</p>
+        <h1 className="text-3xl font-black text-gray-900">Your Profile</h1>
       </div>
 
       {/* ── Profile card ── */}
       <form onSubmit={handleProfileSave} className="card space-y-6">
-        <h2 className="font-bold text-gray-900 text-lg">Profile</h2>
+        <h2 className="font-black text-gray-900 text-lg">Profile</h2>
 
         {/* Avatar */}
         <div className="flex items-center gap-5">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 hover:border-wc-blue-400 transition-colors flex-shrink-0 group focus:outline-none focus:ring-2 focus:ring-wc-blue-400"
+            className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-dashed border-gray-300 hover:border-wc-blue-400 transition-colors flex-shrink-0 group focus:outline-none focus:ring-2 focus:ring-wc-blue-400"
           >
             {avatarPreview ? (
               <>
@@ -324,7 +233,7 @@ export default function ProfilePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                <span className="text-[11px] text-gray-400 group-hover:text-wc-blue-400 transition-colors font-semibold">Upload</span>
+                <span className="text-[10px] text-gray-400 group-hover:text-wc-blue-400 transition-colors font-semibold">Upload</span>
               </div>
             )}
           </button>
@@ -360,7 +269,7 @@ export default function ProfilePage() {
 
         {/* Display name */}
         <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
             Display name
           </label>
           <input
@@ -376,7 +285,7 @@ export default function ProfilePage() {
 
         {/* Favorite team */}
         <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
             Favourite team
           </label>
           <select
@@ -409,26 +318,65 @@ export default function ProfilePage() {
 
       {/* ── Account info ── */}
       <div className="card space-y-4">
-        <h2 className="font-bold text-gray-900 text-lg">Account</h2>
+        <h2 className="font-black text-gray-900 text-lg">Account</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-[11px] text-gray-400 font-bold mb-0.5">Username</p>
+            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Username</p>
             <p className="text-sm font-semibold text-gray-900 font-mono">{profile.username}</p>
           </div>
           <div>
-            <p className="text-[11px] text-gray-400 font-bold mb-0.5">Member since</p>
+            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Member since</p>
             <p className="text-sm font-semibold text-gray-900">{memberSince}</p>
           </div>
         </div>
       </div>
 
+      {/* ── Points breakdown ── */}
+      {breakdown && breakdown.total !== undefined && (
+        <div className="card space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-black text-gray-900 text-lg">Points Breakdown</h2>
+            <span className="text-2xl font-black text-gray-900 tabular-nums">{breakdown.total} <span className="text-sm font-semibold text-gray-400">pts</span></span>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {breakdown.groupCorrect > 0 && (
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-gray-600">Correct group picks <span className="text-gray-400 font-normal">({breakdown.groupCorrect}×+1)</span></span>
+                <span className="font-bold text-wc-green-600">+{breakdown.groupCorrect}</span>
+              </div>
+            )}
+            {breakdown.groupWrong > 0 && (
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-gray-600">Wrong group picks <span className="text-gray-400 font-normal">({breakdown.groupWrong}×−1)</span></span>
+                <span className="font-bold text-wc-red-500">−{breakdown.groupWrong}</span>
+              </div>
+            )}
+            {breakdown.groupDraw > 0 && (
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-gray-600">Picked winner, match drew <span className="text-gray-400 font-normal">({breakdown.groupDraw}×0)</span></span>
+                <span className="font-semibold text-gray-400">0</span>
+              </div>
+            )}
+            {breakdown.bracketHits.map((r) => (
+              <div key={r.round} className="flex justify-between py-2.5 text-sm">
+                <span className="text-gray-600">{r.round} <span className="text-gray-400 font-normal">({r.hits} hit{r.hits !== 1 ? 's' : ''})</span></span>
+                <span className="font-bold text-wc-blue-600">+{r.points}</span>
+              </div>
+            ))}
+            {breakdown.total === 0 && (
+              <p className="text-gray-400 text-sm py-2">No points yet — results will appear after matches are played.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Change password ── */}
       <form onSubmit={handlePasswordChange} className="card space-y-4">
-        <h2 className="font-bold text-gray-900 text-lg">Change password</h2>
+        <h2 className="font-black text-gray-900 text-lg">Change password</h2>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
             Current password
           </label>
           <input
@@ -442,7 +390,7 @@ export default function ProfilePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
             New password
           </label>
           <input
@@ -457,7 +405,7 @@ export default function ProfilePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
             Confirm new password
           </label>
           <input
