@@ -5,6 +5,9 @@ import { calculateTotalScore } from '@/lib/scoring';
 import Link from 'next/link';
 import EntryFeeVoteModal from '@/components/EntryFeeVoteModal';
 import TrophyIcon from '@/components/TrophyIcon';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = { title: 'Dashboard' };
 
 function envAdminUsernames(): Set<string> {
   const raw = process.env.ADMIN_USERNAME ?? '';

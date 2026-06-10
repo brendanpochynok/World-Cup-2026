@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Group, getGroupMatches, getTeamMeta, getFlagUrl,
   isMatchLocked, computeGroupStandings,
@@ -57,10 +57,31 @@ export default function GroupDetailModal({
   const hasAnyPick = pickedCount > 0;
   const hasPolymarket = matches.some((m) => oddsMap[m.matchId]?.source === 'polymarket');
 
-  const handleKey = useCallback((e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }, [onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const handleKey = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') { onClose(); return; }
+    // Focus trap: keep Tab cycling within the dialog
+    if (e.key === 'Tab' && dialogRef.current) {
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    }
+  }, [onClose]);
+
   useEffect(() => {
     document.addEventListener('keydown', handleKey);
     document.body.style.overflow = 'hidden';
+    const firstFocusable = dialogRef.current?.querySelector<HTMLElement>('button:not([disabled]), [href]');
+    firstFocusable?.focus();
     return () => { document.removeEventListener('keydown', handleKey); document.body.style.overflow = ''; };
   }, [handleKey]);
 
@@ -69,6 +90,7 @@ export default function GroupDetailModal({
       <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} aria-hidden="true" />
 
       <div role="dialog" aria-modal="true" aria-label={`${group.name} match picks`}
+        ref={dialogRef}
         className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-50 p-0 sm:p-4">
         <div className="bg-white rounded-t-xl sm:rounded-xl w-full sm:max-w-xl max-h-[92vh] flex flex-col shadow-2xl">
 

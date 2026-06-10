@@ -4,6 +4,10 @@ import { calculateTotalScore, calculateMaxPossibleScore } from '@/lib/scoring';
 import { updateRankSnapshots, getPreviousRanks } from '@/lib/rank-snapshots';
 import StandingsTable from '@/components/StandingsTable';
 import type { StandingsRow } from '@/components/StandingsTable';
+import StandingsLastUpdated from '@/components/StandingsLastUpdated';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = { title: 'Standings' };
 
 function envAdminUsernames(): Set<string> {
   const raw = process.env.ADMIN_USERNAME ?? '';
@@ -130,21 +134,22 @@ export default async function StandingsPage() {
     <div className="space-y-6 max-w-4xl">
 
       {/* ─── Header ─── */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Standings</h1>
-        <p className="text-gray-500 text-sm mt-1.5">
-          {finishedMatches} match{finishedMatches !== 1 ? 'es' : ''} completed
-          <span className="text-gray-300 mx-2">·</span>
-          {scores.length} player{scores.length !== 1 ? 's' : ''} in the pool
-          {totalPot > 0 && (
-            <>
-              <span className="text-gray-300 mx-2">·</span>
-              <span className="text-wc-gold-600 font-bold">${totalPot.toLocaleString()} prize pool</span>
-            </>
-          )}
-          <span className="text-gray-300 mx-2">·</span>
-          scores update automatically
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Standings</h1>
+          <p className="text-gray-500 text-sm mt-1.5">
+            {finishedMatches} match{finishedMatches !== 1 ? 'es' : ''} completed
+            <span className="text-gray-300 mx-2">·</span>
+            {scores.length} player{scores.length !== 1 ? 's' : ''} in the pool
+            {totalPot > 0 && (
+              <>
+                <span className="text-gray-300 mx-2">·</span>
+                <span className="text-wc-gold-600 font-bold">${totalPot.toLocaleString()} prize pool</span>
+              </>
+            )}
+          </p>
+        </div>
+        <StandingsLastUpdated />
       </div>
 
       {/* ─── Scoring Reference ─── */}

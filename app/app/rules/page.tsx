@@ -1,17 +1,14 @@
 import { prisma } from '@/lib/prisma';
 import { SCORING, BRACKET_ROUNDS, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
 import Link from 'next/link';
+import LocalDateTime from '@/components/LocalDateTime';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { title: 'How it works' };
 
 function fmt(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
-}
-
-function lockDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-  });
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -209,7 +206,7 @@ export default async function RulesPage() {
         </p>
 
         <InfoBox>
-          <strong>Bracket lock:</strong> All bracket picks freeze on <strong>{lockDate(BRACKET_LOCK_ISO)}</strong> when the first Round of 32 match kicks off. Make sure your bracket is complete before then — you won&apos;t be able to change anything after that.
+          <strong>Bracket lock:</strong> All bracket picks freeze on <strong><LocalDateTime iso={BRACKET_LOCK_ISO} /></strong> when the first Round of 32 match kicks off. Make sure your bracket is complete before then — you won&apos;t be able to change anything after that.
         </InfoBox>
       </Section>
 

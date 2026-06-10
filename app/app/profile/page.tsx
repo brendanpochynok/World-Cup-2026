@@ -1,6 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+
+interface BreakdownData {
+  groupCorrect: number;
+  groupWrong: number;
+  groupDraw: number;
+  bracketHits: { round: string; hits: number; points: number }[];
+  total: number;
+}
 import Link from 'next/link';
 import { ALL_TEAMS } from '@/lib/worldcup-data';
 import type { MeStats } from '@/app/api/me/stats/route';
@@ -44,6 +52,7 @@ function resizeImageToDataUrl(file: File): Promise<string> {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stats, setStats] = useState<MeStats | null>(null);
+  const [breakdown, setBreakdown] = useState<BreakdownData | null>(null);
   const [trophies, setTrophies] = useState<PoolWinEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,12 +77,14 @@ export default function ProfilePage() {
     Promise.all([
       fetch('/api/profile').then((r) => r.json()),
       fetch('/api/me/stats').then((r) => r.json()).catch(() => null),
-    ]).then(([data, statsData]: [ProfileData, MeStats | null]) => {
+      fetch('/api/picks/breakdown').then((r) => r.json()).catch(() => null),
+    ]).then(([data, statsData, breakdownData]: [ProfileData, MeStats | null, BreakdownData | null]) => {
       setProfile(data);
       setDisplayName(data.displayName ?? '');
       setFavoriteTeam(data.favoriteTeam ?? '');
       setAvatarPreview(data.avatarUrl);
       if (statsData && 'score' in statsData) setStats(statsData);
+      if (breakdownData && 'total' in breakdownData) setBreakdown(breakdownData);
       setLoading(false);
       // Load trophies after we know the username
       fetch(`/api/players/${data.username}/trophies`)
@@ -252,6 +263,42 @@ export default function ProfilePage() {
               <div className="text-2xl font-bold text-gray-700">{stats.bracketPicksCount}</div>
               <div className="text-[11px] text-gray-400 mt-0.5">picks made</div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Points breakdown ── */}
+      {breakdown && (breakdown.groupCorrect > 0 || breakdown.groupWrong > 0 || breakdown.groupDraw > 0 || breakdown.bracketHits.length > 0) && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-gray-900 text-lg">Points Breakdown</h2>
+            <span className="text-xl font-bold text-gray-900 tabular-nums">{breakdown.total} <span className="text-sm font-semibold text-gray-400">pts</span></span>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {breakdown.groupCorrect > 0 && (
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-gray-600">Correct group picks <span className="text-gray-400">({breakdown.groupCorrect}×+1)</span></span>
+                <span className="font-bold text-wc-green-600">+{breakdown.groupCorrect}</span>
+              </div>
+            )}
+            {breakdown.groupWrong > 0 && (
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-gray-600">Wrong group picks <span className="text-gray-400">({breakdown.groupWrong}×−1)</span></span>
+                <span className="font-bold text-wc-red-500">−{breakdown.groupWrong}</span>
+              </div>
+            )}
+            {breakdown.groupDraw > 0 && (
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-gray-600">Picked a side, match drew <span className="text-gray-400">({breakdown.groupDraw}×0)</span></span>
+                <span className="font-semibold text-gray-400">0</span>
+              </div>
+            )}
+            {breakdown.bracketHits.map((r) => (
+              <div key={r.round} className="flex justify-between py-2.5 text-sm">
+                <span className="text-gray-600">{r.round} <span className="text-gray-400">({r.hits} hit{r.hits !== 1 ? 's' : ''})</span></span>
+                <span className="font-bold text-wc-blue-600">+{r.points}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

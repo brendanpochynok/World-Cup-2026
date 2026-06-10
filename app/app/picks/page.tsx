@@ -104,16 +104,26 @@ export default function PicksPage() {
   }
 
   async function handleMatchPickChange(matchId: string, pick: string) {
+    const previous = matchPicks[matchId];
     setMatchPicks((prev) => ({ ...prev, [matchId]: pick }));
     setSaveStatus('saving');
+
+    const rollback = () => setMatchPicks((prev) => {
+      const next = { ...prev };
+      if (previous === undefined) delete next[matchId];
+      else next[matchId] = previous;
+      return next;
+    });
+
     try {
       const res = await fetch('/api/picks/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ matchId, pick }),
       });
-      res.ok ? showSaved() : showError();
+      if (res.ok) { showSaved(); } else { rollback(); showError(); }
     } catch {
+      rollback();
       showError();
     }
   }
