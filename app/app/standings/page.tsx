@@ -15,9 +15,10 @@ export const dynamic = 'force-dynamic';
 type UserScore = StandingsRow;
 
 const groupScoringRows = [
-  { label: 'Correct pick',   pts: '+1 pt',  positive: true  },
-  { label: 'Result is draw', pts: '0 pts',  positive: true  },
-  { label: 'Totally wrong',  pts: '−1 pt',  positive: false },
+  { label: 'Correct pick',          pts: '+1 pt', positive: true  },
+  { label: 'Result is draw',        pts: '0 pts',  positive: true  },
+  { label: 'Totally wrong',         pts: '−1 pt', positive: false },
+  { label: 'Picked draw, no draw',  pts: '−1 pt', positive: false },
 ] as const;
 
 const bracketScoringRows = [
@@ -152,7 +153,7 @@ export default async function StandingsPage() {
         <h3 className="eyebrow">Scoring System</h3>
         <div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Group Stage</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {groupScoringRows.map(({ label, pts, positive }) => (
               <div key={label}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl border ${
