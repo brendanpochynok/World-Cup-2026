@@ -1,18 +1,12 @@
 'use client';
 
-import { useEffect, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import {
   Group, getGroupMatches, getTeamMeta, getFlagUrl,
   isMatchLocked, computeGroupStandings,
 } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
-
-interface PickDistribution {
-  home: number;
-  draw: number;
-  away: number;
-  total: number;
-}
+import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
 interface GroupDetailModalProps {
   group: Group;
@@ -22,7 +16,7 @@ interface GroupDetailModalProps {
   oddsMap?: Record<string, MatchOdds>;
   kickoffTimes?: Record<string, string>;
   advancementScores?: Record<string, number>;
-  distributionMap?: Record<string, PickDistribution>;
+  distribution?: Record<string, PickDistribution>;
 }
 
 function shortenName(name: string): string {
@@ -50,7 +44,7 @@ function pct(p: number) { return `${Math.round(p * 100)}%`; }
 
 export default function GroupDetailModal({
   group, matchPicks, onPickChange, onClose,
-  oddsMap = {}, kickoffTimes = {}, advancementScores, distributionMap = {},
+  oddsMap = {}, kickoffTimes = {}, advancementScores, distribution = {},
 }: GroupDetailModalProps) {
   const matches = getGroupMatches(group.id);
   const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
@@ -63,34 +57,10 @@ export default function GroupDetailModal({
   const hasAnyPick = pickedCount > 0;
   const hasPolymarket = matches.some((m) => oddsMap[m.matchId]?.source === 'polymarket');
 
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  const handleKey = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') { onClose(); return; }
-    // Focus trap
-    if (e.key === 'Tab' && dialogRef.current) {
-      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault(); last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault(); first.focus();
-      }
-    }
-  }, [onClose]);
-
+  const handleKey = useCallback((e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }, [onClose]);
   useEffect(() => {
     document.addEventListener('keydown', handleKey);
     document.body.style.overflow = 'hidden';
-    // Move focus into dialog
-    const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled])'
-    );
-    firstFocusable?.focus();
     return () => { document.removeEventListener('keydown', handleKey); document.body.style.overflow = ''; };
   }, [handleKey]);
 
@@ -99,14 +69,13 @@ export default function GroupDetailModal({
       <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} aria-hidden="true" />
 
       <div role="dialog" aria-modal="true" aria-label={`${group.name} match picks`}
-        ref={dialogRef}
         className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-50 p-0 sm:p-4">
-        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-xl max-h-[92vh] flex flex-col shadow-2xl border border-gray-200">
+        <div className="bg-white rounded-t-xl sm:rounded-xl w-full sm:max-w-xl max-h-[92vh] flex flex-col shadow-2xl">
 
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0">
+          <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-xl flex-shrink-0">
             <div>
-              <h2 className="text-gray-900 font-black text-lg">{group.name}</h2>
+              <h2 className="text-gray-900 font-bold text-lg">{group.name}</h2>
               <p className="text-gray-400 text-xs mt-0.5">
                 {pickedCount}/{matches.length} picks · correct +1 · wrong −1
               </p>
@@ -125,7 +94,7 @@ export default function GroupDetailModal({
             {/* Standings */}
             <div className="rounded-xl border border-gray-200 overflow-hidden">
               <div className="bg-gray-50 px-3 py-2 flex items-center justify-between border-b border-gray-200">
-                <span className="text-gray-600 text-xs font-bold uppercase tracking-wider">Predicted Standings</span>
+                <span className="text-gray-600 text-xs font-bold">Predicted Standings</span>
                 {!hasAnyPick && <span className="text-gray-400 text-[11px]">Pick matches below to update</span>}
               </div>
               <table className="w-full text-xs">
@@ -154,7 +123,7 @@ export default function GroupDetailModal({
                           <div className="flex items-center gap-1.5">
                             <img src={getFlagUrl(meta.flag)} alt={row.team} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" />
                             <span className={`font-medium ${advances ? 'text-gray-900' : 'text-gray-500'}`}>{shortenName(row.team)}</span>
-                            {advances && row.pts > 0 && <span className="text-[10px] text-wc-blue-400 ml-0.5">↑</span>}
+                            {advances && row.pts > 0 && <span className="text-[11px] text-wc-blue-400 ml-0.5">↑</span>}
                           </div>
                         </td>
                         <td className="py-1.5 text-center text-gray-400">{row.p}</td>
@@ -167,7 +136,7 @@ export default function GroupDetailModal({
                   })}
                 </tbody>
               </table>
-              <div className="bg-gray-50 px-3 py-1.5 text-[10px] text-gray-400 border-t border-gray-100">
+              <div className="bg-gray-50 px-3 py-1.5 text-[11px] text-gray-400 border-t border-gray-100">
                 Top 2 advance · Best 8 third-place also advance · Ties broken by Polymarket odds
               </div>
             </div>
@@ -179,7 +148,6 @@ export default function GroupDetailModal({
               const oddsEntry = oddsMap[match.matchId];
               const probs = oddsEntry ?? null;
               const isPolymarket = oddsEntry?.source === 'polymarket';
-              const dist = distributionMap[match.matchId] ?? null;
               const homeMeta = getTeamMeta(match.home);
               const awayMeta = getTeamMeta(match.away);
 
@@ -202,9 +170,9 @@ export default function GroupDetailModal({
                     <div className="flex items-center gap-2">
                       <span className="truncate">{match.city}</span>
                       {isPolymarket && (
-                        <span className="text-[10px] bg-wc-blue-50 text-wc-blue-500 border border-wc-blue-200 px-1.5 py-0.5 rounded font-medium">Polymarket</span>
+                        <span className="text-[11px] bg-wc-blue-50 text-wc-blue-500 border border-wc-blue-200 px-1.5 py-0.5 rounded font-medium">Polymarket</span>
                       )}
-                      {locked && <span className="text-wc-red-500 font-semibold text-[10px] uppercase">Locked</span>}
+                      {locked && <span className="text-wc-red-500 font-semibold text-[11px] uppercase">Locked</span>}
                     </div>
                   </div>
 
@@ -227,50 +195,59 @@ export default function GroupDetailModal({
                       { key: 'home' as const, label: shortenName(match.home), prob: probs?.home ?? null },
                       { key: 'draw' as const, label: 'Draw',                  prob: probs?.draw ?? null },
                       { key: 'away' as const, label: shortenName(match.away), prob: probs?.away ?? null },
-                    ]).map(({ key, label, prob }) => {
-                      const distPct = dist && dist.total > 0 ? Math.round(dist[key] * 100) : null;
-                      return (
-                        <button key={key} disabled={locked}
-                          onClick={() => !locked && onPickChange(match.matchId, key)}
-                          className={`py-2.5 px-1 rounded-lg text-center transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-wc-blue-500 ${
-                            pick === key
-                              ? 'bg-wc-blue-500 text-white font-bold shadow-sm'
-                              : locked
-                              ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
-                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer'
-                          }`}>
-                          <div className="text-xs font-semibold truncate">{label}</div>
-                          {prob !== null && (
-                            <div className={`text-[13px] font-mono font-bold mt-0.5 ${pick === key ? 'text-white/70' : 'text-gray-400'}`}>
-                              {pct(prob)}
-                            </div>
-                          )}
-                          {locked && distPct !== null && (
-                            <div className={`text-[11px] font-semibold mt-0.5 ${pick === key ? 'text-white/60' : 'text-gray-400'}`}>
-                              {distPct}% picked
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
+                    ]).map(({ key, label, prob }) => (
+                      <button key={key} disabled={locked}
+                        onClick={() => !locked && onPickChange(match.matchId, key)}
+                        className={`py-2.5 px-1 rounded-lg text-center transition-all select-none ${
+                          pick === key
+                            ? 'bg-wc-blue-500 text-white font-bold shadow-sm'
+                            : locked
+                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer'
+                        }`}>
+                        <div className="text-xs font-semibold truncate">{label}</div>
+                        {prob !== null && (
+                          <div className={`text-sm font-mono font-bold mt-0.5 ${pick === key ? 'text-white/70' : 'text-gray-400'}`}>
+                            {pct(prob)}
+                          </div>
+                        )}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Pool distribution bar when locked */}
-                  {locked && dist && dist.total > 0 && (
-                    <div className="mt-3 space-y-1">
-                      <div className="flex h-1.5 rounded-full overflow-hidden gap-0.5">
-                        {(['home', 'draw', 'away'] as const).map((k) => {
-                          const w = Math.round(dist[k] * 100);
-                          if (w === 0) return null;
-                          return (
-                            <div key={k} style={{ width: `${w}%` }}
-                              className={`h-full rounded-sm ${k === 'home' ? 'bg-wc-blue-400' : k === 'draw' ? 'bg-gray-300' : 'bg-wc-red-400'}`} />
-                          );
-                        })}
+                  {/* Pool pick distribution — only shown after lock */}
+                  {(() => {
+                    const dist = distribution[match.matchId];
+                    if (!locked || !dist || dist.total === 0) return null;
+                    const items = [
+                      { key: 'home', label: shortenName(match.home), val: dist.home },
+                      { key: 'draw', label: 'Draw',                  val: dist.draw },
+                      { key: 'away', label: shortenName(match.away), val: dist.away },
+                    ];
+                    return (
+                      <div className="mt-3 pt-2.5 border-t border-gray-100">
+                        <div className="text-[11px] text-gray-400 font-semibold mb-2">
+                          Pool picks · {dist.total} {dist.total === 1 ? 'player' : 'players'}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {items.map(({ key, label, val }) => (
+                            <div key={key} className="text-center">
+                              <div className={`text-sm font-bold tabular-nums ${pick === key ? 'text-wc-blue-500' : 'text-gray-700'}`}>
+                                {Math.round(val * 100)}%
+                              </div>
+                              <div className="w-full h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${pick === key ? 'bg-wc-blue-400' : 'bg-gray-300'}`}
+                                  style={{ width: `${Math.round(val * 100)}%` }}
+                                />
+                              </div>
+                              <div className="text-[11px] text-gray-400 mt-1 truncate">{label}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <p className="text-[10px] text-gray-400 text-center">{dist.total} pool pick{dist.total !== 1 ? 's' : ''} submitted</p>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })}
