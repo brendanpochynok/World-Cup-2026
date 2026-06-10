@@ -2,7 +2,6 @@ import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isAdminUser } from '@/lib/admin-auth';
 import Navbar from '@/components/Navbar';
-import BottomNav from '@/components/BottomNav';
 
 export default async function AppLayout({
   children,
@@ -31,10 +30,9 @@ export default async function AppLayout({
         avatarUrl={profile?.avatarUrl}
         isAdmin={profile?.isAdmin ?? false}
       />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 sm:pb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
-      <BottomNav />
     </div>
   );
 }
