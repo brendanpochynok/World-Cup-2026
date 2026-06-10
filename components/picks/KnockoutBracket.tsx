@@ -1,6 +1,6 @@
 'use client';
 
-import { BRACKET_SLOTS, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
+import { BRACKET_SLOTS, SCORING, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
 
 interface KnockoutBracketProps {
   picks: Record<string, string>;
@@ -338,12 +338,11 @@ export default function KnockoutBracket({ picks, onChange, locked, allTeams, r32
 
         {/* Legend */}
         <div className="mt-4 flex flex-wrap gap-4 justify-center text-xs text-gray-400">
-          <span>R32 +2 pts</span>
-          <span>R16 +3 pts</span>
-          <span>QF +5 pts</span>
-          <span>SF +8 pts</span>
-          <span>Final +13 pts</span>
-          <span className="text-wc-gold-500 font-semibold">Champion +20 pts</span>
+          <span>R32 +{SCORING.r32} pt{SCORING.r32 !== 1 ? 's' : ''}</span>
+          <span>R16 +{SCORING.r16} pts</span>
+          <span>QF +{SCORING.qf} pts</span>
+          <span>SF +{SCORING.sf} pts</span>
+          <span className="text-wc-gold-500 font-semibold">Final +{SCORING.final} pts</span>
         </div>
       </div>
     </div>
