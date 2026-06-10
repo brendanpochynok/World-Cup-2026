@@ -26,12 +26,19 @@ interface TrophyRow {
   user: { username: string; displayName: string | null };
 }
 
+interface FeeVoteRow {
+  choice: string; // "10" | "20" | "none"
+  username: string;
+  displayName: string | null;
+}
+
 interface Props {
   matchResults: MatchResultRow[];
   bracketResults: BracketResultRow[];
   entryFee: number;
   playerCount: number;
   users: { username: string; displayName: string | null }[];
+  feeVotes: FeeVoteRow[];
 }
 
 type Tab = 'results' | 'bracket' | 'pool' | 'trophies';
@@ -100,7 +107,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export default function AdminPanel({ matchResults, bracketResults, entryFee, playerCount, users }: Props) {
+export default function AdminPanel({ matchResults, bracketResults, entryFee, playerCount, users, feeVotes }: Props) {
   const [tab, setTab] = useState<Tab>('results');
 
   // ── trophies state ────────────────────────────────────────────────────────
@@ -631,6 +638,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
 
       {/* ── Tab: Pool Config ── */}
       {tab === 'pool' && (
+        <div className="space-y-6">
         <div className="card max-w-sm space-y-5">
           <div>
             <h2 className="font-black text-gray-900 mb-1">Entry Fee</h2>
@@ -686,6 +694,50 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
               {feeSaving ? 'Saving…' : feeSaved ? '✓ Saved' : 'Save entry fee'}
             </button>
           </div>
+        </div>
+
+        {/* ── Entry fee vote results ── */}
+        <div className="card max-w-sm space-y-4">
+          <div>
+            <h2 className="font-black text-gray-900 mb-1">Entry Fee Vote</h2>
+            <p className="text-sm text-gray-500">
+              {feeVotes.length} of {playerCount} player{playerCount !== 1 ? 's' : ''} voted
+            </p>
+          </div>
+
+          {feeVotes.length === 0 ? (
+            <p className="text-sm text-gray-400 py-2">No votes yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {([
+                { choice: '10', label: '$10 entry' },
+                { choice: '20', label: '$20 entry' },
+                { choice: 'none', label: "Don't care" },
+              ] as const).map(({ choice, label }) => {
+                const voters = feeVotes.filter((v) => v.choice === choice);
+                const pct = Math.round((voters.length / feeVotes.length) * 100);
+                return (
+                  <div key={choice} className="rounded-xl border border-gray-200 px-4 py-3">
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="font-semibold text-gray-800">{label}</span>
+                      <span className="text-gray-500 tabular-nums">
+                        {voters.length} vote{voters.length !== 1 ? 's' : ''} · {pct}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full bg-wc-blue-500" style={{ width: `${Math.max(pct, 2)}%` }} />
+                    </div>
+                    {voters.length > 0 && (
+                      <p className="text-xs text-gray-400 mt-1.5">
+                        {voters.map((v) => v.displayName ?? v.username).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
         </div>
       )}
     </div>
