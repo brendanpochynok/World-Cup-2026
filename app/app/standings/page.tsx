@@ -5,6 +5,7 @@ import { updateRankSnapshots, getPreviousRanks } from '@/lib/rank-snapshots';
 import StandingsTable from '@/components/StandingsTable';
 import type { StandingsRow } from '@/components/StandingsTable';
 import StandingsLastUpdated from '@/components/StandingsLastUpdated';
+import { calculatePayouts } from '@/lib/payouts';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = { title: 'Standings' };
@@ -113,7 +114,7 @@ export default async function StandingsPage() {
   const entryFee = poolConfig?.entryFeePerPlayer ?? 0;
   const totalPot = entryFee * scores.length;
   if (totalPot > 0 && scores.length > 0) {
-    const payouts = [Math.floor(totalPot * 0.75), Math.floor(totalPot * 0.25)];
+    const payouts = calculatePayouts(totalPot);
     let pos = 0;
     while (pos < scores.length && pos < payouts.length) {
       let end = pos;

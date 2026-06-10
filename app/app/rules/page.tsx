@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { SCORING, BRACKET_ROUNDS, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
 import Link from 'next/link';
 import LocalDateTime from '@/components/LocalDateTime';
+import { calculatePayouts } from '@/lib/payouts';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -36,8 +37,7 @@ export default async function RulesPage() {
 
   const entryFee = poolConfig?.entryFeePerPlayer ?? 0;
   const totalPool = entryFee * playerCount;
-  const prize1st = Math.floor(totalPool * 0.75);
-  const prize2nd = Math.floor(totalPool * 0.25);
+  const [prize1st, prize2nd] = calculatePayouts(totalPool);
   const hasPrize = totalPool > 0;
 
   return (
