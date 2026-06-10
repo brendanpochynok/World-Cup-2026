@@ -108,11 +108,11 @@ export default async function DashboardPage() {
         </div>
         {user ? (
           <Link href="/app/picks" className="btn-primary text-sm whitespace-nowrap hidden sm:inline-flex">
-            Make Picks →
+            Make Picks
           </Link>
         ) : (
           <Link href="/register" className="btn-primary text-sm whitespace-nowrap hidden sm:inline-flex">
-            Join the Pool →
+            Join the Pool
           </Link>
         )}
       </div>
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
           ].map(({ label, value, sub }) => (
             <div key={label} className="card">
               <div className="text-4xl font-bold text-gray-900 tabular-nums leading-none">{value}</div>
-              <div className="text-gray-500 text-xs font-bold uppercase tracking-wider mt-3">{label}</div>
+              <div className="text-gray-500 text-xs font-bold mt-3">{label}</div>
               <div className="text-gray-400 text-xs mt-0.5">{sub}</div>
             </div>
           ))}
@@ -141,7 +141,7 @@ export default async function DashboardPage() {
           ].map(({ label, value, sub }) => (
             <div key={label} className="card">
               <div className="text-4xl font-bold text-gray-900 tabular-nums leading-none">{value}</div>
-              <div className="text-gray-500 text-xs font-bold uppercase tracking-wider mt-3">{label}</div>
+              <div className="text-gray-500 text-xs font-bold mt-3">{label}</div>
               <div className="text-gray-400 text-xs mt-0.5">{sub}</div>
             </div>
           ))}
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
               </div>
             </div>
             <Link href="/app/picks" className="btn-secondary text-sm block text-center">
-              {groupsDone ? 'Review picks' : 'Make picks →'}
+              {groupsDone ? 'Review picks' : 'Make picks'}
             </Link>
           </div>
 
@@ -204,7 +204,7 @@ export default async function DashboardPage() {
             )}
 
             <Link href="/app/picks" className="btn-secondary text-sm block text-center">
-              {championPick ? 'Change pick' : 'Pick champion →'}
+              {championPick ? 'Change pick' : 'Pick champion'}
             </Link>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default async function DashboardPage() {
             </div>
             <div className="flex gap-3 flex-shrink-0">
               <Link href="/register" className="btn-primary text-sm">
-                Register →
+                Register
               </Link>
               <Link href="/login" className="btn-secondary text-sm">
                 Sign in
@@ -237,7 +237,7 @@ export default async function DashboardPage() {
             <h2 className="text-xl font-bold text-gray-900">Group Standings</h2>
           </div>
           <Link href="/app/scores" className="text-wc-blue-500 hover:text-wc-blue-600 text-xs font-bold transition-colors">
-            Live scores →
+            Live scores
           </Link>
         </div>
 
@@ -251,8 +251,8 @@ export default async function DashboardPage() {
             {groupStandings.map(({ id, name, rows }) => (
               <div key={id} className="card p-0 overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-gray-500">{name}</span>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                  <span className="text-xs font-bold text-gray-500">{name}</span>
+                  <div className="flex items-center gap-2 text-[11px] text-gray-400 font-semibold">
                     <span className="w-4 text-center">P</span>
                     <span className="w-4 text-center">W</span>
                     <span className="w-4 text-center">D</span>
@@ -273,7 +273,7 @@ export default async function DashboardPage() {
                     idx === 2 ? 'text-amber-700' : 'text-gray-600';
                   return (
                     <div key={row.team} className={`flex items-center gap-2 px-4 py-2 ${bg}`}>
-                      <span className="text-[10px] text-gray-400 w-3 tabular-nums flex-shrink-0">{idx + 1}</span>
+                      <span className="text-[11px] text-gray-400 w-3 tabular-nums flex-shrink-0">{idx + 1}</span>
                       <img
                         src={getFlagUrl(meta.flag)}
                         alt={row.team}
@@ -302,7 +302,7 @@ export default async function DashboardPage() {
           <h3 className="font-bold text-gray-900">Leaderboard</h3>
           <Link href="/app/standings"
             className="text-wc-blue-500 hover:text-wc-blue-600 text-xs font-bold transition-colors">
-            Full standings →
+            Full standings
           </Link>
         </div>
 

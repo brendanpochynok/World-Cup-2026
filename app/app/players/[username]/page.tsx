@@ -146,7 +146,7 @@ export default async function PlayerProfilePage({
             )}
             {isOwnProfile && (
               <Link href="/app/profile" className="text-xs font-semibold text-wc-blue-500 hover:underline">
-                Edit profile →
+                Edit profile
               </Link>
             )}
           </div>
@@ -156,24 +156,24 @@ export default async function PlayerProfilePage({
       {/* Stats strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-3 py-3">
-          <div className="text-[10px] font-bold text-wc-blue-500 uppercase tracking-wider mb-0.5">Rank</div>
+          <div className="text-[11px] font-bold text-wc-blue-500 mb-0.5">Rank</div>
           <div className="text-2xl font-bold text-wc-blue-600">#{rank}</div>
-          <div className="text-[10px] text-wc-blue-400 mt-0.5">of {totalPlayers}</div>
+          <div className="text-[11px] text-wc-blue-400 mt-0.5">of {totalPlayers}</div>
         </div>
         <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-3 py-3">
-          <div className="text-[10px] font-bold text-wc-gold-600 uppercase tracking-wider mb-0.5">Score</div>
+          <div className="text-[11px] font-bold text-wc-gold-600 mb-0.5">Score</div>
           <div className="text-2xl font-bold text-wc-gold-600">{myScore}</div>
-          <div className="text-[10px] text-wc-gold-400 mt-0.5">points</div>
+          <div className="text-[11px] text-wc-gold-400 mt-0.5">points</div>
         </div>
         <div className="rounded-xl bg-wc-green-50 border border-wc-green-200 px-3 py-3">
-          <div className="text-[10px] font-bold text-wc-green-600 uppercase tracking-wider mb-0.5">Correct</div>
+          <div className="text-[11px] font-bold text-wc-green-600 mb-0.5">Correct</div>
           <div className="text-2xl font-bold text-wc-green-600">{correct}</div>
-          <div className="text-[10px] text-wc-green-500 mt-0.5">group picks</div>
+          <div className="text-[11px] text-wc-green-500 mt-0.5">group picks</div>
         </div>
         <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-3">
-          <div className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-0.5">Wrong</div>
+          <div className="text-[11px] font-bold text-red-400 mb-0.5">Wrong</div>
           <div className="text-2xl font-bold text-red-500">{wrong}</div>
-          <div className="text-[10px] text-red-300 mt-0.5">group picks</div>
+          <div className="text-[11px] text-red-300 mt-0.5">group picks</div>
         </div>
       </div>
 
@@ -191,7 +191,7 @@ export default async function PlayerProfilePage({
                 )}
                 <div>
                   <p className="text-xs font-bold text-wc-gold-700 leading-tight">{w.poolName}</p>
-                  <p className="text-[10px] text-wc-gold-500 mt-0.5">
+                  <p className="text-[11px] text-wc-gold-500 mt-0.5">
                     {w.position === 1 ? '1st' : w.position === 2 ? '2nd' : '3rd'} place · {w.year}
                   </p>
                 </div>
@@ -208,7 +208,7 @@ export default async function PlayerProfilePage({
           <div className="space-y-4">
             {Array.from(groupedPicks.entries()).sort().map(([group, picks]) => (
               <div key={group}>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Group {group}</p>
+                <p className="text-[11px] font-bold text-gray-400 mb-2">Group {group}</p>
                 <div className="space-y-1.5">
                   {picks.map((p) => {
                     const isCorrect = p.result && p.pick === p.result;
@@ -227,7 +227,7 @@ export default async function PlayerProfilePage({
                         <span className={`flex-1 font-semibold truncate ${p.pick === 'home' ? 'text-gray-900' : 'text-gray-400'}`}>{p.home}</span>
                         <span className="text-gray-300 font-bold flex-shrink-0">vs</span>
                         <span className={`flex-1 font-semibold truncate text-right ${p.pick === 'away' ? 'text-gray-900' : 'text-gray-400'}`}>{p.away}</span>
-                        <span className="text-[10px] font-bold text-gray-400 flex-shrink-0 w-8 text-right">
+                        <span className="text-[11px] font-bold text-gray-400 flex-shrink-0 w-8 text-right">
                           {p.pick === 'draw' ? 'Draw' : p.pick === 'home' ? p.home.split(' ')[0] : p.away.split(' ')[0]}
                         </span>
                       </div>
@@ -252,7 +252,7 @@ export default async function PlayerProfilePage({
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900 text-lg">Knockout Bracket</h2>
             {isOwnProfile && Date.now() < new Date(BRACKET_LOCK_ISO).getTime() && (
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-gray-400">
                 Only you can see this until brackets lock
               </span>
             )}

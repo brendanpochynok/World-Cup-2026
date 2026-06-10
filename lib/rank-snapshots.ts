@@ -11,8 +11,22 @@ export async function updateRankSnapshots(
   ranked: { userId: number; rank: number; score: number }[],
 ): Promise<void> {
   const date = todayUTC();
+
+  // Ranks only change when match results are entered, so most page views
+  // need no writes at all — compare against today's stored rows first.
+  const existing = await prisma.rankSnapshot.findMany({
+    where: { date },
+    select: { userId: true, rank: true, score: true },
+  });
+  const byUser = new Map(existing.map((e) => [e.userId, e]));
+  const stale = ranked.filter((r) => {
+    const cur = byUser.get(r.userId);
+    return !cur || cur.rank !== r.rank || cur.score !== r.score;
+  });
+  if (stale.length === 0) return;
+
   await Promise.all(
-    ranked.map((r) =>
+    stale.map((r) =>
       prisma.rankSnapshot.upsert({
         where: { userId_date: { userId: r.userId, date } },
         update: { rank: r.rank, score: r.score },

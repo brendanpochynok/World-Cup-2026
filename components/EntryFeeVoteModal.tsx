@@ -93,7 +93,7 @@ export default function EntryFeeVoteModal({ playerCount }: Props) {
                 <svg className="w-9 h-9 text-wc-green-500 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                <p className="font-bold text-gray-900">Vote recorded!</p>
+                <p className="font-bold text-gray-900">Vote recorded.</p>
                 <p className="text-gray-500 text-sm mt-1">Here&apos;s where the pool stands:</p>
               </div>
               {tallies && (
@@ -144,15 +144,15 @@ export default function EntryFeeVoteModal({ playerCount }: Props) {
                     {pot !== null ? (
                       <div className="grid grid-cols-3 gap-2 mt-2.5">
                         <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-1.5">
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Total Pot</div>
+                          <div className="text-[11px] font-bold text-gray-400">Total Pot</div>
                           <div className="text-sm font-bold text-gray-900 tabular-nums">{fmt(pot)}</div>
                         </div>
                         <div className="rounded-lg bg-wc-gold-50 border border-wc-gold-200 px-2.5 py-1.5">
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-wc-gold-600">1st · 75%</div>
+                          <div className="text-[11px] font-bold text-wc-gold-600">1st · 75%</div>
                           <div className="text-sm font-bold text-wc-gold-600 tabular-nums">{fmt(Math.floor(pot * 0.75))}</div>
                         </div>
                         <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-1.5">
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">2nd · 25%</div>
+                          <div className="text-[11px] font-bold text-gray-400">2nd · 25%</div>
                           <div className="text-sm font-bold text-gray-700 tabular-nums">{fmt(Math.floor(pot * 0.25))}</div>
                         </div>
                       </div>

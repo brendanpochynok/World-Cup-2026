@@ -155,7 +155,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
       }),
     });
     if (res.ok) {
-      setTrophyMsg({ ok: true, text: 'Trophy awarded!' });
+      setTrophyMsg({ ok: true, text: 'Trophy awarded.' });
       setTrophyUsername('');
       setTrophyPool('');
       setTrophyImage('');
@@ -522,7 +522,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Username</span>
+                <span className="text-xs font-bold text-gray-500">Username</span>
                 <select
                   value={trophyUsername}
                   onChange={(e) => setTrophyUsername(e.target.value)}
@@ -538,7 +538,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
               </label>
 
               <label className="block">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pool name</span>
+                <span className="text-xs font-bold text-gray-500">Pool name</span>
                 <input
                   type="text"
                   placeholder="e.g. Masters 2026 Golf Pool"
@@ -549,7 +549,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
               </label>
 
               <label className="block">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Year</span>
+                <span className="text-xs font-bold text-gray-500">Year</span>
                 <input
                   type="number"
                   value={trophyYear}
@@ -559,7 +559,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
               </label>
 
               <label className="block">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Position</span>
+                <span className="text-xs font-bold text-gray-500">Position</span>
                 <select
                   value={trophyPosition}
                   onChange={(e) => setTrophyPosition(e.target.value)}
@@ -572,7 +572,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
               </label>
 
               <label className="block sm:col-span-2">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Trophy image path</span>
+                <span className="text-xs font-bold text-gray-500">Trophy image path</span>
                 <input
                   type="text"
                   placeholder="/images/world-cup-trophy.png"
@@ -647,7 +647,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
 
           <div className="space-y-3">
             <label className="block">
-              <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              <span className="text-xs text-gray-500 font-semibold">
                 Entry fee per player ($)
               </span>
               <div className="mt-1.5 flex items-center gap-2">

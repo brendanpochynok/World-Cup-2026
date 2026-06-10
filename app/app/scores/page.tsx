@@ -25,7 +25,7 @@ function SectionHeader({ label, live = false, count }: { label: string; live?: b
       ) : (
         <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block flex-shrink-0" />
       )}
-      <h2 className={`text-sm font-bold uppercase tracking-[0.1em] ${live ? 'text-wc-red-500' : 'text-gray-500'}`}>
+      <h2 className={`text-sm font-bold ${live ? 'text-wc-red-500' : 'text-gray-500'}`}>
         {label}
       </h2>
       {count !== undefined && (
@@ -344,7 +344,7 @@ export default function ScoresPage() {
               >
                 <div className="flex items-center gap-3">
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
-                  <span className="text-sm font-bold uppercase tracking-[0.1em] text-gray-500 group-hover:text-gray-700 transition-colors">
+                  <span className="text-sm font-bold text-gray-500 group-hover:text-gray-700 transition-colors">
                     Past Scores
                   </span>
                   <span className="text-xs text-gray-400 font-semibold tabular-nums">

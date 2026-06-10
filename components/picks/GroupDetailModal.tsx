@@ -94,7 +94,7 @@ export default function GroupDetailModal({
             {/* Standings */}
             <div className="rounded-xl border border-gray-200 overflow-hidden">
               <div className="bg-gray-50 px-3 py-2 flex items-center justify-between border-b border-gray-200">
-                <span className="text-gray-600 text-xs font-bold uppercase tracking-wider">Predicted Standings</span>
+                <span className="text-gray-600 text-xs font-bold">Predicted Standings</span>
                 {!hasAnyPick && <span className="text-gray-400 text-[11px]">Pick matches below to update</span>}
               </div>
               <table className="w-full text-xs">
@@ -123,7 +123,7 @@ export default function GroupDetailModal({
                           <div className="flex items-center gap-1.5">
                             <img src={getFlagUrl(meta.flag)} alt={row.team} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" />
                             <span className={`font-medium ${advances ? 'text-gray-900' : 'text-gray-500'}`}>{shortenName(row.team)}</span>
-                            {advances && row.pts > 0 && <span className="text-[10px] text-wc-blue-400 ml-0.5">↑</span>}
+                            {advances && row.pts > 0 && <span className="text-[11px] text-wc-blue-400 ml-0.5">↑</span>}
                           </div>
                         </td>
                         <td className="py-1.5 text-center text-gray-400">{row.p}</td>
@@ -136,7 +136,7 @@ export default function GroupDetailModal({
                   })}
                 </tbody>
               </table>
-              <div className="bg-gray-50 px-3 py-1.5 text-[10px] text-gray-400 border-t border-gray-100">
+              <div className="bg-gray-50 px-3 py-1.5 text-[11px] text-gray-400 border-t border-gray-100">
                 Top 2 advance · Best 8 third-place also advance · Ties broken by Polymarket odds
               </div>
             </div>
@@ -170,9 +170,9 @@ export default function GroupDetailModal({
                     <div className="flex items-center gap-2">
                       <span className="truncate">{match.city}</span>
                       {isPolymarket && (
-                        <span className="text-[10px] bg-wc-blue-50 text-wc-blue-500 border border-wc-blue-200 px-1.5 py-0.5 rounded font-medium">Polymarket</span>
+                        <span className="text-[11px] bg-wc-blue-50 text-wc-blue-500 border border-wc-blue-200 px-1.5 py-0.5 rounded font-medium">Polymarket</span>
                       )}
-                      {locked && <span className="text-wc-red-500 font-semibold text-[10px] uppercase">Locked</span>}
+                      {locked && <span className="text-wc-red-500 font-semibold text-[11px] uppercase">Locked</span>}
                     </div>
                   </div>
 
@@ -207,7 +207,7 @@ export default function GroupDetailModal({
                         }`}>
                         <div className="text-xs font-semibold truncate">{label}</div>
                         {prob !== null && (
-                          <div className={`text-[13px] font-mono font-bold mt-0.5 ${pick === key ? 'text-white/70' : 'text-gray-400'}`}>
+                          <div className={`text-sm font-mono font-bold mt-0.5 ${pick === key ? 'text-white/70' : 'text-gray-400'}`}>
                             {pct(prob)}
                           </div>
                         )}
@@ -226,7 +226,7 @@ export default function GroupDetailModal({
                     ];
                     return (
                       <div className="mt-3 pt-2.5 border-t border-gray-100">
-                        <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2">
+                        <div className="text-[11px] text-gray-400 font-semibold mb-2">
                           Pool picks · {dist.total} {dist.total === 1 ? 'player' : 'players'}
                         </div>
                         <div className="grid grid-cols-3 gap-2">
@@ -241,7 +241,7 @@ export default function GroupDetailModal({
                                   style={{ width: `${Math.round(val * 100)}%` }}
                                 />
                               </div>
-                              <div className="text-[10px] text-gray-400 mt-1 truncate">{label}</div>
+                              <div className="text-[11px] text-gray-400 mt-1 truncate">{label}</div>
                             </div>
                           ))}
                         </div>

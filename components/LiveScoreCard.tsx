@@ -81,7 +81,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
 
       {/* Top row: group + status */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.12em]">
+        <span className="text-[11px] text-gray-400 font-bold">
           Group {group} · Match {matchNumber}
         </span>
         {isLive && (
@@ -108,7 +108,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
             className="w-10 h-7 object-cover rounded shadow-sm"
           />
           <div className="font-bold text-gray-900 text-xs leading-tight">{shortenName(home)}</div>
-          <div className="text-[10px] text-gray-400 font-medium">#{homeMeta.fifaRank}</div>
+          <div className="text-[11px] text-gray-400 font-medium">#{homeMeta.fifaRank}</div>
         </div>
 
         {/* Score / VS */}
@@ -130,7 +130,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
             className="w-10 h-7 object-cover rounded shadow-sm"
           />
           <div className="font-bold text-gray-900 text-xs leading-tight">{shortenName(away)}</div>
-          <div className="text-[10px] text-gray-400 font-medium">#{awayMeta.fifaRank}</div>
+          <div className="text-[11px] text-gray-400 font-medium">#{awayMeta.fifaRank}</div>
         </div>
       </div>
 
@@ -148,7 +148,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
                   style={{ width: prob !== null ? `${Math.round(prob * 100)}%` : '0%' }}
                 />
               </div>
-              <div className="text-[10px] text-gray-400 mt-0.5 truncate">{label}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5 truncate">{label}</div>
             </div>
           ))}
         </div>
@@ -166,7 +166,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
       {canPick && (
         <div className="mt-3">
         {countdown && (
-          <p className="text-[10px] text-amber-500 font-semibold text-center mb-1.5">Locks in {countdown}</p>
+          <p className="text-[11px] text-amber-500 font-semibold text-center mb-1.5">Locks in {countdown}</p>
         )}
         <div className="grid grid-cols-3 gap-1.5">
           {options.map(({ value, label }) => (
@@ -199,7 +199,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
       {/* Pool distribution (locked) */}
       {locked && distribution && distribution.total > 0 && (
         <div className={`mt-2.5 ${onPickChange && currentPick ? '' : 'pt-2.5 border-t border-gray-100'}`}>
-          <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">
+          <div className="text-[11px] text-gray-400 font-semibold mb-1.5">
             Pool picks · {distribution.total}
           </div>
           <div className="grid grid-cols-3 gap-1.5">
@@ -217,7 +217,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
                       style={{ width: `${Math.round(val * 100)}%` }}
                     />
                   </div>
-                  <div className="text-[10px] text-gray-400 mt-0.5 truncate">{label}</div>
+                  <div className="text-[11px] text-gray-400 mt-0.5 truncate">{label}</div>
                 </div>
               );
             })}
@@ -229,7 +229,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
       <div className="mt-3 pt-2.5 border-t border-gray-100">
         <button
           onClick={() => setShowPlayers((p) => !p)}
-          className="w-full flex items-center justify-center gap-1 text-[10px] text-gray-400 font-semibold uppercase tracking-wider hover:text-gray-600 transition-colors"
+          className="w-full flex items-center justify-center gap-1 text-[11px] text-gray-400 font-semibold hover:text-gray-600 transition-colors"
         >
           Key Players
           <svg className={`w-3 h-3 transition-transform duration-150 ${showPlayers ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,7 +242,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
             <div className="space-y-1.5">
               {homeMeta.players.map((p) => (
                 <div key={p.name} className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[9px] font-bold text-gray-400 bg-gray-100 rounded px-1 py-0.5 w-6 text-center flex-shrink-0">{p.position}</span>
+                  <span className="text-[11px] font-bold text-gray-400 bg-gray-100 rounded px-1 py-0.5 w-6 text-center flex-shrink-0">{p.position}</span>
                   <span className="text-[11px] text-gray-700 font-medium truncate">{p.name}</span>
                 </div>
               ))}
@@ -250,7 +250,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
             <div className="space-y-1.5">
               {awayMeta.players.map((p) => (
                 <div key={p.name} className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[9px] font-bold text-gray-400 bg-gray-100 rounded px-1 py-0.5 w-6 text-center flex-shrink-0">{p.position}</span>
+                  <span className="text-[11px] font-bold text-gray-400 bg-gray-100 rounded px-1 py-0.5 w-6 text-center flex-shrink-0">{p.position}</span>
                   <span className="text-[11px] text-gray-700 font-medium truncate">{p.name}</span>
                 </div>
               ))}

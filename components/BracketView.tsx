@@ -44,7 +44,7 @@ export default function BracketView({ picks, results }: Props) {
       <div className="flex gap-3 min-w-[640px]">
         {COLUMNS.map((col) => (
           <div key={col.id} className="flex-1 flex flex-col">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">
+            <p className="text-[11px] font-bold text-gray-400 mb-2 text-center">
               {col.label}
             </p>
             <div className="flex-1 flex flex-col justify-around gap-1.5">
@@ -88,13 +88,13 @@ export default function BracketView({ picks, results }: Props) {
                           {shorten(pick)}
                         </span>
                         {correct === false && actual && (
-                          <span className="block text-[10px] font-semibold text-wc-green-600 leading-tight truncate" title={actual}>
+                          <span className="block text-[11px] font-semibold text-wc-green-600 leading-tight truncate" title={actual}>
                             {shorten(actual)}
                           </span>
                         )}
                       </>
                     ) : (
-                      <span className="text-[10px] text-gray-300">—</span>
+                      <span className="text-[11px] text-gray-300">—</span>
                     )}
                   </div>
                 );
@@ -103,7 +103,7 @@ export default function BracketView({ picks, results }: Props) {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-400 font-semibold">
+      <div className="flex items-center gap-4 mt-3 text-[11px] text-gray-400 font-semibold">
         <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-wc-green-100 border border-wc-green-300 inline-block" /> Correct</span>
         <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-50 border border-red-200 inline-block" /> Wrong (actual shown below)</span>
         <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-white border border-gray-200 inline-block" /> Pending</span>

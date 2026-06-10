@@ -64,7 +64,7 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                       <span className="font-bold text-sm text-gray-400 tabular-nums">{index + 1}</span>
                       {u.movement != null && u.movement !== 0 && (
                         <span
-                          className={`text-[10px] font-bold tabular-nums ${u.movement > 0 ? 'text-wc-green-600' : 'text-red-500'}`}
+                          className={`text-[11px] font-bold tabular-nums ${u.movement > 0 ? 'text-wc-green-600' : 'text-red-500'}`}
                           title={`${u.movement > 0 ? 'Up' : 'Down'} ${Math.abs(u.movement)} since yesterday`}
                         >
                           {u.movement > 0 ? '▲' : '▼'}{Math.abs(u.movement)}

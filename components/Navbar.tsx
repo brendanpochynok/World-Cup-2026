@@ -90,8 +90,8 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
             <Link href="/app/dashboard" className="flex items-center gap-2.5 flex-shrink-0">
               <img src="/trionda-ball/trionda-ball.png" alt="Trionda" className="w-9 h-9 object-contain flex-shrink-0" />
               <div className="hidden sm:block leading-none">
-                <span className="text-gray-900 font-bold text-[13px] tracking-tight block">WC 2026</span>
-                <span className="text-gray-400 text-[10px] uppercase tracking-[0.12em] font-semibold">Pool Picks</span>
+                <span className="text-gray-900 font-bold text-sm tracking-tight block">WC 2026</span>
+                <span className="text-gray-400 text-[11px] font-semibold">Pool Picks</span>
               </div>
             </Link>
 
@@ -103,7 +103,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold transition-all duration-150 ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
                       active
                         ? 'text-wc-blue-500 bg-wc-blue-500/8'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -120,7 +120,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
               {isAdmin && (
                 <Link
                   href="/app/admin"
-                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold transition-all duration-150 ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
                     pathname === '/app/admin' || pathname.startsWith('/app/admin/')
                       ? 'text-wc-gold-500 bg-wc-gold-400/10'
                       : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
@@ -145,11 +145,11 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
               {isGuest ? (
                 <>
                   <Link href="/login"
-                    className="text-[13px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+                    className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">
                     Sign in
                   </Link>
                   <Link href="/register"
-                    className="text-[12px] font-semibold bg-wc-blue-500 hover:bg-wc-blue-600 text-white px-3 py-1.5 rounded-lg transition-colors">
+                    className="text-xs font-semibold bg-wc-blue-500 hover:bg-wc-blue-600 text-white px-3 py-1.5 rounded-lg transition-colors">
                     Register
                   </Link>
                 </>
@@ -172,7 +172,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
                         </span>
                       </div>
                     )}
-                    <span className="text-[13px] font-semibold group-hover:underline underline-offset-2 flex items-center gap-1">
+                    <span className="text-sm font-semibold group-hover:underline underline-offset-2 flex items-center gap-1">
                       {label}
                       {isAdmin && (
                         <svg aria-label="Admin" className="w-3.5 h-3.5 text-wc-gold-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -183,7 +183,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="text-[12px] text-gray-500 hover:text-gray-900 font-semibold transition-colors border border-gray-300 hover:border-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+                    className="text-xs text-gray-500 hover:text-gray-900 font-semibold transition-colors border border-gray-300 hover:border-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50"
                   >
                     Sign out
                   </button>

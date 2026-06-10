@@ -19,9 +19,8 @@
   .btn-primary {
     @apply bg-wc-blue-500 hover:bg-wc-blue-400 active:bg-wc-blue-600
            text-white font-bold text-sm py-2.5 px-5
-           rounded-xl tracking-wide transition-all duration-150
-           disabled:opacity-40 disabled:cursor-not-allowed
-           shadow-sm hover:-translate-y-px;
+           rounded-xl transition-colors duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   /* Secondary — outline on light */

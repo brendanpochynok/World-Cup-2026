@@ -90,7 +90,7 @@ export default function RegisterPage() {
                   </svg>
                   Creating account…
                 </>
-              ) : 'Create account →'}
+              ) : 'Create account'}
             </button>
           </form>
 

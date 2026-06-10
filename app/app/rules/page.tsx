@@ -70,11 +70,11 @@ export default async function RulesPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-wc-gold-600 mb-1">1st Place · 75%</p>
+              <p className="text-[11px] font-bold text-wc-gold-600 mb-1">1st Place · 75%</p>
               <p className="text-2xl font-bold text-wc-gold-600">{fmt(prize1st)}</p>
             </div>
             <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">2nd Place · 25%</p>
+              <p className="text-[11px] font-bold text-gray-500 mb-1">2nd Place · 25%</p>
               <p className="text-2xl font-bold text-gray-700">{fmt(prize2nd)}</p>
             </div>
           </div>
@@ -94,7 +94,7 @@ export default async function RulesPage() {
             { label: 'Entry fee', value: entryFee > 0 ? fmt(entryFee) : 'Free' },
           ].map(({ label, value }) => (
             <div key={label} className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
-              <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{label}</div>
+              <div className="text-xs text-gray-400 font-semibold">{label}</div>
               <div className="text-lg font-bold text-gray-900 mt-0.5">{value}</div>
             </div>
           ))}
@@ -216,7 +216,7 @@ export default async function RulesPage() {
       {/* CTA */}
       <div className="flex gap-3">
         <Link href="/app/picks" className="btn-primary text-sm">
-          Make my picks →
+          Make my picks
         </Link>
         <Link href="/app/standings" className="btn-secondary text-sm">
           View standings

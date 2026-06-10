@@ -214,7 +214,7 @@ export default function ProfilePage() {
           ))}
           {profile && (
             <Link href={`/app/players/${profile.username}`} className="text-xs font-semibold text-wc-blue-500 hover:underline ml-1">
-              View public profile →
+              View public profile
             </Link>
           )}
         </div>
@@ -225,32 +225,32 @@ export default function ProfilePage() {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900 text-lg">Your Stats</h2>
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-gray-400">
               #{stats.rank} of {stats.totalPlayers}
             </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-3 py-3">
-              <div className="text-[10px] font-bold text-wc-blue-500 uppercase tracking-wider mb-0.5">Rank</div>
+              <div className="text-[11px] font-bold text-wc-blue-500 mb-0.5">Rank</div>
               <div className="text-2xl font-bold text-wc-blue-600">#{stats.rank}</div>
-              <div className="text-[10px] text-wc-blue-400 mt-0.5">of {stats.totalPlayers} players</div>
+              <div className="text-[11px] text-wc-blue-400 mt-0.5">of {stats.totalPlayers} players</div>
             </div>
             <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-3 py-3">
-              <div className="text-[10px] font-bold text-wc-gold-600 uppercase tracking-wider mb-0.5">Score</div>
+              <div className="text-[11px] font-bold text-wc-gold-600 mb-0.5">Score</div>
               <div className="text-2xl font-bold text-wc-gold-600">{stats.score}</div>
-              <div className="text-[10px] text-wc-gold-400 mt-0.5">points</div>
+              <div className="text-[11px] text-wc-gold-400 mt-0.5">points</div>
             </div>
             <div className="rounded-xl bg-wc-green-50 border border-wc-green-200 px-3 py-3">
-              <div className="text-[10px] font-bold text-wc-green-600 uppercase tracking-wider mb-0.5">Group picks</div>
+              <div className="text-[11px] font-bold text-wc-green-600 mb-0.5">Group picks</div>
               <div className="text-2xl font-bold text-wc-green-600">{stats.groupCorrect}</div>
-              <div className="text-[10px] text-wc-green-500 mt-0.5">
+              <div className="text-[11px] text-wc-green-500 mt-0.5">
                 correct · {stats.groupWrong} wrong
               </div>
             </div>
             <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">
-              <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Bracket</div>
+              <div className="text-[11px] font-bold text-gray-500 mb-0.5">Bracket</div>
               <div className="text-2xl font-bold text-gray-700">{stats.bracketPicksCount}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">picks made</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">picks made</div>
             </div>
           </div>
         </div>
@@ -261,13 +261,13 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-900 text-lg">Trophy Cabinet</h2>
           {trophies.length > 0 && (
-            <span className="text-xs font-bold text-wc-gold-600 uppercase tracking-wider">
+            <span className="text-xs font-bold text-wc-gold-600">
               {trophies.length} {trophies.length === 1 ? 'trophy' : 'trophies'}
             </span>
           )}
         </div>
         {trophies.length === 0 ? (
-          <p className="text-sm text-gray-400">No trophies yet — win a pool to earn one!</p>
+          <p className="text-sm text-gray-400">No trophies yet — win a pool to earn one.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {trophies.map((trophy) => (
@@ -286,7 +286,7 @@ export default function ProfilePage() {
                 )}
                 <div>
                   <p className="text-xs font-bold text-wc-gold-700 leading-tight">{trophy.poolName}</p>
-                  <p className="text-[10px] text-wc-gold-500 mt-0.5">
+                  <p className="text-[11px] text-wc-gold-500 mt-0.5">
                     {trophy.position === 1 ? '1st' : trophy.position === 2 ? '2nd' : '3rd'} place · {trophy.year}
                   </p>
                 </div>
@@ -324,7 +324,7 @@ export default function ProfilePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                <span className="text-[10px] text-gray-400 group-hover:text-wc-blue-400 transition-colors font-semibold">Upload</span>
+                <span className="text-[11px] text-gray-400 group-hover:text-wc-blue-400 transition-colors font-semibold">Upload</span>
               </div>
             )}
           </button>
@@ -360,7 +360,7 @@ export default function ProfilePage() {
 
         {/* Display name */}
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
             Display name
           </label>
           <input
@@ -376,7 +376,7 @@ export default function ProfilePage() {
 
         {/* Favorite team */}
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
             Favourite team
           </label>
           <select
@@ -413,11 +413,11 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Username</p>
+            <p className="text-[11px] text-gray-400 font-bold mb-0.5">Username</p>
             <p className="text-sm font-semibold text-gray-900 font-mono">{profile.username}</p>
           </div>
           <div>
-            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Member since</p>
+            <p className="text-[11px] text-gray-400 font-bold mb-0.5">Member since</p>
             <p className="text-sm font-semibold text-gray-900">{memberSince}</p>
           </div>
         </div>
@@ -428,7 +428,7 @@ export default function ProfilePage() {
         <h2 className="font-bold text-gray-900 text-lg">Change password</h2>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
             Current password
           </label>
           <input
@@ -442,7 +442,7 @@ export default function ProfilePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
             New password
           </label>
           <input
@@ -457,7 +457,7 @@ export default function ProfilePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
             Confirm new password
           </label>
           <input

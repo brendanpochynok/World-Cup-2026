@@ -129,7 +129,7 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
               href={`/app/players/${encodeURIComponent(username)}`}
               className="text-xs font-semibold text-wc-blue-500 hover:underline whitespace-nowrap mr-2"
             >
-              Full profile →
+              Full profile
             </Link>
             <button onClick={onClose}
               className="text-gray-400 hover:text-gray-700 transition-colors p-1.5 rounded-lg hover:bg-gray-100"
@@ -175,7 +175,7 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
               return (
                 <div className="rounded-xl border border-wc-gold-200 overflow-hidden">
                   <div className="bg-wc-gold-50 px-3 py-2 border-b border-wc-gold-200">
-                    <span className="text-wc-gold-700 text-xs font-bold uppercase tracking-wider">Bracket Picks</span>
+                    <span className="text-wc-gold-700 text-xs font-bold">Bracket Picks</span>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {BRACKET_ROUNDS.slice().reverse().map((r) => {
@@ -183,7 +183,7 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
                       if (!rPicks || rPicks.length === 0) return null;
                       return (
                         <div key={r.id} className="px-3 py-2.5">
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{r.name}</div>
+                          <div className="text-[11px] font-bold text-gray-400 mb-1.5">{r.name}</div>
                           <div className="flex flex-wrap gap-1.5">
                             {rPicks.map((bp) => (
                               <span key={`${bp.round}-${bp.slot}`} className={`text-xs font-semibold px-2 py-0.5 rounded-lg border ${
@@ -209,7 +209,7 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
               return (
                 <div key={groupId} className="rounded-xl border border-gray-200 overflow-hidden">
                   <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
-                    <span className="text-gray-600 text-xs font-bold uppercase tracking-wider">Group {groupId}</span>
+                    <span className="text-gray-600 text-xs font-bold">Group {groupId}</span>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {groupPicks.map((entry) => {

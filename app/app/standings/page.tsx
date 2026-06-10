@@ -151,7 +151,7 @@ export default async function StandingsPage() {
       <div className="card space-y-4">
         <h3 className="eyebrow">Scoring System</h3>
         <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Group Stage</p>
+          <p className="text-[11px] font-bold text-gray-400 mb-2">Group Stage</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {groupScoringRows.map(({ label, pts, positive }) => (
               <div key={label}
@@ -165,7 +165,7 @@ export default async function StandingsPage() {
           </div>
         </div>
         <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bracket Stage</p>
+          <p className="text-[11px] font-bold text-gray-400 mb-2">Bracket Stage</p>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {bracketScoringRows.map(({ label, pts }) => (
               <div key={label} className="flex items-center justify-between px-3 py-2.5 rounded-xl border bg-gray-50 border-gray-200">
@@ -182,7 +182,7 @@ export default async function StandingsPage() {
         {scores.length === 0 ? (
           <div className="text-center py-16 px-5">
             <p className="text-gray-900 font-bold text-lg mb-1">No players yet</p>
-            <p className="text-gray-500 text-sm">Invite friends to join the pool!</p>
+            <p className="text-gray-500 text-sm">Invite friends to join the pool.</p>
           </div>
         ) : (
           <StandingsTable scores={scores} />

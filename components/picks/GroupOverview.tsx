@@ -44,7 +44,7 @@ function GroupMiniCard({ group, matchPicks, onClick }: {
         {complete ? (
           <span className="text-wc-green-600 text-xs font-bold">&#10003;</span>
         ) : started ? (
-          <span className="text-wc-blue-500 text-[10px] font-semibold">{pickedCount}/{total}</span>
+          <span className="text-wc-blue-500 text-[11px] font-semibold">{pickedCount}/{total}</span>
         ) : null}
       </div>
 
@@ -52,7 +52,7 @@ function GroupMiniCard({ group, matchPicks, onClick }: {
 
       {started && standings ? (
         <div>
-          <div className="grid text-[9px] text-gray-400 mb-1 px-0.5" style={{ gridTemplateColumns: '12px 1fr 16px 16px 16px 20px' }}>
+          <div className="grid text-[11px] text-gray-400 mb-1 px-0.5" style={{ gridTemplateColumns: '12px 1fr 16px 16px 16px 20px' }}>
             <span></span><span>Team</span>
             <span className="text-center">W</span><span className="text-center">D</span>
             <span className="text-center">L</span><span className="text-right font-bold">Pts</span>
@@ -67,26 +67,26 @@ function GroupMiniCard({ group, matchPicks, onClick }: {
                   className={`grid items-center rounded px-0.5 py-0.5 ${autoAdvance ? 'bg-wc-blue-500/5' : mayAdvance ? 'bg-gray-50' : ''}`}
                   style={{ gridTemplateColumns: '12px 1fr 16px 16px 16px 20px' }}
                 >
-                  <span className={`text-[10px] font-bold ${autoAdvance ? 'text-wc-blue-500' : mayAdvance ? 'text-gray-500' : 'text-gray-300'}`}>{i + 1}</span>
+                  <span className={`text-[11px] font-bold ${autoAdvance ? 'text-wc-blue-500' : mayAdvance ? 'text-gray-500' : 'text-gray-300'}`}>{i + 1}</span>
                   <div className="flex items-center gap-1 min-w-0">
                     <img src={getFlagUrl(meta.flag)} alt={row.team} className="w-4 h-3 object-cover rounded-sm flex-shrink-0" loading="lazy" />
                     <div className="min-w-0">
-                      <span className={`text-[10px] truncate block leading-tight ${autoAdvance ? 'text-gray-900 font-medium' : mayAdvance ? 'text-gray-600' : 'text-gray-400'}`}>
+                      <span className={`text-[11px] truncate block leading-tight ${autoAdvance ? 'text-gray-900 font-medium' : mayAdvance ? 'text-gray-600' : 'text-gray-400'}`}>
                         {shortenName(row.team)}
                       </span>
-                      <span className="text-[8px] text-gray-400 leading-none">#{meta.fifaRank}</span>
+                      <span className="text-[11px] text-gray-400 leading-none">#{meta.fifaRank}</span>
                     </div>
                   </div>
-                  <span className="text-[10px] text-center text-gray-500">{row.w}</span>
-                  <span className="text-[10px] text-center text-gray-400">{row.d}</span>
-                  <span className="text-[10px] text-center text-gray-400">{row.l}</span>
+                  <span className="text-[11px] text-center text-gray-500">{row.w}</span>
+                  <span className="text-[11px] text-center text-gray-400">{row.d}</span>
+                  <span className="text-[11px] text-center text-gray-400">{row.l}</span>
                   <span className={`text-[11px] text-right font-bold ${autoAdvance ? 'text-wc-blue-500' : mayAdvance ? 'text-gray-500' : 'text-gray-300'}`}>{row.pts}</span>
                 </div>
               );
             })}
           </div>
           {complete && (
-            <div className="mt-1.5 text-[9px] text-gray-400 leading-tight">
+            <div className="mt-1.5 text-[11px] text-gray-400 leading-tight">
               <span className="text-wc-blue-400">■</span> advance · <span className="text-gray-400">■</span> may qualify
             </div>
           )}
@@ -99,7 +99,7 @@ function GroupMiniCard({ group, matchPicks, onClick }: {
               <div key={team} className="flex items-center gap-1.5 min-w-0">
                 <img src={getFlagUrl(meta.flag)} alt={team} className="w-6 h-4 object-cover rounded-sm flex-shrink-0" loading="lazy" />
                 <span className="text-xs text-gray-900 truncate flex-1 min-w-0">{shortenName(team)}</span>
-                <span className="text-[10px] text-gray-400 flex-shrink-0 font-mono">#{meta.fifaRank}</span>
+                <span className="text-[11px] text-gray-400 flex-shrink-0 font-mono">#{meta.fifaRank}</span>
               </div>
             );
           })}
@@ -119,7 +119,7 @@ function GroupMiniCard({ group, matchPicks, onClick }: {
           </div>
         ) : (
           <span className="text-xs font-semibold w-full text-center block text-gray-400 group-hover:text-gray-900 transition-colors">
-            Pick matches →
+            Pick matches
           </span>
         )}
       </div>

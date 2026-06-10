@@ -82,7 +82,7 @@ export default function LoginForm() {
                 </svg>
                 Signing in…
               </>
-            ) : 'Sign in →'}
+            ) : 'Sign in'}
           </button>
         </form>
 
@@ -99,7 +99,7 @@ export default function LoginForm() {
           href="/app/dashboard"
           className="text-gray-400 hover:text-gray-600 text-sm font-semibold transition-colors"
         >
-          Continue as guest →
+          Continue as guest
         </Link>
       </div>
     </div>
