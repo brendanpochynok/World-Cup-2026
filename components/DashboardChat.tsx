@@ -60,6 +60,7 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [reactions, setReactions] = useState<Record<number, MessageReaction[]>>({});
   const [reactFor, setReactFor] = useState<number | null>(null);
+  const [reactPickerFor, setReactPickerFor] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -229,11 +230,16 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
       const i = list.findIndex((r) => r.emoji === emoji);
       if (i >= 0) {
         const r = list[i];
-        const updated = { ...r, mine: !r.mine, count: r.count + (r.mine ? -1 : 1) };
+        const updated = {
+          ...r,
+          mine: !r.mine,
+          count: r.count + (r.mine ? -1 : 1),
+          users: r.mine ? r.users.filter((u) => u !== me.username) : [...r.users, me.username],
+        };
         if (updated.count <= 0) list.splice(i, 1);
         else list[i] = updated;
       } else {
-        list.push({ emoji, count: 1, mine: true });
+        list.push({ emoji, count: 1, mine: true, users: [me.username] });
       }
       return { ...prev, [messageId]: list };
     });
@@ -313,7 +319,7 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
                         </button>
                       )}
                       {reactFor === m.id && (
-                        <div className="absolute right-0 top-full mt-1 z-10 flex gap-0.5 bg-white border border-gray-200 rounded-full shadow-md px-1.5 py-1">
+                        <div className="absolute right-0 top-full mt-1 z-10 flex items-center gap-0.5 bg-white border border-gray-200 rounded-full shadow-md px-1.5 py-1">
                           {QUICK_REACTIONS.map((e) => (
                             <button
                               key={e}
@@ -323,6 +329,18 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
                               {e}
                             </button>
                           ))}
+                          <button
+                            onClick={() => {
+                              setReactFor(null);
+                              setShowEmoji(false);
+                              setShowGif(false);
+                              setReactPickerFor(m.id);
+                            }}
+                            className="w-5 h-5 ml-0.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-sm font-bold leading-none flex items-center justify-center transition-colors"
+                            aria-label="More emojis"
+                          >
+                            +
+                          </button>
                         </div>
                       )}
                     </span>
@@ -334,6 +352,7 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
                         <button
                           key={r.emoji}
                           onClick={() => toggleReaction(m.id, r.emoji)}
+                          title={r.users.join(', ')}
                           className={`flex items-center gap-1 text-[11px] tabular-nums px-1.5 py-0.5 rounded-full border transition-colors ${
                             r.mine
                               ? 'bg-wc-blue-500/10 border-wc-blue-300 text-wc-blue-600 font-bold'
@@ -388,7 +407,7 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
         </div>
       )}
 
-      {/* Emoji picker panel */}
+      {/* Emoji picker panel (message input) */}
       {showEmoji && (
         <div className="border-t border-gray-100">
           <EmojiPicker
@@ -401,11 +420,37 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
         </div>
       )}
 
+      {/* Full emoji picker for reacting to a message */}
+      {reactPickerFor !== null && (
+        <div className="border-t border-gray-100">
+          <div className="flex items-center justify-between px-5 py-2">
+            <span className="text-[11px] text-gray-400 font-semibold">React to message</span>
+            <button
+              onClick={() => setReactPickerFor(null)}
+              className="text-gray-300 hover:text-gray-500 text-xs leading-none"
+              aria-label="Close reaction picker"
+            >
+              ✕
+            </button>
+          </div>
+          <EmojiPicker
+            onEmojiClick={(e) => {
+              toggleReaction(reactPickerFor, e.emoji);
+              setReactPickerFor(null);
+            }}
+            width="100%"
+            height={320}
+            skinTonesDisabled
+            previewConfig={{ showPreview: false }}
+          />
+        </div>
+      )}
+
       <div className="px-5 py-3 border-t border-gray-100">
         {error && <p className="text-xs text-wc-red-500 font-semibold mb-1.5">{error}</p>}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { setShowEmoji((v) => !v); setShowGif(false); }}
+            onClick={() => { setShowEmoji((v) => !v); setShowGif(false); setReactPickerFor(null); }}
             className={`text-lg leading-none flex-shrink-0 transition-transform hover:scale-110 ${showEmoji ? '' : 'grayscale opacity-60 hover:opacity-100 hover:grayscale-0'}`}
             aria-label="Emoji picker"
           >
@@ -413,7 +458,7 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
           </button>
           {gifConfigured && (
             <button
-              onClick={() => { setShowGif((v) => !v); setShowEmoji(false); }}
+              onClick={() => { setShowGif((v) => !v); setShowEmoji(false); setReactPickerFor(null); }}
               className={`text-[11px] font-bold px-1.5 py-1 rounded border flex-shrink-0 transition-colors ${
                 showGif
                   ? 'bg-wc-blue-500 text-white border-wc-blue-500'

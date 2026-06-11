@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 
-const MAX_EMOJI_LENGTH = 16; // emoji can be multi-codepoint sequences
+const MAX_EMOJI_LENGTH = 32; // ZWJ emoji sequences (families, flags) can be long
 
 // POST: toggle a reaction. Body: { messageId: number, emoji: string }
 export async function POST(request: NextRequest): Promise<NextResponse> {
