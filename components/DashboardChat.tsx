@@ -1,10 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import type { ChatMessageData } from '@/app/api/chat/route';
+
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 const POLL_MS = 2_000;
 const MAX_LENGTH = 500;
+
+const URL_RE = /(https?:\/\/[^\s]+)/g;
+const IMG_RE = /\.(gif|png|jpe?g|webp)$/i;
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -12,6 +18,36 @@ function formatTime(iso: string): string {
   const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return today ? time : `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${time}`;
 }
+
+// Render image URLs inline (GIFs), other URLs as links, the rest as text
+function MessageBody({ body }: { body: string }) {
+  return (
+    <div className="text-sm text-gray-700 break-words whitespace-pre-wrap">
+      {body.split(URL_RE).map((part, i) => {
+        if (!/^https?:\/\//.test(part)) return <span key={i}>{part}</span>;
+        if (IMG_RE.test(part.split('?')[0])) {
+          return (
+            <img
+              key={i}
+              src={part}
+              alt="GIF"
+              loading="lazy"
+              className="block max-w-[220px] max-h-44 rounded-lg border border-gray-200 my-1"
+            />
+          );
+        }
+        return (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+            className="text-wc-blue-500 hover:underline break-all">
+            {part}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+interface GifResult { id: string; url: string; preview: string | null }
 
 interface DashboardChatProps {
   me: { userId: number; username: string };
@@ -24,6 +60,12 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [showGif, setShowGif] = useState(false);
+  const [gifConfigured, setGifConfigured] = useState(false);
+  const [gifQuery, setGifQuery] = useState('');
+  const [gifs, setGifs] = useState<GifResult[]>([]);
+  const [gifLoading, setGifLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 
@@ -73,6 +115,33 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
     };
   }, [appendMessages]);
 
+  // Probe whether GIF search is configured (hides the button when not)
+  useEffect(() => {
+    fetch('/api/chat/gifs?probe=1')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setGifConfigured(d?.configured === true))
+      .catch(() => {});
+  }, []);
+
+  // GIF search: trending on open, debounced search while typing
+  useEffect(() => {
+    if (!showGif) return;
+    let cancelled = false;
+    setGifLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/chat/gifs${gifQuery.trim() ? `?q=${encodeURIComponent(gifQuery.trim())}` : ''}`);
+        const data = await res.json();
+        if (!cancelled) setGifs(Array.isArray(data.gifs) ? data.gifs : []);
+      } catch {
+        if (!cancelled) setGifs([]);
+      } finally {
+        if (!cancelled) setGifLoading(false);
+      }
+    }, gifQuery ? 400 : 0);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [showGif, gifQuery]);
+
   // Keep the view pinned to the newest message unless the user scrolled up
   useEffect(() => {
     const el = listRef.current;
@@ -85,9 +154,8 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
     stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   }
 
-  async function handleSend() {
-    const text = input.trim();
-    if (!text || sending) return;
+  const send = useCallback(async (text: string) => {
+    if (!text || sending) return false;
     setSending(true);
     setError('');
     try {
@@ -99,15 +167,30 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? 'Failed to send');
-      } else {
-        setInput('');
-        stickToBottom.current = true;
-        if (data.message) appendMessages([data.message]);
+        return false;
       }
+      stickToBottom.current = true;
+      if (data.message) appendMessages([data.message]);
+      return true;
     } catch {
       setError('Failed to send');
+      return false;
     } finally {
       setSending(false);
+    }
+  }, [sending, appendMessages]);
+
+  async function handleSend() {
+    if (await send(input.trim())) {
+      setInput('');
+      setShowEmoji(false);
+    }
+  }
+
+  async function handleSendGif(url: string) {
+    if (await send(url)) {
+      setShowGif(false);
+      setGifQuery('');
     }
   }
 
@@ -174,7 +257,7 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
                       </button>
                     )}
                   </div>
-                  <p className="text-sm text-gray-700 break-words whitespace-pre-wrap">{m.body}</p>
+                  <MessageBody body={m.body} />
                 </div>
               </div>
             );
@@ -182,9 +265,76 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
         )}
       </div>
 
+      {/* GIF search panel */}
+      {showGif && (
+        <div className="border-t border-gray-100 px-5 py-3">
+          <input
+            type="text"
+            value={gifQuery}
+            onChange={(e) => setGifQuery(e.target.value)}
+            placeholder="Search GIFs…"
+            autoFocus
+            className="w-full text-sm px-3 py-2 mb-2 rounded-lg border border-gray-200 focus:outline-none focus:border-wc-blue-300 focus:ring-2 focus:ring-wc-blue-500/10 placeholder:text-gray-400"
+          />
+          <div className="h-40 overflow-y-auto">
+            {gifLoading ? (
+              <p className="text-gray-400 text-sm text-center py-8">Searching…</p>
+            ) : gifs.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-8">No GIFs found</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-1.5">
+                {gifs.map((g) => (
+                  <button key={g.id} onClick={() => handleSendGif(g.url)} className="block">
+                    <img
+                      src={g.preview ?? g.url}
+                      alt=""
+                      loading="lazy"
+                      className="w-full h-20 object-cover rounded-lg border border-gray-200 hover:border-wc-blue-300 transition-colors"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Emoji picker panel */}
+      {showEmoji && (
+        <div className="border-t border-gray-100">
+          <EmojiPicker
+            onEmojiClick={(e) => setInput((prev) => prev + e.emoji)}
+            width="100%"
+            height={320}
+            skinTonesDisabled
+            previewConfig={{ showPreview: false }}
+          />
+        </div>
+      )}
+
       <div className="px-5 py-3 border-t border-gray-100">
         {error && <p className="text-xs text-wc-red-500 font-semibold mb-1.5">{error}</p>}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setShowEmoji((v) => !v); setShowGif(false); }}
+            className={`text-lg leading-none flex-shrink-0 transition-transform hover:scale-110 ${showEmoji ? '' : 'grayscale opacity-60 hover:opacity-100 hover:grayscale-0'}`}
+            aria-label="Emoji picker"
+          >
+            😀
+          </button>
+          {gifConfigured && (
+            <button
+              onClick={() => { setShowGif((v) => !v); setShowEmoji(false); }}
+              className={`text-[11px] font-bold px-1.5 py-1 rounded border flex-shrink-0 transition-colors ${
+                showGif
+                  ? 'bg-wc-blue-500 text-white border-wc-blue-500'
+                  : 'text-gray-400 border-gray-200 hover:text-gray-600 hover:border-gray-300'
+              }`}
+              aria-label="GIF picker"
+            >
+              GIF
+            </button>
+          )}
           <input
             type="text"
             value={input}
