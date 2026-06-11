@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { GROUP_MATCHES, isMatchLocked } from '@/lib/worldcup-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,15 @@ export interface PickDistribution {
 }
 
 export async function GET() {
-  const rows = await prisma.matchPick.findMany({ select: { matchId: true, pick: true } });
+  // Only expose distributions for matches that have kicked off — in a small
+  // pool, pre-kickoff percentages would effectively reveal individual picks.
+  const lockedIds = GROUP_MATCHES.filter((m) => isMatchLocked(m)).map((m) => m.matchId);
+  if (lockedIds.length === 0) return NextResponse.json({});
+
+  const rows = await prisma.matchPick.findMany({
+    where: { matchId: { in: lockedIds } },
+    select: { matchId: true, pick: true },
+  });
 
   const counts: Record<string, { home: number; draw: number; away: number; total: number }> = {};
   for (const r of rows) {

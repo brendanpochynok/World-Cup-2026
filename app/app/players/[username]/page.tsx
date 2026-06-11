@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { SCORING, BRACKET_ROUNDS, GROUP_MATCHES, BRACKET_LOCK_ISO, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
+import { SCORING, BRACKET_ROUNDS, GROUP_MATCHES, BRACKET_LOCK_ISO, getTeamMeta, getFlagUrl, isMatchLocked } from '@/lib/worldcup-data';
 import BracketView from '@/components/BracketView';
 import TrophyIcon from '@/components/TrophyIcon';
 
@@ -86,8 +86,7 @@ export default async function PlayerProfilePage({
   const rank = allScores.filter((s) => s > myScore).length + 1;
   const totalPlayers = allScores.length;
 
-  // Group picks: only locked/played matches
-  const today = new Date().toISOString().slice(0, 10);
+  // Group picks: only kicked-off/played matches
   const allMatchResults = await prisma.matchResult.findMany();
   const fullResultMap = new Map(allMatchResults.map((r) => [r.matchId, r]));
   const pickMap = new Map(user.matchPicks.map((p) => [p.matchId, p.pick]));
@@ -96,7 +95,7 @@ export default async function PlayerProfilePage({
     const pick = pickMap.get(m.matchId);
     if (!pick) return false;
     const dbResult = fullResultMap.get(m.matchId);
-    return m.date <= today || (dbResult && dbResult.status !== 'scheduled');
+    return isMatchLocked(m) || (dbResult && dbResult.status !== 'scheduled');
   }).map((m) => {
     const dbResult = fullResultMap.get(m.matchId);
     return {

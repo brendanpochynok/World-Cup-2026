@@ -924,10 +924,12 @@ export function getMatch(matchId: string): GroupMatch | undefined {
   return GROUP_MATCHES.find((m) => m.matchId === matchId);
 }
 
-// Check if a match is locked (started - within 1 hour of match date)
-export function isMatchLocked(_match: GroupMatch, kickoffIso?: string | null): boolean {
-  if (!kickoffIso) return false;
-  return new Date() >= new Date(kickoffIso);
+// Check if a match has kicked off. Uses the live kickoff time when the
+// caller has one, falling back to the match's scheduled kickoffIso.
+export function isMatchLocked(match: GroupMatch, kickoffIso?: string | null): boolean {
+  const iso = kickoffIso ?? match.kickoffIso;
+  if (!iso) return false;
+  return new Date() >= new Date(iso);
 }
 
 // Knockout bracket rounds

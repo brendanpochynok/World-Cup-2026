@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { GROUP_MATCHES, BRACKET_ROUNDS, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
+import { GROUP_MATCHES, BRACKET_ROUNDS, BRACKET_LOCK_ISO, isMatchLocked } from '@/lib/worldcup-data';
 
 export interface PlayerPickEntry {
   matchId: string;
@@ -40,7 +40,6 @@ export async function GET(
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const today = new Date().toISOString().slice(0, 10);
   const bracketLocked = Date.now() >= new Date(BRACKET_LOCK_ISO).getTime();
 
   const [picks, results, bracketPicks, bracketResults] = await Promise.all([
@@ -59,11 +58,10 @@ export async function GET(
     const pick = pickMap.get(m.matchId);
     if (!pick) continue;
 
-    // Locked: match date has arrived or a DB result exists
+    // Locked: kickoff has passed or a DB result exists
     const dbResult = resultMap.get(m.matchId);
-    const datePassed = m.date <= today;
     const hasResult = dbResult && dbResult.status !== 'scheduled';
-    if (!datePassed && !hasResult) continue;
+    if (!isMatchLocked(m) && !hasResult) continue;
 
     lockedPicks.push({
       matchId: m.matchId,

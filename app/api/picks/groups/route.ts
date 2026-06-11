@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { GROUP_MATCHES, MAX_ENTRIES } from '@/lib/worldcup-data';
+import { GROUP_MATCHES, MAX_ENTRIES, getMatch, isMatchLocked } from '@/lib/worldcup-data';
 
 const VALID_MATCH_IDS = new Set(GROUP_MATCHES.map((m) => m.matchId));
 const VALID_PICKS = new Set(['home', 'draw', 'away']);
@@ -33,19 +33,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ picks: result });
 }
 
-// DELETE: clear all group picks for current user (optionally for a specific entry)
+// DELETE: clear group picks for current user (optionally for a specific entry).
+// Picks for matches that have already kicked off are kept.
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const unlockedIds = GROUP_MATCHES.filter((m) => !isMatchLocked(m)).map((m) => m.matchId);
 
   const entryParam = request.nextUrl.searchParams.get('entry');
   if (entryParam) {
     const entry = parseEntry(entryParam);
     const err = validateEntry(entry);
     if (err) return err;
-    await prisma.matchPick.deleteMany({ where: { userId: user.userId, entry } });
+    await prisma.matchPick.deleteMany({
+      where: { userId: user.userId, entry, matchId: { in: unlockedIds } },
+    });
   } else {
-    await prisma.matchPick.deleteMany({ where: { userId: user.userId } });
+    await prisma.matchPick.deleteMany({
+      where: { userId: user.userId, matchId: { in: unlockedIds } },
+    });
   }
   return NextResponse.json({ ok: true });
 }
@@ -68,6 +75,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid matchId' }, { status: 400 });
     if (!VALID_PICKS.has(pick))
       return NextResponse.json({ error: 'Invalid pick' }, { status: 400 });
+
+    const match = getMatch(matchId);
+    if (match && isMatchLocked(match))
+      return NextResponse.json({ error: 'Match has already kicked off' }, { status: 400 });
 
     await prisma.matchPick.upsert({
       where: { userId_entry_matchId: { userId: user.userId, entry, matchId } },
