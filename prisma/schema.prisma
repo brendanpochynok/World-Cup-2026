@@ -12,41 +12,45 @@ datasource db {
 }
 
 model User {
-  id              Int               @id @default(autoincrement())
-  username        String            @unique
-  password        String
-  displayName     String?
-  avatarUrl       String?           @db.Text
-  favoriteTeam    String?
-  isAdmin         Boolean           @default(false)
-  createdAt       DateTime          @default(now())
-  matchPicks      MatchPick[]
-  bracketPicks    BracketPick[]
-  tiebreakerPicks TiebreakerPick[]
-  poolWins        PoolWin[]
-  rankSnapshots   RankSnapshot[]
-  feeVote         FeeVote?
+  id                   Int               @id @default(autoincrement())
+  username             String            @unique
+  password             String
+  displayName          String?
+  avatarUrl            String?           @db.Text
+  favoriteTeam         String?
+  isAdmin              Boolean           @default(false)
+  createdAt            DateTime          @default(now())
+  entriesCount         Int               @default(1)
+  announcementAckedAt  DateTime?
+  matchPicks           MatchPick[]
+  bracketPicks         BracketPick[]
+  tiebreakerPicks      TiebreakerPick[]
+  poolWins             PoolWin[]
+  rankSnapshots        RankSnapshot[]
+  feeVote              FeeVote?
 }
 
 model MatchPick {
   id      Int    @id @default(autoincrement())
   userId  Int
+  entry   Int    @default(1)
   matchId String // "A1" … "L6"
   pick    String // "home" | "draw" | "away"
   user    User   @relation(fields: [userId], references: [id])
 
-  @@unique([userId, matchId])
+  @@unique([userId, entry, matchId])
 }
 
 model BracketPick {
   id     Int    @id @default(autoincrement())
   userId Int
+  entry  Int    @default(1)
   round  String // "R32" | "R16" | "QF" | "SF" | "Final"
   slot   Int    // slot number within that round
   team   String
   user   User   @relation(fields: [userId], references: [id])
 
-  @@unique([userId, round, slot])
+  @@unique([userId, entry, round, slot])
 }
 
 model TiebreakerPick {
