@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { SCORING } from '@/lib/worldcup-data';
+import { SCORING, MAX_ENTRIES } from '@/lib/worldcup-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,9 @@ const ROUND_PTS: Record<string, number> = {
 export interface MeStats {
   score: number;
   rank: number;
-  totalPlayers: number;
+  totalPlayers: number; // total entries in the pool
+  entry: number;
+  entriesCount: number;
   groupCorrect: number;
   groupWrong: number;
   groupSettled: number;
@@ -20,9 +22,15 @@ export interface MeStats {
   bracketPicksCount: number;
 }
 
-export async function GET() {
+type PickRow = { matchId: string; pick: string; entry: number };
+type BracketRow = { round: string; slot: number; team: string; entry: number };
+
+export async function GET(request: NextRequest) {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const entryParam = parseInt(request.nextUrl.searchParams.get('entry') ?? '1', 10);
+  const entry = Number.isInteger(entryParam) && entryParam >= 1 && entryParam <= MAX_ENTRIES ? entryParam : 1;
 
   const [users, matchResults, bracketResults] = await Promise.all([
     prisma.user.findMany({ include: { matchPicks: true, bracketPicks: true } }),
@@ -33,28 +41,39 @@ export async function GET() {
   const resultMap = new Map(matchResults.map((r) => [r.matchId, r.result!]));
   const bracketMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
 
-  function calcScore(u: typeof users[0]) {
+  function calcScore(matchPicks: PickRow[], bracketPicks: BracketRow[]) {
     let s = 0;
-    for (const mp of u.matchPicks) {
+    for (const mp of matchPicks) {
       const actual = resultMap.get(mp.matchId);
       if (!actual) continue;
       if (mp.pick === actual) s += SCORING.groupCorrect;
       else if (actual !== 'draw') s += SCORING.groupWrong;
     }
-    for (const bp of u.bracketPicks) {
+    for (const bp of bracketPicks) {
       const actual = bracketMap.get(`${bp.round}-${bp.slot}`);
       if (actual && bp.team === actual) s += ROUND_PTS[bp.round] ?? 0;
     }
     return s;
   }
 
-  const allScores = users.map((u) => calcScore(u));
+  // Rank is computed across every paid entry in the pool
+  const allScores = users.flatMap((u) =>
+    Array.from({ length: u.entriesCount }, (_, i) => i + 1).map((e) =>
+      calcScore(
+        u.matchPicks.filter((p) => p.entry === e),
+        u.bracketPicks.filter((p) => p.entry === e),
+      ),
+    ),
+  );
 
   const myUser = users.find((u) => u.id === me.userId);
   if (!myUser) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const myMatchPicks = myUser.matchPicks.filter((p) => p.entry === entry);
+  const myBracketPicks = myUser.bracketPicks.filter((p) => p.entry === entry);
+
   let groupCorrect = 0, groupWrong = 0, groupSettled = 0;
-  for (const mp of myUser.matchPicks) {
+  for (const mp of myMatchPicks) {
     const actual = resultMap.get(mp.matchId);
     if (!actual) continue;
     groupSettled++;
@@ -62,16 +81,18 @@ export async function GET() {
     else if (actual !== 'draw') groupWrong++;
   }
 
-  const myScore = calcScore(myUser);
+  const myScore = calcScore(myMatchPicks, myBracketPicks);
 
   return NextResponse.json({
     score: myScore,
     rank: allScores.filter((s) => s > myScore).length + 1,
-    totalPlayers: users.length,
+    totalPlayers: allScores.length,
+    entry,
+    entriesCount: myUser.entriesCount,
     groupCorrect,
     groupWrong,
     groupSettled,
-    groupPicksTotal: myUser.matchPicks.length,
-    bracketPicksCount: myUser.bracketPicks.length,
+    groupPicksTotal: myMatchPicks.length,
+    bracketPicksCount: myBracketPicks.length,
   } satisfies MeStats);
 }

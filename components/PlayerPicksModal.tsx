@@ -9,6 +9,8 @@ interface Props {
   username: string;
   displayName: string | null;
   avatarUrl?: string | null;
+  entry?: number;
+  entriesCount?: number;
   onClose: () => void;
 }
 
@@ -36,7 +38,7 @@ function shortenName(name: string): string {
   return map[name] ?? (name.length > 13 ? name.slice(0, 12) + '…' : name);
 }
 
-export default function PlayerPicksModal({ username, displayName, avatarUrl: avatarProp, onClose }: Props) {
+export default function PlayerPicksModal({ username, displayName, avatarUrl: avatarProp, entry = 1, entriesCount = 1, onClose }: Props) {
   const [picks, setPicks] = useState<PlayerPickEntry[] | null>(null);
   const [bracketPicks, setBracketPicks] = useState<BracketPickEntry[] | null>(null);
   const [bracketLocked, setBracketLocked] = useState(false);
@@ -44,10 +46,10 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
   const [myPicks, setMyPicks] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState('');
 
-  const label = displayName ?? username;
+  const label = (displayName ?? username) + (entriesCount > 1 ? ` (${entry})` : '');
 
   useEffect(() => {
-    fetch(`/api/players/${encodeURIComponent(username)}/picks`)
+    fetch(`/api/players/${encodeURIComponent(username)}/picks?entry=${entry}`)
       .then((r) => r.json())
       .then((d) => {
         setPicks(d.picks ?? []);
@@ -56,7 +58,7 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
         if (!avatarProp && d.avatarUrl) setResolvedAvatar(d.avatarUrl);
       })
       .catch(() => setError('Failed to load picks'));
-  }, [username, avatarProp]);
+  }, [username, avatarProp, entry]);
 
   useEffect(() => {
     fetch('/api/picks/groups')

@@ -18,10 +18,13 @@ export interface StandingsRow {
   displayName: string | null;
   avatarUrl: string | null;
   isAdmin: boolean;
+  entry: number;           // entry number for this row (1-based)
+  entriesCount: number;    // how many entries this player has
   score: number;
   maxScore: number;
   movement: number | null; // positions gained (+) or lost (−) vs yesterday
   prize: number | null;    // current payout in dollars, if in the money
+  prizeNote: string | null; // non-cash prize (e.g. 3rd place free entry)
   groupPicksCount: number;
   bracketPicksCount: number;
   championPick: string | null;
@@ -49,11 +52,11 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
           </thead>
           <tbody>
             {scores.map((u, index) => {
-              const label = u.displayName ?? u.username;
+              const label = (u.displayName ?? u.username) + (u.entriesCount > 1 ? ` (${u.entry})` : '');
               const favMeta = u.favoriteTeam ? getTeamMeta(u.favoriteTeam) : null;
               return (
                 <tr
-                  key={u.id}
+                  key={`${u.id}-${u.entry}`}
                   onClick={() => setSelected(u)}
                   className={`border-b border-gray-100 last:border-0 cursor-pointer transition-colors ${
                     u.isMe ? 'bg-wc-blue-500/5 hover:bg-wc-blue-500/10' : 'hover:bg-gray-50'
@@ -139,6 +142,11 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                         ${u.prize.toLocaleString()}
                       </span>
                     )}
+                    {u.prize == null && u.prizeNote != null && (
+                      <span className="block text-[11px] font-bold text-green-600 mt-0.5">
+                        {u.prizeNote}
+                      </span>
+                    )}
                   </td>
                   <td className="py-4 px-4 text-right text-gray-400 hidden sm:table-cell tabular-nums text-xs font-medium" title="Best possible final score">
                     {u.maxScore}
@@ -161,6 +169,8 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
           username={selected.username}
           displayName={selected.displayName}
           avatarUrl={selected.avatarUrl}
+          entry={selected.entry}
+          entriesCount={selected.entriesCount}
           onClose={() => setSelected(null)}
         />
       )}

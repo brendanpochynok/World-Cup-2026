@@ -1,18 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { BRACKET_ROUNDS } from '@/lib/worldcup-data';
+import { BRACKET_ROUNDS, MAX_ENTRIES } from '@/lib/worldcup-data';
 import { calculateMatchPickPoints, calculateBracketPickPoints } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const entryParam = parseInt(request.nextUrl.searchParams.get('entry') ?? '1', 10);
+  const entry = Number.isInteger(entryParam) && entryParam >= 1 && entryParam <= MAX_ENTRIES ? entryParam : 1;
+
   const [matchPicks, bracketPicks, matchResults, bracketResults] = await Promise.all([
-    prisma.matchPick.findMany({ where: { userId: session.userId } }),
-    prisma.bracketPick.findMany({ where: { userId: session.userId } }),
+    prisma.matchPick.findMany({ where: { userId: session.userId, entry } }),
+    prisma.bracketPick.findMany({ where: { userId: session.userId, entry } }),
     prisma.matchResult.findMany(),
     prisma.bracketResult.findMany(),
   ]);

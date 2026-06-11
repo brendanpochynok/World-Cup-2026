@@ -25,15 +25,18 @@ export interface BracketPickEntry {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { username: string } }
 ) {
   // Route params arrive URL-encoded; decode for emoji/special-char usernames
   const username = decodeURIComponent(params.username);
 
+  const entryParam = parseInt(req.nextUrl.searchParams.get('entry') ?? '1', 10);
+  const entry = Number.isInteger(entryParam) && entryParam >= 1 ? entryParam : 1;
+
   const user = await prisma.user.findUnique({
     where: { username },
-    select: { id: true, username: true, displayName: true, avatarUrl: true },
+    select: { id: true, username: true, displayName: true, avatarUrl: true, entriesCount: true },
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -41,9 +44,9 @@ export async function GET(
   const bracketLocked = Date.now() >= new Date(BRACKET_LOCK_ISO).getTime();
 
   const [picks, results, bracketPicks, bracketResults] = await Promise.all([
-    prisma.matchPick.findMany({ where: { userId: user.id }, select: { matchId: true, pick: true } }),
+    prisma.matchPick.findMany({ where: { userId: user.id, entry }, select: { matchId: true, pick: true } }),
     prisma.matchResult.findMany({ select: { matchId: true, result: true, homeGoals: true, awayGoals: true, status: true } }),
-    bracketLocked ? prisma.bracketPick.findMany({ where: { userId: user.id }, select: { round: true, slot: true, team: true } }) : Promise.resolve([]),
+    bracketLocked ? prisma.bracketPick.findMany({ where: { userId: user.id, entry }, select: { round: true, slot: true, team: true } }) : Promise.resolve([]),
     bracketLocked ? prisma.bracketResult.findMany({ select: { round: true, slot: true, team: true } }) : Promise.resolve([]),
   ]);
 
@@ -95,6 +98,8 @@ export async function GET(
     username: user.username,
     displayName: user.displayName,
     avatarUrl: user.avatarUrl ?? null,
+    entry,
+    entriesCount: user.entriesCount,
     picks: lockedPicks,
     bracketPicks: bracketEntries,
     bracketLocked,

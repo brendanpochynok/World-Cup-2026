@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import { calculateTotalScore, calculateMaxPossibleScore } from '@/lib/scoring';
-import { updateRankSnapshots, getPreviousRanks } from '@/lib/rank-snapshots';
+import { updateRankSnapshots, getPreviousRanks, entryKey } from '@/lib/rank-snapshots';
 import StandingsTable from '@/components/StandingsTable';
 import type { StandingsRow } from '@/components/StandingsTable';
 import StandingsLastUpdated from '@/components/StandingsLastUpdated';
@@ -59,60 +59,65 @@ export default async function StandingsPage() {
   const settledBracketSlots = new Set(bracketMap.keys());
 
   const envAdmins = envAdminUsernames();
-  const scores: UserScore[] = users.map((user) => {
-    const championPick = user.bracketPicks.find((p) => p.round === 'Final' && p.slot === 0)?.team ?? null;
-    return {
-      id: user.id,
-      username: user.username,
-      displayName: user.displayName ?? null,
-      avatarUrl: user.avatarUrl ?? null,
-      isAdmin: user.isAdmin || envAdmins.has(user.username.toLowerCase()),
-      score: calculateTotalScore({
-        matchPicks: user.matchPicks,
-        bracketPicks: user.bracketPicks,
+
+  // One standings row per paid entry — each entry has its own picks
+  const scores: UserScore[] = users.flatMap((user) =>
+    Array.from({ length: user.entriesCount }, (_, i) => i + 1).map((entry) => {
+      const matchPicks = user.matchPicks.filter((p) => p.entry === entry);
+      const bracketPicks = user.bracketPicks.filter((p) => p.entry === entry);
+      const championPick = bracketPicks.find((p) => p.round === 'Final' && p.slot === 0)?.team ?? null;
+      const score = calculateTotalScore({
+        matchPicks,
+        bracketPicks,
         matchResults: resultMap,
         bracketResults: bracketMap,
-      }),
-      maxScore: 0, // filled in below
-      movement: null,
-      prize: null,
-      groupPicksCount: user.matchPicks.length,
-      bracketPicksCount: user.bracketPicks.length,
-      championPick,
-      favoriteTeam: user.favoriteTeam ?? null,
-      isMe: user.username === currentUser?.username,
-      trophies: user.poolWins,
-    };
-  });
+      });
+      return {
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName ?? null,
+        avatarUrl: user.avatarUrl ?? null,
+        isAdmin: user.isAdmin || envAdmins.has(user.username.toLowerCase()),
+        entry,
+        entriesCount: user.entriesCount,
+        score,
+        maxScore: calculateMaxPossibleScore({
+          currentScore: score,
+          matchPicks,
+          bracketPicks,
+          settledMatchIds,
+          settledBracketSlots,
+        }),
+        movement: null,
+        prize: null,
+        prizeNote: null,
+        groupPicksCount: matchPicks.length,
+        bracketPicksCount: bracketPicks.length,
+        championPick,
+        favoriteTeam: user.favoriteTeam ?? null,
+        isMe: user.username === currentUser?.username,
+        trophies: user.poolWins,
+      };
+    }),
+  );
 
-  const userById = new Map(users.map((u) => [u.id, u]));
-  for (const row of scores) {
-    const u = userById.get(row.id)!;
-    row.maxScore = calculateMaxPossibleScore({
-      currentScore: row.score,
-      matchPicks: u.matchPicks,
-      bracketPicks: u.bracketPicks,
-      settledMatchIds,
-      settledBracketSlots,
-    });
-  }
-
-  scores.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+  scores.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username) || a.entry - b.entry);
 
   // Rank movement vs yesterday's final standings (ties share a rank)
   const rankOf = (score: number) => scores.filter((s) => s.score > score).length + 1;
-  const ranked = scores.map((s) => ({ userId: s.id, rank: rankOf(s.score), score: s.score }));
+  const ranked = scores.map((s) => ({ userId: s.id, entry: s.entry, rank: rankOf(s.score), score: s.score }));
   const [previousRanks] = await Promise.all([getPreviousRanks(), updateRankSnapshots(ranked)]);
   for (let i = 0; i < scores.length; i++) {
-    const prev = previousRanks.get(scores[i].id);
+    const prev = previousRanks.get(entryKey(scores[i].id, scores[i].entry));
     if (prev !== undefined) scores[i].movement = prev - ranked[i].rank;
   }
 
-  // Live prize money — tied players split the combined payout for the
-  // positions they occupy (e.g. two tied for 1st split 75%+25%, two tied
-  // for 2nd split the 25%)
+  // Live prize money — pot is fee × total entries; tied entries split the
+  // combined payout for the positions they occupy (e.g. two tied for 1st
+  // split 75%+25%, two tied for 2nd split the 25%)
   const entryFee = poolConfig?.entryFeePerPlayer ?? 0;
-  const totalPot = entryFee * scores.length;
+  const totalEntries = scores.length;
+  const totalPot = entryFee * totalEntries;
   if (totalPot > 0 && scores.length > 0) {
     const payouts = calculatePayouts(totalPot);
     let pos = 0;
@@ -127,8 +132,16 @@ export default async function StandingsPage() {
       }
       pos = end;
     }
+    // 3rd place: free entry to the next pool (non-cash)
+    if (scores.length >= 3) {
+      const thirdScore = scores[2].score;
+      for (const row of scores) {
+        if (row.score === thirdScore && row.prize == null) row.prizeNote = 'Free entry next pool';
+      }
+    }
   }
 
+  const playerCount = users.length;
   const finishedMatches = matchResults.filter((r) => r.status === 'finished').length;
 
   return (
@@ -141,7 +154,9 @@ export default async function StandingsPage() {
           <p className="text-gray-500 text-sm mt-1.5">
             {finishedMatches} match{finishedMatches !== 1 ? 'es' : ''} completed
             <span className="text-gray-300 mx-2">·</span>
-            {scores.length} player{scores.length !== 1 ? 's' : ''} in the pool
+            {playerCount} player{playerCount !== 1 ? 's' : ''}
+            <span className="text-gray-300 mx-2">·</span>
+            {totalEntries} {totalEntries !== 1 ? 'entries' : 'entry'}
             {totalPot > 0 && (
               <>
                 <span className="text-gray-300 mx-2">·</span>

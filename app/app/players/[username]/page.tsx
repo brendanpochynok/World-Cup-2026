@@ -44,7 +44,7 @@ export default async function PlayerProfilePage({
   const sessionUser = await getSessionUser();
   const isOwnProfile = sessionUser?.username === username;
 
-  const user = await prisma.user.findUnique({
+  const userRow = await prisma.user.findUnique({
     where: { username },
     include: {
       matchPicks: true,
@@ -52,7 +52,14 @@ export default async function PlayerProfilePage({
       poolWins: { orderBy: [{ year: 'desc' }, { position: 'asc' }] },
     },
   });
-  if (!user) notFound();
+  if (!userRow) notFound();
+
+  // Profile shows the player's primary entry (entry 1)
+  const user = {
+    ...userRow,
+    matchPicks: userRow.matchPicks.filter((p) => p.entry === 1),
+    bracketPicks: userRow.bracketPicks.filter((p) => p.entry === 1),
+  };
 
   const [matchResults, bracketResults, allUsers] = await Promise.all([
     prisma.matchResult.findMany({ where: { status: 'finished', result: { not: null } } }),
@@ -64,10 +71,20 @@ export default async function PlayerProfilePage({
   const bracketMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
 
   const myScore = computeScore(user.matchPicks, user.bracketPicks, resultMap, bracketMap);
-  const allScores = allUsers.map((u) => computeScore(u.matchPicks, u.bracketPicks, resultMap, bracketMap));
+  // Rank among every paid entry in the pool — same basis as the standings page
+  const allScores = allUsers.flatMap((u) =>
+    Array.from({ length: u.entriesCount }, (_, i) => i + 1).map((entry) =>
+      computeScore(
+        u.matchPicks.filter((p) => p.entry === entry),
+        u.bracketPicks.filter((p) => p.entry === entry),
+        resultMap,
+        bracketMap,
+      ),
+    ),
+  );
   allScores.sort((a, b) => b - a);
   const rank = allScores.filter((s) => s > myScore).length + 1;
-  const totalPlayers = allUsers.length;
+  const totalPlayers = allScores.length;
 
   // Group picks: only locked/played matches
   const today = new Date().toISOString().slice(0, 10);

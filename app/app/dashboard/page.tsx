@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { GROUP_MATCHES, GROUPS, SCORING, getTeamMeta, getFlagUrl, computeGroupStandings } from '@/lib/worldcup-data';
 import { calculateTotalScore } from '@/lib/scoring';
 import Link from 'next/link';
-import EntryFeeVoteModal from '@/components/EntryFeeVoteModal';
 import AnnouncementModal from '@/components/AnnouncementModal';
 import TrophyIcon from '@/components/TrophyIcon';
 import type { Metadata } from 'next';
@@ -27,9 +26,9 @@ export default async function DashboardPage() {
   const [allUsers, bracketResults] = await Promise.all([
     prisma.user.findMany({
       select: {
-        id: true, username: true, displayName: true, avatarUrl: true, isAdmin: true, favoriteTeam: true,
-        matchPicks: { select: { matchId: true, pick: true } },
-        bracketPicks: { select: { round: true, slot: true, team: true } },
+        id: true, username: true, displayName: true, avatarUrl: true, isAdmin: true, favoriteTeam: true, entriesCount: true,
+        matchPicks: { select: { matchId: true, pick: true, entry: true } },
+        bracketPicks: { select: { round: true, slot: true, team: true, entry: true } },
         poolWins: { select: { trophyImage: true, poolName: true, year: true }, orderBy: { year: 'asc' } },
       },
     }),
@@ -40,22 +39,36 @@ export default async function DashboardPage() {
     matchResults.filter((r) => r.status === 'finished' && r.result).map((r) => [r.matchId, r.result!]),
   );
   const bracketMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
-  const scoreOf = (u: typeof allUsers[number]) => calculateTotalScore({
-    matchPicks: u.matchPicks,
-    bracketPicks: u.bracketPicks,
+  const scoreOf = (u: typeof allUsers[number], entry: number) => calculateTotalScore({
+    matchPicks: u.matchPicks.filter((p) => p.entry === entry),
+    bracketPicks: u.bracketPicks.filter((p) => p.entry === entry),
     matchResults: resultMap,
     bracketResults: bracketMap,
   });
 
+  // One leaderboard row per entry, matching the standings page
   const leaderboard = allUsers
-    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isAdmin: u.isAdmin || envAdmins.has(u.username.toLowerCase()), favoriteTeam: u.favoriteTeam, score: scoreOf(u), trophies: u.poolWins }))
-    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username))
+    .flatMap((u) =>
+      Array.from({ length: u.entriesCount }, (_, i) => i + 1).map((entry) => ({
+        id: u.id,
+        entry,
+        username: u.username,
+        displayName: (u.displayName ?? u.username) + (u.entriesCount > 1 ? ` (${entry})` : ''),
+        avatarUrl: u.avatarUrl,
+        isAdmin: u.isAdmin || envAdmins.has(u.username.toLowerCase()),
+        favoriteTeam: u.favoriteTeam,
+        score: scoreOf(u, entry),
+        trophies: u.poolWins,
+      })),
+    )
+    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username) || a.entry - b.entry)
     .slice(0, 5);
 
-  const myScore = user ? (() => {
-    const me = allUsers.find((u) => u.id === user.userId);
-    return me ? scoreOf(me) : 0;
-  })() : 0;
+  // Show the best of the player's entries on the stats card
+  const myUser = user ? allUsers.find((u) => u.id === user.userId) : undefined;
+  const myScore = myUser
+    ? Math.max(...Array.from({ length: myUser.entriesCount }, (_, i) => scoreOf(myUser, i + 1)))
+    : 0;
 
   // User-specific data (only fetched when logged in)
   let matchPicksCount = 0;
@@ -65,8 +78,8 @@ export default async function DashboardPage() {
 
   if (user) {
     [matchPicksCount, bracketPicksCount] = await Promise.all([
-      prisma.matchPick.count({ where: { userId: user.userId } }),
-      prisma.bracketPick.count({ where: { userId: user.userId } }),
+      prisma.matchPick.count({ where: { userId: user.userId, entry: 1 } }),
+      prisma.bracketPick.count({ where: { userId: user.userId, entry: 1 } }),
     ]);
     const finalPick = await prisma.bracketPick.findUnique({
       where: { userId_entry_round_slot: { userId: user.userId, entry: 1, round: 'Final', slot: 0 } },
@@ -95,9 +108,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8 max-w-5xl">
 
-      {/* Entry fee vote popup — shows until the user casts a vote */}
+      {/* Pool announcement — shows until the user acknowledges it */}
       {user && <AnnouncementModal />}
-      {user && <EntryFeeVoteModal playerCount={allUsers.length} />}
 
       {/* ─── Header ─── */}
       <div className="flex items-end justify-between gap-4">
@@ -322,7 +334,7 @@ export default async function DashboardPage() {
               const isMe = user ? entry.username === user.username : false;
               const entryLabel = entry.displayName ?? entry.username;
               return (
-                <div key={entry.id}
+                <div key={`${entry.id}-${entry.entry}`}
                   className={`flex items-center gap-3 py-3 ${isMe ? 'text-wc-blue-600' : ''}`}>
                   <span className="text-gray-400 text-sm font-mono w-4 text-center flex-shrink-0">{i + 1}</span>
                   {entry.avatarUrl ? (
