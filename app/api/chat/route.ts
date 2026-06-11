@@ -20,6 +20,7 @@ export interface MessageReaction {
   emoji: string;
   count: number;
   mine: boolean;
+  users: string[]; // display names of who reacted
 }
 
 // Aggregated reactions for the latest messages, keyed by message id.
@@ -35,16 +36,24 @@ async function recentReactions(meId: number): Promise<Record<number, MessageReac
   const rows = await prisma.chatReaction.findMany({
     where: { messageId: { in: recent.map((m) => m.id) } },
     orderBy: { id: 'asc' },
+    select: {
+      messageId: true,
+      emoji: true,
+      userId: true,
+      user: { select: { username: true, displayName: true } },
+    },
   });
   const map: Record<number, MessageReaction[]> = {};
   for (const r of rows) {
     const list = (map[r.messageId] ??= []);
+    const name = r.user.displayName ?? r.user.username;
     const existing = list.find((x) => x.emoji === r.emoji);
     if (existing) {
       existing.count++;
+      existing.users.push(name);
       if (r.userId === meId) existing.mine = true;
     } else {
-      list.push({ emoji: r.emoji, count: 1, mine: r.userId === meId });
+      list.push({ emoji: r.emoji, count: 1, mine: r.userId === meId, users: [name] });
     }
   }
   return map;
