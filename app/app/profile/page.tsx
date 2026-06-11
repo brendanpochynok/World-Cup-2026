@@ -60,6 +60,7 @@ export default function ProfilePage() {
   // Entries state
   const [entriesCount, setEntriesCount] = useState(1);
   const [entriesLocked, setEntriesLocked] = useState(false);
+  const [activeStatsEntry, setActiveStatsEntry] = useState(1);
 
   // Profile form state
   const [displayName, setDisplayName] = useState('');
@@ -81,28 +82,35 @@ export default function ProfilePage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/profile').then((r) => r.json()),
-      fetch('/api/me/stats').then((r) => r.json()).catch(() => null),
-      fetch('/api/picks/breakdown').then((r) => r.json()).catch(() => null),
       fetch('/api/me/entries').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]).then(([data, statsData, breakdownData, entriesData]: [ProfileData, MeStats | null, BreakdownData | null, { entriesCount?: number; locked?: boolean } | null]) => {
+    ]).then(([data, entriesData]: [ProfileData, { entriesCount?: number; locked?: boolean } | null]) => {
       setProfile(data);
       setDisplayName(data.displayName ?? '');
       setFavoriteTeam(data.favoriteTeam ?? '');
       setAvatarPreview(data.avatarUrl);
-      if (statsData && 'score' in statsData) setStats(statsData);
-      if (breakdownData && 'total' in breakdownData) setBreakdown(breakdownData);
       if (entriesData) {
         setEntriesCount(entriesData.entriesCount ?? 1);
         setEntriesLocked(entriesData.locked ?? false);
       }
       setLoading(false);
-      // Load trophies after we know the username
       fetch(`/api/players/${data.username}/trophies`)
         .then((r) => r.json())
         .then((j) => { if (j.wins) setTrophies(j.wins); })
         .catch(() => {});
     }).catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setStats(null);
+    setBreakdown(null);
+    Promise.all([
+      fetch(`/api/me/stats?entry=${activeStatsEntry}`).then((r) => r.json()).catch(() => null),
+      fetch(`/api/picks/breakdown?entry=${activeStatsEntry}`).then((r) => r.json()).catch(() => null),
+    ]).then(([statsData, breakdownData]: [MeStats | null, BreakdownData | null]) => {
+      if (statsData && 'score' in statsData) setStats(statsData);
+      if (breakdownData && 'total' in breakdownData) setBreakdown(breakdownData);
+    });
+  }, [activeStatsEntry]);
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -242,38 +250,67 @@ export default function ProfilePage() {
       </div>
 
       {/* ── Stats card ── */}
-      {stats && (
+      {(stats || entriesCount > 1) && (
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900 text-lg">Your Stats</h2>
-            <span className="text-xs font-bold text-gray-400">
-              #{stats.rank} of {stats.totalPlayers}
-            </span>
+            {stats && (
+              <span className="text-xs font-bold text-gray-400">
+                #{stats.rank} of {stats.totalPlayers}
+              </span>
+            )}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-3 py-3">
-              <div className="text-[11px] font-bold text-wc-blue-500 mb-0.5">Rank</div>
-              <div className="text-2xl font-bold text-wc-blue-600">#{stats.rank}</div>
-              <div className="text-[11px] text-wc-blue-400 mt-0.5">of {stats.totalPlayers} players</div>
+
+          {entriesCount > 1 && (
+            <div className="flex gap-1.5 mb-4">
+              {Array.from({ length: entriesCount }, (_, i) => i + 1).map((e) => (
+                <button
+                  key={e}
+                  onClick={() => setActiveStatsEntry(e)}
+                  className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+                    activeStatsEntry === e
+                      ? 'bg-wc-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Entry {e}
+                </button>
+              ))}
             </div>
-            <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-3 py-3">
-              <div className="text-[11px] font-bold text-wc-gold-600 mb-0.5">Score</div>
-              <div className="text-2xl font-bold text-wc-gold-600">{stats.score}</div>
-              <div className="text-[11px] text-wc-gold-400 mt-0.5">points</div>
+          )}
+
+          {!stats && (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-5 h-5 border-2 border-wc-blue-400 border-t-transparent rounded-full animate-spin" />
             </div>
-            <div className="rounded-xl bg-wc-green-50 border border-wc-green-200 px-3 py-3">
-              <div className="text-[11px] font-bold text-wc-green-600 mb-0.5">Group picks</div>
-              <div className="text-2xl font-bold text-wc-green-600">{stats.groupCorrect}</div>
-              <div className="text-[11px] text-wc-green-500 mt-0.5">
-                correct · {stats.groupWrong} wrong
+          )}
+
+          {stats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl bg-wc-blue-50 border border-wc-blue-100 px-3 py-3">
+                <div className="text-[11px] font-bold text-wc-blue-500 mb-0.5">Rank</div>
+                <div className="text-2xl font-bold text-wc-blue-600">#{stats.rank}</div>
+                <div className="text-[11px] text-wc-blue-400 mt-0.5">of {stats.totalPlayers} entries</div>
+              </div>
+              <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-3 py-3">
+                <div className="text-[11px] font-bold text-wc-gold-600 mb-0.5">Score</div>
+                <div className="text-2xl font-bold text-wc-gold-600">{stats.score}</div>
+                <div className="text-[11px] text-wc-gold-400 mt-0.5">points</div>
+              </div>
+              <div className="rounded-xl bg-wc-green-50 border border-wc-green-200 px-3 py-3">
+                <div className="text-[11px] font-bold text-wc-green-600 mb-0.5">Group picks</div>
+                <div className="text-2xl font-bold text-wc-green-600">{stats.groupCorrect}</div>
+                <div className="text-[11px] text-wc-green-500 mt-0.5">
+                  correct · {stats.groupWrong} wrong
+                </div>
+              </div>
+              <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">
+                <div className="text-[11px] font-bold text-gray-500 mb-0.5">Bracket</div>
+                <div className="text-2xl font-bold text-gray-700">{stats.bracketPicksCount}</div>
+                <div className="text-[11px] text-gray-400 mt-0.5">picks made</div>
               </div>
             </div>
-            <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">
-              <div className="text-[11px] font-bold text-gray-500 mb-0.5">Bracket</div>
-              <div className="text-2xl font-bold text-gray-700">{stats.bracketPicksCount}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">picks made</div>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
