@@ -31,7 +31,6 @@ export interface MatchData {
 
 // ── Caches ────────────────────────────────────────────────────────────────────
 let liveCache: { data: unknown; at: number } | null = null;
-let polyTimesCache: { map: Map<string, string>; at: number } | null = null;
 
 // ── ESPN (today's live/finished scores) ───────────────────────────────────────
 interface ESPNComp {
@@ -75,55 +74,6 @@ async function fetchESPNLive(): Promise<
   return map;
 }
 
-// ── Polymarket kickoff times (one request per match, cached 4 hours) ──────────
-async function fetchOnePolyTime(slug: string): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://gamma-api.polymarket.com/events?slug=${slug}`,
-      { headers: POLY_HEADERS, next: { revalidate: 14400 } },
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return null;
-    const event = (data.find((e: { slug: string }) => e.slug === slug) ?? data[0]) as { startTime?: string };
-    return event?.startTime ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchPolymarketTimes(): Promise<Map<string, string>> {
-  const now = Date.now();
-  if (polyTimesCache && now - polyTimesCache.at < 4 * 3_600_000) return polyTimesCache.map;
-
-  const map = new Map<string, string>(); // matchId → kickoffIso
-
-  // Build one task per match — try both slug orderings
-  const tasks = GROUP_MATCHES.map((m) => async () => {
-    const hCode = POLYMARKET_TEAM_CODES[m.home];
-    const aCode = POLYMARKET_TEAM_CODES[m.away];
-    if (!hCode || !aCode) return;
-
-    for (const [h, a] of [[hCode, aCode], [aCode, hCode]]) {
-      const slug = `fifwc-${h}-${a}-${m.date}`;
-      const time = await fetchOnePolyTime(slug);
-      if (time) {
-        map.set(m.matchId, time);
-        return;
-      }
-    }
-  });
-
-  // Fetch in batches of 20 to be kind to Polymarket's API
-  const BATCH = 20;
-  for (let i = 0; i < tasks.length; i += BATCH) {
-    await Promise.all(tasks.slice(i, i + BATCH).map((fn) => fn()));
-  }
-
-  polyTimesCache = { map, at: now };
-  return map;
-}
-
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function GET() {
   const now = Date.now();
@@ -139,16 +89,15 @@ export async function GET() {
     return NextResponse.json(liveCache.data);
   }
 
-  const [dbResults, espnLiveMap, polyTimesMap] = await Promise.all([
+  const [dbResults, espnLiveMap] = await Promise.all([
     prisma.matchResult.findMany(),
     fetchESPNLive(),
-    fetchPolymarketTimes(),
   ]);
 
   const dbMap = new Map(dbResults.map((r) => [r.matchId, r]));
 
   const matches: MatchData[] = GROUP_MATCHES.map((m) => {
-    const kickoffIso = polyTimesMap.get(m.matchId) ?? m.kickoffIso;
+    const kickoffIso = m.kickoffIso;
     const espnKey = normalizeTeam(m.home) + ':' + normalizeTeam(m.away);
 
     // ESPN live/finished (today only)

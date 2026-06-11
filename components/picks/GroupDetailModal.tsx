@@ -165,7 +165,7 @@ export default function GroupDetailModal({
 
             {/* Match cards */}
             {matches.map((match) => {
-              const locked = isMatchLocked(match, kickoffTimes[match.matchId]);
+              const locked = isMatchLocked(match);
               const pick = matchPicks[match.matchId] ?? null;
               const oddsEntry = oddsMap[match.matchId];
               const probs = oddsEntry ?? null;
@@ -185,8 +185,8 @@ export default function GroupDetailModal({
                   <div className="flex justify-between items-center text-[11px] text-gray-400 mb-3">
                     <div className="flex items-center gap-1.5">
                       <span>{formatDate(match.date)}</span>
-                      {kickoffTimes[match.matchId] && (
-                        <span className="text-gray-400">· {formatKickoff(kickoffTimes[match.matchId])}</span>
+                      {match.kickoffIso && (
+                        <span className="text-gray-400">· {formatKickoff(match.kickoffIso)}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
