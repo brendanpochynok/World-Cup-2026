@@ -73,6 +73,8 @@ export default function ScoresPage() {
   const [matchPicks, setMatchPicks] = useState<Record<string, string> | null>(null);
   const [distribution, setDistribution] = useState<Record<string, PickDistribution>>({});
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
+  const [entriesCount, setEntriesCount] = useState(1);
+  const [activeEntry, setActiveEntry] = useState(1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchScores = useCallback(async () => {
@@ -94,11 +96,11 @@ export default function ScoresPage() {
     }
   }, []);
 
-  // Fetch picks, distribution, and odds once on mount
+  // Fetch entries, distribution, and odds once on mount
   useEffect(() => {
-    fetch('/api/picks/groups')
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.picks) setMatchPicks(d.picks); })
+    fetch('/api/me/entries')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.entriesCount) setEntriesCount(d.entriesCount); })
       .catch(() => {});
 
     fetch('/api/picks/distribution')
@@ -112,12 +114,20 @@ export default function ScoresPage() {
       .catch(() => {});
   }, []);
 
+  // Fetch picks for the active entry (re-runs on entry tab switch)
+  useEffect(() => {
+    fetch(`/api/picks/groups?entry=${activeEntry}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.picks) setMatchPicks(d.picks); })
+      .catch(() => {});
+  }, [activeEntry]);
+
   async function handlePickChange(matchId: string, pick: string) {
     setMatchPicks((prev) => ({ ...(prev ?? {}), [matchId]: pick }));
     await fetch('/api/picks/groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ matchId, pick }),
+      body: JSON.stringify({ matchId, pick, entry: activeEntry }),
     });
   }
 
@@ -236,6 +246,28 @@ export default function ScoresPage() {
               </svg>
             </button>
           )}
+        </div>
+      )}
+
+      {/* ─── Entry Tabs (only when player has multiple entries) ─── */}
+      {entriesCount > 1 && (
+        <div className="flex gap-1 border-b border-gray-200">
+          {Array.from({ length: entriesCount }, (_, i) => i + 1).map((entry) => (
+            <button
+              key={entry}
+              onClick={() => setActiveEntry(entry)}
+              className={`px-4 py-2.5 text-sm font-semibold transition-colors relative ${
+                activeEntry === entry
+                  ? 'text-wc-blue-500'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Entry {entry}
+              {activeEntry === entry && (
+                <span className="absolute bottom-0 inset-x-0 h-[2px] bg-wc-blue-500 rounded-full" />
+              )}
+            </button>
+          ))}
         </div>
       )}
 
