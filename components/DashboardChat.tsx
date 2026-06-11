@@ -52,9 +52,10 @@ interface GifResult { id: string; url: string; preview: string | null }
 interface DashboardChatProps {
   me: { userId: number; username: string };
   isAdmin: boolean;
+  tall?: boolean;
 }
 
-export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
+export default function DashboardChat({ me, isAdmin, tall = false }: DashboardChatProps) {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
@@ -68,6 +69,7 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
   const [gifLoading, setGifLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
+  const lastReadSent = useRef(0);
 
   const appendMessages = useCallback((incoming: ChatMessageData[]) => {
     if (incoming.length === 0) return;
@@ -148,6 +150,22 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
 
+  // Mark messages read while the chat is on screen; nav badges listen for
+  // the wc-chat-read event to clear immediately
+  useEffect(() => {
+    if (messages.length === 0 || document.visibilityState === 'hidden') return;
+    const lastId = messages[messages.length - 1].id;
+    if (lastId <= lastReadSent.current) return;
+    lastReadSent.current = lastId;
+    fetch('/api/chat/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lastId }),
+    })
+      .then((res) => { if (res.ok) window.dispatchEvent(new Event('wc-chat-read')); })
+      .catch(() => { lastReadSent.current = 0; });
+  }, [messages]);
+
   function handleScroll() {
     const el = listRef.current;
     if (!el) return;
@@ -212,7 +230,7 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
       <div
         ref={listRef}
         onScroll={handleScroll}
-        className="h-72 overflow-y-auto px-5 py-3 space-y-3"
+        className={`${tall ? 'h-[60vh] min-h-72' : 'h-72'} overflow-y-auto px-5 py-3 space-y-3`}
       >
         {loading ? (
           <p className="text-gray-400 text-sm text-center py-8">Loading…</p>

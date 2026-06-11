@@ -22,6 +22,7 @@ model User {
   createdAt            DateTime          @default(now())
   entriesCount         Int               @default(1)
   announcementAckedAt  DateTime?
+  chatLastReadId       Int               @default(0)
   matchPicks           MatchPick[]
   bracketPicks         BracketPick[]
   tiebreakerPicks      TiebreakerPick[]

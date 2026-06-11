@@ -3,6 +3,16 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useChatUnread } from '@/components/useChatUnread';
+
+function UnreadBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-wc-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
 
 interface NavbarProps {
   username: string | null;
@@ -53,6 +63,16 @@ const navLinks = [
     ),
   },
   {
+    href: '/app/chat',
+    label: 'Chat',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+    ),
+  },
+  {
     href: '/app/rules',
     label: 'Rules',
     icon: (
@@ -68,6 +88,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const unread = useChatUnread(!!username);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -98,6 +119,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-0.5">
               {navLinks.map((link) => {
+                if (link.href === '/app/chat' && isGuest) return null;
                 const active = pathname === link.href || pathname.startsWith(link.href + '/');
                 return (
                   <Link
@@ -114,6 +136,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
                     )}
                     {link.icon}
                     {link.label}
+                    {link.href === '/app/chat' && <UnreadBadge count={unread} />}
                   </Link>
                 );
               })}
@@ -215,6 +238,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-3 py-2 space-y-0.5">
               {navLinks.map((link) => {
+                if (link.href === '/app/chat' && isGuest) return null;
                 const active = pathname === link.href;
                 return (
                   <Link
@@ -229,6 +253,7 @@ export default function Navbar({ username, displayName, avatarUrl, isAdmin = fal
                   >
                     {link.icon}
                     {link.label}
+                    {link.href === '/app/chat' && <UnreadBadge count={unread} />}
                   </Link>
                 );
               })}

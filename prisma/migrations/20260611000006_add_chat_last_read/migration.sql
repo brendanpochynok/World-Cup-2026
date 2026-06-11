@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "chatLastReadId" INTEGER NOT NULL DEFAULT 0;

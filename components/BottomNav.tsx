@@ -2,6 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useChatUnread } from '@/components/useChatUnread';
+
+const CHAT_TAB = {
+  href: '/app/chat',
+  label: 'Chat',
+  icon: (
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  ),
+};
 
 const TABS = [
   {
@@ -38,16 +48,20 @@ const TABS = [
   },
 ];
 
-export default function BottomNav() {
+export default function BottomNav({ loggedIn = false }: { loggedIn?: boolean }) {
   const pathname = usePathname();
+  const unread = useChatUnread(loggedIn);
+
+  const tabs = loggedIn ? [...TABS, CHAT_TAB] : TABS;
 
   return (
     <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-200"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Main navigation">
-      <div className="grid grid-cols-4">
-        {TABS.map(({ href, label, icon }) => {
+      <div className={loggedIn ? 'grid grid-cols-5' : 'grid grid-cols-4'}>
+        {tabs.map(({ href, label, icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
+          const isChat = href === '/app/chat';
           return (
             <Link
               key={href}
@@ -57,10 +71,17 @@ export default function BottomNav() {
                 active ? 'text-wc-blue-600' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                strokeWidth={active ? 2 : 1.5}>
-                {icon}
-              </svg>
+              <span className="relative">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  strokeWidth={active ? 2 : 1.5}>
+                  {icon}
+                </svg>
+                {isChat && unread > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-wc-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                    {unread > 99 ? '99+' : unread}
+                  </span>
+                )}
+              </span>
               {label}
             </Link>
           );
