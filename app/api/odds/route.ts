@@ -28,6 +28,7 @@ const FETCH_HEADERS = {
 interface PolyMarket {
   slug: string;
   outcomePrices: string; // JSON array like '["0.46","0.54"]'
+  clobTokenIds?: string; // JSON array '["yesTokenId","noTokenId"]'
   active: boolean;
   closed: boolean;
 }
@@ -97,6 +98,51 @@ function parseEventOdds(
 
 function isEventResolved(event: PolyEvent): boolean {
   return event.markets.every((m) => m.closed);
+}
+
+// Live in-game prices straight from the CLOB order book midpoint —
+// gamma's outcomePrices field lags several minutes behind during games
+async function fetchClobOdds(
+  event: PolyEvent,
+  homeCode: string,
+  awayCode: string
+): Promise<{ home: number; draw: number; away: number } | null> {
+  const tokens: { key: 'home' | 'draw' | 'away'; tokenId: string }[] = [];
+  for (const market of event.markets) {
+    let ids: string[];
+    try {
+      ids = JSON.parse(market.clobTokenIds ?? '[]') as string[];
+    } catch {
+      continue;
+    }
+    const yesToken = ids[0]; // [0] = "Yes" outcome token
+    if (!yesToken) continue;
+    const mSlug = market.slug.toLowerCase();
+    if (mSlug.endsWith('-' + homeCode)) tokens.push({ key: 'home', tokenId: yesToken });
+    else if (mSlug.endsWith('-' + awayCode)) tokens.push({ key: 'away', tokenId: yesToken });
+    else if (mSlug.endsWith('-draw')) tokens.push({ key: 'draw', tokenId: yesToken });
+  }
+  if (tokens.length !== 3) return null;
+
+  const probs: Partial<Record<'home' | 'draw' | 'away', number>> = {};
+  await Promise.all(
+    tokens.map(async ({ key, tokenId }) => {
+      try {
+        const res = await fetch(`https://clob.polymarket.com/midpoint?token_id=${tokenId}`, {
+          headers: FETCH_HEADERS,
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { mid?: string };
+        const mid = Number(data?.mid);
+        if (!isNaN(mid) && mid >= 0 && mid <= 1) probs[key] = mid;
+      } catch { /* fall back to gamma prices */ }
+    })
+  );
+
+  if (probs.home === undefined || probs.draw === undefined || probs.away === undefined) return null;
+  const total = probs.home + probs.draw + probs.away || 1;
+  return { home: probs.home / total, draw: probs.draw / total, away: probs.away / total };
 }
 
 function uniqueCodes(primary: string, team: string): string[] {
@@ -178,29 +224,21 @@ async function fetchMatchOdds(
       };
     }
 
-    // In-game: bypass the cache so prices track the live market
-    const liveEvent = await fetchEventBySlug(slug, true);
-    if (liveEvent) {
-      // Market resolved (game decided) — fall back to the pre-match snapshot
-      if (isEventResolved(liveEvent)) {
-        return snapshot ? snapshotOdds(match.matchId, snapshot) : null;
-      }
-      const liveOdds = parseEventOdds(liveEvent, h, a);
-      if (liveOdds) {
-        return {
-          matchId: match.matchId,
-          odds: { ...liveOdds, source: 'polymarket', phase: 'live' },
-          kickoff: liveEvent.startTime ?? event.startTime ?? null,
-          prematch: false,
-        };
-      }
+    // In-game: re-check the event for resolution, then read live prices
+    // from the order book; fall back to gamma prices if the CLOB is down
+    const liveEvent = (await fetchEventBySlug(slug, true)) ?? event;
+
+    // Market resolved (game decided) — fall back to the pre-match snapshot
+    if (isEventResolved(liveEvent)) {
+      return snapshot ? snapshotOdds(match.matchId, snapshot) : null;
     }
 
-    // Fresh fetch failed — serve the cached prices rather than nothing
+    const liveOdds =
+      (await fetchClobOdds(liveEvent, h, a)) ?? parseEventOdds(liveEvent, h, a) ?? odds;
     return {
       matchId: match.matchId,
-      odds: { ...odds, source: 'polymarket', phase: 'live' },
-      kickoff: event.startTime ?? null,
+      odds: { ...liveOdds, source: 'polymarket', phase: 'live' },
+      kickoff: liveEvent.startTime ?? event.startTime ?? null,
       prematch: false,
     };
   }
@@ -214,7 +252,7 @@ let lastSnapshotAt = 0;
 export async function GET() {
   const now = Date.now();
 
-  if (oddsCache && now - oddsCache.at < (oddsCache.hasLive ? 30_000 : 300_000)) {
+  if (oddsCache && now - oddsCache.at < (oddsCache.hasLive ? 15_000 : 300_000)) {
     return NextResponse.json(oddsCache.data);
   }
 
