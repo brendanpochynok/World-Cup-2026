@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { SCORING, BRACKET_ROUNDS, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
+import { SCORING, BRACKET_ROUNDS, BRACKET_LOCK_ISO, ENTRY_FEE_USD, MAX_ENTRIES } from '@/lib/worldcup-data';
 import Link from 'next/link';
 import LocalDateTime from '@/components/LocalDateTime';
 import { calculatePayouts } from '@/lib/payouts';
@@ -30,13 +30,15 @@ function InfoBox({ children }: { children: React.ReactNode }) {
 }
 
 export default async function RulesPage() {
-  const [playerCount, poolConfig] = await Promise.all([
-    prisma.user.count(),
+  const [users, poolConfig] = await Promise.all([
+    prisma.user.findMany({ select: { entriesCount: true } }),
     prisma.poolConfig.findUnique({ where: { id: 1 } }),
   ]);
 
-  const entryFee = poolConfig?.entryFeePerPlayer ?? 0;
-  const totalPool = entryFee * playerCount;
+  const playerCount = users.length;
+  const totalEntries = users.reduce((sum, u) => sum + (u.entriesCount ?? 1), 0);
+  const entryFee = poolConfig?.entryFeePerPlayer ?? ENTRY_FEE_USD;
+  const totalPool = entryFee * totalEntries;
   const [prize1st, prize2nd] = calculatePayouts(totalPool);
   const hasPrize = totalPool > 0;
 
@@ -59,20 +61,27 @@ export default async function RulesPage() {
             <div>
               <p className="eyebrow mb-1">Prize Pool</p>
               <div className="text-4xl font-bold text-gray-900">{fmt(totalPool)}</div>
-              <p className="text-gray-400 text-xs mt-1">{playerCount} players × {fmt(entryFee)} entry</p>
+              <p className="text-gray-400 text-xs mt-1">
+                {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'} × {fmt(entryFee)}
+                {totalEntries !== playerCount && ` · ${playerCount} players`}
+              </p>
             </div>
             <svg className="w-8 h-8 text-wc-gold-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
               <path d="M5 3h14l-1 7c0 3.87-3.13 7-7 7s-7-3.13-7-7L5 3zm0 0H2v2c0 2.76 1.34 5.21 3.41 6.72L5 3zm14 0h3v2c0 2.76-1.34 5.21-3.41 6.72L19 3zM12 17c1.1 0 2 .9 2 2v1H10v-1c0-1.1.9-2 2-2zm-4 3h8v1H8v-1z"/>
             </svg>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-wc-gold-50 border border-wc-gold-200 px-4 py-3">
-              <p className="text-[11px] font-bold text-wc-gold-600 mb-1">1st Place · 75%</p>
+              <p className="text-[11px] font-bold text-wc-gold-600 mb-1">🥇 1st · 75%</p>
               <p className="text-2xl font-bold text-wc-gold-600">{fmt(prize1st)}</p>
             </div>
             <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
-              <p className="text-[11px] font-bold text-gray-500 mb-1">2nd Place · 25%</p>
+              <p className="text-[11px] font-bold text-gray-500 mb-1">🥈 2nd · 25%</p>
               <p className="text-2xl font-bold text-gray-700">{fmt(prize2nd)}</p>
+            </div>
+            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3">
+              <p className="text-[11px] font-bold text-green-600 mb-1">🥉 3rd</p>
+              <p className="text-sm font-bold text-green-700 leading-tight mt-1">Free entry next pool</p>
             </div>
           </div>
         </div>
@@ -88,7 +97,7 @@ export default async function RulesPage() {
             { label: 'Group stage matches', value: '72' },
             { label: 'Knockout rounds', value: '5' },
             { label: 'Players', value: String(playerCount) },
-            { label: 'Entry fee', value: entryFee > 0 ? fmt(entryFee) : 'Free' },
+            { label: 'Entry fee', value: entryFee > 0 ? `${fmt(entryFee)} · max ${MAX_ENTRIES}` : 'Free' },
           ].map(({ label, value }) => (
             <div key={label} className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
               <div className="text-xs text-gray-400 font-semibold">{label}</div>

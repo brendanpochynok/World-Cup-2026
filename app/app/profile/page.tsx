@@ -14,6 +14,7 @@ import { ALL_TEAMS } from '@/lib/worldcup-data';
 import type { MeStats } from '@/app/api/me/stats/route';
 import type { PoolWinEntry } from '@/app/api/players/[username]/trophies/route';
 import TrophyIcon from '@/components/TrophyIcon';
+import EntriesControl from '@/components/EntriesControl';
 
 interface ProfileData {
   username: string;
@@ -56,6 +57,10 @@ export default function ProfilePage() {
   const [trophies, setTrophies] = useState<PoolWinEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Entries state
+  const [entriesCount, setEntriesCount] = useState(1);
+  const [entriesLocked, setEntriesLocked] = useState(false);
+
   // Profile form state
   const [displayName, setDisplayName] = useState('');
   const [favoriteTeam, setFavoriteTeam] = useState('');
@@ -78,13 +83,18 @@ export default function ProfilePage() {
       fetch('/api/profile').then((r) => r.json()),
       fetch('/api/me/stats').then((r) => r.json()).catch(() => null),
       fetch('/api/picks/breakdown').then((r) => r.json()).catch(() => null),
-    ]).then(([data, statsData, breakdownData]: [ProfileData, MeStats | null, BreakdownData | null]) => {
+      fetch('/api/me/entries').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([data, statsData, breakdownData, entriesData]: [ProfileData, MeStats | null, BreakdownData | null, { entriesCount?: number; locked?: boolean } | null]) => {
       setProfile(data);
       setDisplayName(data.displayName ?? '');
       setFavoriteTeam(data.favoriteTeam ?? '');
       setAvatarPreview(data.avatarUrl);
       if (statsData && 'score' in statsData) setStats(statsData);
       if (breakdownData && 'total' in breakdownData) setBreakdown(breakdownData);
+      if (entriesData) {
+        setEntriesCount(entriesData.entriesCount ?? 1);
+        setEntriesLocked(entriesData.locked ?? false);
+      }
       setLoading(false);
       // Load trophies after we know the username
       fetch(`/api/players/${data.username}/trophies`)
@@ -453,6 +463,21 @@ export default function ProfilePage() {
           {profileSaving ? 'Saving…' : 'Save profile'}
         </button>
       </form>
+
+      {/* ── Pool Entries ── */}
+      <div className="card space-y-5">
+        <div>
+          <h2 className="font-bold text-gray-900 text-lg">Pool Entries</h2>
+          <p className="text-sm text-gray-500 mt-1">$10 per entry · max 3 entries · each entry is independent</p>
+        </div>
+        <div className="flex justify-center py-2">
+          <EntriesControl
+            entriesCount={entriesCount}
+            locked={entriesLocked}
+            onChange={setEntriesCount}
+          />
+        </div>
+      </div>
 
       {/* ── Account info ── */}
       <div className="card space-y-4">

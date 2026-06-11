@@ -34,6 +34,12 @@ interface FeeVoteRow {
   displayName: string | null;
 }
 
+interface PlayerRow {
+  username: string;
+  displayName: string | null;
+  announcementAckedAt: string | null;
+}
+
 interface Props {
   matchResults: MatchResultRow[];
   bracketResults: BracketResultRow[];
@@ -41,9 +47,10 @@ interface Props {
   playerCount: number;
   users: { username: string; displayName: string | null }[];
   feeVotes: FeeVoteRow[];
+  players: PlayerRow[];
 }
 
-type Tab = 'results' | 'bracket' | 'pool' | 'trophies';
+type Tab = 'results' | 'bracket' | 'pool' | 'trophies' | 'announcement';
 
 // ── per-match edit state ─────────────────────────────────────────────────────
 
@@ -109,7 +116,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export default function AdminPanel({ matchResults, bracketResults, entryFee, playerCount, users, feeVotes }: Props) {
+export default function AdminPanel({ matchResults, bracketResults, entryFee, playerCount, users, feeVotes, players }: Props) {
   const [tab, setTab] = useState<Tab>('results');
 
   // ── trophies state ────────────────────────────────────────────────────────
@@ -326,11 +333,15 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
 
   // ── render ─────────────────────────────────────────────────────────────────
 
-  const tabs: { id: Tab; label: string; onClick?: () => void }[] = [
+  const ackedCount = players.filter((p) => p.announcementAckedAt != null).length;
+  const pendingCount = players.length - ackedCount;
+
+  const tabs: { id: Tab; label: string; onClick?: () => void; badge?: number }[] = [
     { id: 'results', label: 'Match Results' },
     { id: 'bracket', label: 'Bracket' },
     { id: 'pool', label: 'Pool Config' },
     { id: 'trophies', label: 'Trophies', onClick: handleTrophyTab },
+    { id: 'announcement', label: 'Announcement', badge: pendingCount > 0 ? pendingCount : undefined },
   ];
 
   return (
@@ -348,13 +359,18 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
           <button
             key={t.id}
             onClick={t.onClick ?? (() => setTab(t.id))}
-            className={`px-4 py-2.5 text-sm font-semibold transition-colors relative ${
+            className={`px-4 py-2.5 text-sm font-semibold transition-colors relative flex items-center gap-1.5 ${
               tab === t.id
                 ? 'text-wc-blue-500'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             {t.label}
+            {t.badge != null && (
+              <span className="bg-red-500 text-white text-[10px] font-black rounded-full px-1.5 py-0.5 leading-none">
+                {t.badge}
+              </span>
+            )}
             {tab === t.id && (
               <span className="absolute bottom-0 inset-x-0 h-[2px] bg-wc-blue-500 rounded-full" />
             )}
@@ -740,6 +756,47 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
             </div>
           )}
         </div>
+        </div>
+      )}
+
+      {/* ── Tab: Announcement ── */}
+      {tab === 'announcement' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">Track who has acknowledged the pool announcement.</p>
+            <div className="flex gap-2 text-xs font-semibold">
+              <span className="text-wc-green-600">{ackedCount} acknowledged</span>
+              <span className="text-gray-300">·</span>
+              <span className={pendingCount > 0 ? 'text-red-500' : 'text-gray-400'}>{pendingCount} pending</span>
+            </div>
+          </div>
+          <div className="divide-y divide-gray-100 rounded-2xl border border-gray-200 overflow-hidden">
+            {players.map((p) => {
+              const acked = p.announcementAckedAt != null;
+              const label = p.displayName ?? p.username;
+              const ackedAt = acked
+                ? new Date(p.announcementAckedAt!).toLocaleString('en-US', {
+                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                  })
+                : null;
+              return (
+                <div key={p.username} className={`flex items-center justify-between px-5 py-3 ${acked ? 'bg-white' : 'bg-red-50'}`}>
+                  <div>
+                    <div className="font-semibold text-sm text-gray-900">{label}</div>
+                    {p.displayName && <div className="text-xs text-gray-400 font-mono">{p.username}</div>}
+                  </div>
+                  {acked ? (
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-wc-green-600">✓ Acknowledged</span>
+                      {ackedAt && <div className="text-[11px] text-gray-400">{ackedAt}</div>}
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-red-500">Pending</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

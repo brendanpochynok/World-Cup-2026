@@ -962,6 +962,16 @@ export function isBracketLocked(): boolean {
   return Date.now() >= new Date(BRACKET_LOCK_ISO).getTime();
 }
 
+export const MAX_ENTRIES = 3;
+export const ENTRY_FEE_USD = 10;
+// Entry count changes lock at the first game kickoff
+export const ENTRY_CHANGES_LOCK_ISO: string =
+  process.env.NEXT_PUBLIC_ENTRY_CHANGES_LOCK_TIME ?? '2026-06-11T19:00:00Z';
+
+export function isEntryChangesLocked(): boolean {
+  return Date.now() >= new Date(ENTRY_CHANGES_LOCK_ISO).getTime();
+}
+
 // Flag emoji map for all 48 teams
 export const TEAM_FLAGS: Record<string, string> = {
   'Mexico': '🇲🇽',

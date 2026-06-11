@@ -4,6 +4,7 @@ import { GROUP_MATCHES, GROUPS, SCORING, getTeamMeta, getFlagUrl, computeGroupSt
 import { calculateTotalScore } from '@/lib/scoring';
 import Link from 'next/link';
 import EntryFeeVoteModal from '@/components/EntryFeeVoteModal';
+import AnnouncementModal from '@/components/AnnouncementModal';
 import TrophyIcon from '@/components/TrophyIcon';
 import type { Metadata } from 'next';
 
@@ -68,7 +69,7 @@ export default async function DashboardPage() {
       prisma.bracketPick.count({ where: { userId: user.userId } }),
     ]);
     const finalPick = await prisma.bracketPick.findUnique({
-      where: { userId_round_slot: { userId: user.userId, round: 'Final', slot: 0 } },
+      where: { userId_entry_round_slot: { userId: user.userId, entry: 1, round: 'Final', slot: 0 } },
     });
     championPick = finalPick?.team ?? null;
   }
@@ -95,6 +96,7 @@ export default async function DashboardPage() {
     <div className="space-y-8 max-w-5xl">
 
       {/* Entry fee vote popup — shows until the user casts a vote */}
+      {user && <AnnouncementModal />}
       {user && <EntryFeeVoteModal playerCount={allUsers.length} />}
 
       {/* ─── Header ─── */}

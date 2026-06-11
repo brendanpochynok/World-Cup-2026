@@ -47,15 +47,24 @@ export default function PicksPage() {
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [entriesCount, setEntriesCount] = useState(1);
+  const [activeEntry, setActiveEntry] = useState(1);
 
   const bracketTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchPicks = useCallback(async () => {
+  useEffect(() => {
+    fetch('/api/me/entries')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.entriesCount) setEntriesCount(d.entriesCount); })
+      .catch(() => {});
+  }, []);
+
+  const fetchPicks = useCallback(async (entry: number) => {
     try {
       const [groupRes, bracketRes, oddsRes, distRes] = await Promise.all([
-        fetch('/api/picks/groups'),
-        fetch('/api/picks/bracket'),
+        fetch(`/api/picks/groups?entry=${entry}`),
+        fetch(`/api/picks/bracket?entry=${entry}`),
         fetch('/api/odds'),
         fetch('/api/picks/distribution'),
       ]);
@@ -85,12 +94,15 @@ export default function PicksPage() {
   }, []);
 
   useEffect(() => {
-    fetchPicks();
+    setLoading(true);
+    setMatchPicks({});
+    setBracketPicks({});
+    fetchPicks(activeEntry);
     return () => {
       bracketTimers.current.forEach((t) => clearTimeout(t));
       if (statusTimer.current) clearTimeout(statusTimer.current);
     };
-  }, [fetchPicks]);
+  }, [fetchPicks, activeEntry]);
 
   function showSaved() {
     setSaveStatus('saved');
@@ -119,7 +131,7 @@ export default function PicksPage() {
       const res = await fetch('/api/picks/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchId, pick }),
+        body: JSON.stringify({ matchId, pick, entry: activeEntry }),
       });
       if (res.ok) { showSaved(); } else { rollback(); showError(); }
     } catch {
@@ -134,8 +146,8 @@ export default function PicksPage() {
     setBracketPicks({});
     try {
       const [r1, r2] = await Promise.all([
-        fetch('/api/picks/groups', { method: 'DELETE' }),
-        fetch('/api/picks/bracket', { method: 'DELETE' }),
+        fetch(`/api/picks/groups?entry=${activeEntry}`, { method: 'DELETE' }),
+        fetch(`/api/picks/bracket?entry=${activeEntry}`, { method: 'DELETE' }),
       ]);
       r1.ok && r2.ok ? showSaved() : showError();
     } catch {
@@ -175,7 +187,7 @@ export default function PicksPage() {
           fetch('/api/picks/groups', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matchId, pick }),
+            body: JSON.stringify({ matchId, pick, entry: activeEntry }),
           })
         )
       );
@@ -197,7 +209,7 @@ export default function PicksPage() {
         const res = await fetch('/api/picks/bracket', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ round, slot, team }),
+          body: JSON.stringify({ round, slot, team, entry: activeEntry }),
         });
         res.ok ? showSaved() : showError();
       } catch { showError(); }
@@ -390,6 +402,28 @@ export default function PicksPage() {
           </button>
         </div>
       </div>
+
+      {/* ─── Entry Tabs (only when player has multiple entries) ─── */}
+      {entriesCount > 1 && (
+        <div className="flex gap-1 border-b border-gray-200">
+          {Array.from({ length: entriesCount }, (_, i) => i + 1).map((entry) => (
+            <button
+              key={entry}
+              onClick={() => setActiveEntry(entry)}
+              className={`px-4 py-2.5 text-sm font-semibold transition-colors relative ${
+                activeEntry === entry
+                  ? 'text-wc-blue-500'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Entry {entry}
+              {activeEntry === entry && (
+                <span className="absolute bottom-0 inset-x-0 h-[2px] bg-wc-blue-500 rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ─── Group Stage ─── */}
       <section>
