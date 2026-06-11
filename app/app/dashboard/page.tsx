@@ -4,6 +4,7 @@ import { GROUP_MATCHES, GROUPS, SCORING, getTeamMeta, getFlagUrl, computeGroupSt
 import { calculateTotalScore } from '@/lib/scoring';
 import Link from 'next/link';
 import AnnouncementModal from '@/components/AnnouncementModal';
+import DashboardChat from '@/components/DashboardChat';
 import TrophyIcon from '@/components/TrophyIcon';
 import type { Metadata } from 'next';
 
@@ -246,6 +247,12 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ─── Pool Chat ─── */}
+      <DashboardChat
+        me={user ? { userId: user.userId, username: user.username } : null}
+        isAdmin={!!myUser && (myUser.isAdmin || envAdmins.has(myUser.username.toLowerCase()))}
+      />
 
       {/* ─── Live Group Standings ─── */}
       <div>

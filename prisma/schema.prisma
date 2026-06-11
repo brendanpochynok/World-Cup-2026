@@ -27,6 +27,7 @@ model User {
   tiebreakerPicks      TiebreakerPick[]
   poolWins             PoolWin[]
   rankSnapshots        RankSnapshot[]
+  chatMessages         ChatMessage[]
 }
 
 model MatchPick {
@@ -115,4 +116,14 @@ model OddsSnapshot {
   draw      Float
   away      Float
   updatedAt DateTime @updatedAt
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
