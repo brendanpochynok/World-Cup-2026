@@ -248,11 +248,13 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ─── Pool Chat ─── */}
-      <DashboardChat
-        me={user ? { userId: user.userId, username: user.username } : null}
-        isAdmin={!!myUser && (myUser.isAdmin || envAdmins.has(myUser.username.toLowerCase()))}
-      />
+      {/* ─── Pool Chat (members only) ─── */}
+      {user && (
+        <DashboardChat
+          me={{ userId: user.userId, username: user.username }}
+          isAdmin={!!myUser && (myUser.isAdmin || envAdmins.has(myUser.username.toLowerCase()))}
+        />
+      )}
 
       {/* ─── Live Group Standings ─── */}
       <div>

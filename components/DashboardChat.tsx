@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Link from 'next/link';
 import type { ChatMessageData } from '@/app/api/chat/route';
 
-const POLL_MS = 15_000;
+const POLL_MS = 2_000;
 const MAX_LENGTH = 500;
 
 function formatTime(iso: string): string {
@@ -15,7 +14,7 @@ function formatTime(iso: string): string {
 }
 
 interface DashboardChatProps {
-  me: { userId: number; username: string } | null;
+  me: { userId: number; username: string };
   isAdmin: boolean;
 }
 
@@ -37,13 +36,15 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
     });
   }, []);
 
-  // Initial load + incremental polling
+  // Initial load + fast incremental polling; paused while the tab is hidden
   useEffect(() => {
-    if (!me) return;
     let lastId = 0;
     let cancelled = false;
+    let inFlight = false;
 
-    const poll = async () => {
+    const poll = async (force = false) => {
+      if (inFlight || (!force && document.visibilityState === 'hidden')) return;
+      inFlight = true;
       try {
         const res = await fetch(lastId ? `/api/chat?after=${lastId}` : '/api/chat');
         if (!res.ok) return;
@@ -54,14 +55,23 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
           appendMessages(data.messages);
         }
       } catch { /* retry on next poll */ } finally {
+        inFlight = false;
         if (!cancelled) setLoading(false);
       }
     };
 
-    poll();
+    poll(true);
     const id = setInterval(poll, POLL_MS);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [me, appendMessages]);
+    const onVisible = () => { if (document.visibilityState === 'visible') poll(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [appendMessages]);
 
   // Keep the view pinned to the newest message unless the user scrolled up
   useEffect(() => {
@@ -106,23 +116,14 @@ export default function DashboardChat({ me, isAdmin }: DashboardChatProps) {
     await fetch(`/api/chat?id=${id}`, { method: 'DELETE' }).catch(() => {});
   }
 
-  if (!me) {
-    return (
-      <div className="card text-center py-8">
-        <h3 className="font-bold text-gray-900">Pool Chat</h3>
-        <p className="text-gray-400 text-sm mt-1">
-          <Link href="/login" className="text-wc-blue-500 font-semibold hover:text-wc-blue-600">Sign in</Link>
-          {' '}to talk trash with the pool
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="card p-0 overflow-hidden">
       <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="font-bold text-gray-900">Pool Chat</h3>
-        <span className="text-[11px] text-gray-400 font-semibold">updates every 15s</span>
+        <h3 className="font-bold text-gray-900">Chat</h3>
+        <span className="flex items-center gap-1.5 text-[11px] text-gray-400 font-semibold">
+          <span className="w-1.5 h-1.5 bg-wc-green-500 rounded-full animate-pulse" />
+          live
+        </span>
       </div>
 
       <div
