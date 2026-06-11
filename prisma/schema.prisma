@@ -29,6 +29,7 @@ model User {
   poolWins             PoolWin[]
   rankSnapshots        RankSnapshot[]
   chatMessages         ChatMessage[]
+  chatReactions        ChatReaction[]
 }
 
 model MatchPick {
@@ -120,11 +121,24 @@ model OddsSnapshot {
 }
 
 model ChatMessage {
-  id        Int      @id @default(autoincrement())
+  id        Int            @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  body      String   @db.Text
-  createdAt DateTime @default(now())
+  user      User           @relation(fields: [userId], references: [id])
+  body      String         @db.Text
+  createdAt DateTime       @default(now())
+  reactions ChatReaction[]
 
   @@index([createdAt])
+}
+
+model ChatReaction {
+  id        Int         @id @default(autoincrement())
+  messageId Int
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User        @relation(fields: [userId], references: [id])
+  emoji     String
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }

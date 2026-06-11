@@ -16,6 +16,40 @@ export interface ChatMessageData {
   avatarUrl: string | null;
 }
 
+export interface MessageReaction {
+  emoji: string;
+  count: number;
+  mine: boolean;
+}
+
+// Aggregated reactions for the latest messages, keyed by message id.
+// Sent with every poll so reaction changes on existing messages propagate.
+async function recentReactions(meId: number): Promise<Record<number, MessageReaction[]>> {
+  const recent = await prisma.chatMessage.findMany({
+    orderBy: { id: 'desc' },
+    take: PAGE_SIZE,
+    select: { id: true },
+  });
+  if (recent.length === 0) return {};
+
+  const rows = await prisma.chatReaction.findMany({
+    where: { messageId: { in: recent.map((m) => m.id) } },
+    orderBy: { id: 'asc' },
+  });
+  const map: Record<number, MessageReaction[]> = {};
+  for (const r of rows) {
+    const list = (map[r.messageId] ??= []);
+    const existing = list.find((x) => x.emoji === r.emoji);
+    if (existing) {
+      existing.count++;
+      if (r.userId === meId) existing.mine = true;
+    } else {
+      list.push({ emoji: r.emoji, count: 1, mine: r.userId === meId });
+    }
+  }
+  return map;
+}
+
 const USER_SELECT = {
   id: true,
   body: true,
@@ -52,22 +86,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const after = afterParam ? parseInt(afterParam, 10) : NaN;
 
   if (!isNaN(after)) {
-    const messages = await prisma.chatMessage.findMany({
-      where: { id: { gt: after } },
-      orderBy: { id: 'asc' },
-      take: PAGE_SIZE,
-      select: USER_SELECT,
-    });
-    return NextResponse.json({ messages: messages.map(toData) });
+    const [messages, reactions] = await Promise.all([
+      prisma.chatMessage.findMany({
+        where: { id: { gt: after } },
+        orderBy: { id: 'asc' },
+        take: PAGE_SIZE,
+        select: USER_SELECT,
+      }),
+      recentReactions(user.userId),
+    ]);
+    return NextResponse.json({ messages: messages.map(toData), reactions });
   }
 
   // Latest page: query newest first, then reverse into display order
-  const messages = await prisma.chatMessage.findMany({
-    orderBy: { id: 'desc' },
-    take: PAGE_SIZE,
-    select: USER_SELECT,
-  });
-  return NextResponse.json({ messages: messages.reverse().map(toData) });
+  const [messages, reactions] = await Promise.all([
+    prisma.chatMessage.findMany({
+      orderBy: { id: 'desc' },
+      take: PAGE_SIZE,
+      select: USER_SELECT,
+    }),
+    recentReactions(user.userId),
+  ]);
+  return NextResponse.json({ messages: messages.reverse().map(toData), reactions });
 }
 
 // POST: send a message. Body: { body: string }

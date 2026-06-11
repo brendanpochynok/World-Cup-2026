@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import type { ChatMessageData } from '@/app/api/chat/route';
+import type { ChatMessageData, MessageReaction } from '@/app/api/chat/route';
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 const POLL_MS = 2_000;
 const MAX_LENGTH = 500;
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '⚽', '🔥'];
 
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 const IMG_RE = /\.(gif|png|jpe?g|webp)$/i;
@@ -57,6 +58,8 @@ interface DashboardChatProps {
 
 export default function DashboardChat({ me, isAdmin, tall = false }: DashboardChatProps) {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
+  const [reactions, setReactions] = useState<Record<number, MessageReaction[]>>({});
+  const [reactFor, setReactFor] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -94,6 +97,7 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled || !Array.isArray(data.messages)) return;
+        if (data.reactions) setReactions(data.reactions);
         if (data.messages.length > 0) {
           lastId = data.messages[data.messages.length - 1].id;
           appendMessages(data.messages);
@@ -217,6 +221,29 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
     await fetch(`/api/chat?id=${id}`, { method: 'DELETE' }).catch(() => {});
   }
 
+  // Optimistic toggle; the next poll reconciles with the server state
+  async function toggleReaction(messageId: number, emoji: string) {
+    setReactFor(null);
+    setReactions((prev) => {
+      const list = [...(prev[messageId] ?? [])];
+      const i = list.findIndex((r) => r.emoji === emoji);
+      if (i >= 0) {
+        const r = list[i];
+        const updated = { ...r, mine: !r.mine, count: r.count + (r.mine ? -1 : 1) };
+        if (updated.count <= 0) list.splice(i, 1);
+        else list[i] = updated;
+      } else {
+        list.push({ emoji, count: 1, mine: true });
+      }
+      return { ...prev, [messageId]: list };
+    });
+    await fetch('/api/chat/reactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId, emoji }),
+    }).catch(() => {});
+  }
+
   return (
     <div className="card p-0 overflow-hidden">
       <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
@@ -265,17 +292,61 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
                       {name}
                     </span>
                     <span className="text-[11px] text-gray-400 flex-shrink-0">{formatTime(m.createdAt)}</span>
-                    {(isMe || isAdmin) && (
+                    <span className="ml-auto flex items-center gap-2 flex-shrink-0 relative">
                       <button
-                        onClick={() => handleDelete(m.id)}
-                        className="ml-auto text-gray-300 hover:text-wc-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs leading-none flex-shrink-0"
-                        aria-label="Delete message"
+                        onClick={() => setReactFor(reactFor === m.id ? null : m.id)}
+                        className="text-gray-300 hover:text-gray-500 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity leading-none"
+                        aria-label="Add reaction"
                       >
-                        ✕
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round"
+                            d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                       </button>
-                    )}
+                      {(isMe || isAdmin) && (
+                        <button
+                          onClick={() => handleDelete(m.id)}
+                          className="text-gray-300 hover:text-wc-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs leading-none"
+                          aria-label="Delete message"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {reactFor === m.id && (
+                        <div className="absolute right-0 top-full mt-1 z-10 flex gap-0.5 bg-white border border-gray-200 rounded-full shadow-md px-1.5 py-1">
+                          {QUICK_REACTIONS.map((e) => (
+                            <button
+                              key={e}
+                              onClick={() => toggleReaction(m.id, e)}
+                              className="text-base leading-none px-0.5 hover:scale-125 transition-transform"
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </span>
                   </div>
                   <MessageBody body={m.body} />
+                  {(reactions[m.id]?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {reactions[m.id].map((r) => (
+                        <button
+                          key={r.emoji}
+                          onClick={() => toggleReaction(m.id, r.emoji)}
+                          className={`flex items-center gap-1 text-[11px] tabular-nums px-1.5 py-0.5 rounded-full border transition-colors ${
+                            r.mine
+                              ? 'bg-wc-blue-500/10 border-wc-blue-300 text-wc-blue-600 font-bold'
+                              : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                          aria-label={`React with ${r.emoji}`}
+                        >
+                          <span className="text-xs leading-none">{r.emoji}</span>
+                          {r.count}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
