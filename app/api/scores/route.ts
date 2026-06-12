@@ -46,6 +46,39 @@ function normalizeTeam(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+// Names where ESPN's displayName can differ from our schedule's
+const TEAM_ALIASES: Record<string, string[]> = {
+  'Bosnia and Herzegovina': ['Bosnia-Herzegovina', 'Bosnia & Herzegovina', 'Bosnia'],
+  'United States': ['USA', 'United States of America'],
+  "Cote d'Ivoire": ["Côte d'Ivoire", 'Ivory Coast'],
+  'Czechia': ['Czech Republic'],
+  'South Korea': ['Korea Republic'],
+  'Iran': ['IR Iran'],
+};
+
+function teamKeys(team: string): string[] {
+  const names = [team, ...(TEAM_ALIASES[team] ?? [])];
+  return Array.from(new Set(names.map(normalizeTeam)));
+}
+
+type ESPNScore = { homeScore: number; awayScore: number; status: 'live' | 'finished'; clock: string };
+
+// Find a match's ESPN entry, tolerating name variants and a flipped
+// home/away listing (scores are swapped back when flipped)
+function findESPN(map: Map<string, ESPNScore>, home: string, away: string): ESPNScore | null {
+  for (const hk of teamKeys(home)) {
+    for (const ak of teamKeys(away)) {
+      const hit = map.get(hk + ':' + ak);
+      if (hit) return hit;
+      const flipped = map.get(ak + ':' + hk);
+      if (flipped) {
+        return { ...flipped, homeScore: flipped.awayScore, awayScore: flipped.homeScore };
+      }
+    }
+  }
+  return null;
+}
+
 async function fetchESPNLive(): Promise<
   Map<string, { homeScore: number; awayScore: number; status: 'live' | 'finished'; clock: string }>
 > {
@@ -75,9 +108,21 @@ async function fetchESPNLive(): Promise<
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-export async function GET() {
+export async function GET(request: Request) {
   const now = Date.now();
   const todayISO = new Date().toISOString().slice(0, 10);
+
+  // ?debug=1 → raw ESPN keys vs our expected keys, bypassing the cache
+  if (new URL(request.url).searchParams.get('debug')) {
+    const espnMap = await fetchESPNLive();
+    return NextResponse.json({
+      espnKeys: Array.from(espnMap.entries()).map(([k, v]) => ({ key: k, ...v })),
+      ourKeys: GROUP_MATCHES.map((m) => ({
+        matchId: m.matchId,
+        keys: teamKeys(m.home).flatMap((hk) => teamKeys(m.away).map((ak) => hk + ':' + ak)),
+      })),
+    });
+  }
 
   const hasCachedLive =
     liveCache &&
@@ -98,13 +143,12 @@ export async function GET() {
 
   const matches: MatchData[] = GROUP_MATCHES.map((m) => {
     const kickoffIso = m.kickoffIso;
-    const espnKey = normalizeTeam(m.home) + ':' + normalizeTeam(m.away);
 
     // ESPN live/finished. No date gate: ESPN's scoreboard only lists games
     // it currently reports, group-stage pairings are unique, and gating on
     // a UTC "today" drops evening games in the Americas whose kickoff falls
     // on the next UTC day (e.g. an 8pm MDT match is 02:00Z tomorrow).
-    const espn = espnLiveMap.get(espnKey);
+    const espn = findESPN(espnLiveMap, m.home, m.away);
     if (espn) {
       return {
         matchId: m.matchId, group: m.group, matchNumber: m.matchNumber,
