@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { GROUP_MATCHES } from '@/lib/worldcup-data';
 import { POLYMARKET_TEAM_CODES } from '@/lib/polymarket-codes';
 import { prisma } from '@/lib/prisma';
+import { normalizeTeam, teamKeys } from '@/lib/espn-teams';
 
 const ESPN_BASE =
   'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
@@ -40,25 +41,6 @@ interface ESPNComp {
 interface ESPNEvent {
   date: string;
   competitions: ESPNComp[];
-}
-
-function normalizeTeam(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-// Names where ESPN's displayName can differ from our schedule's
-const TEAM_ALIASES: Record<string, string[]> = {
-  'Bosnia and Herzegovina': ['Bosnia-Herzegovina', 'Bosnia & Herzegovina', 'Bosnia'],
-  'United States': ['USA', 'United States of America'],
-  "Cote d'Ivoire": ["Côte d'Ivoire", 'Ivory Coast'],
-  'Czechia': ['Czech Republic'],
-  'South Korea': ['Korea Republic'],
-  'Iran': ['IR Iran'],
-};
-
-function teamKeys(team: string): string[] {
-  const names = [team, ...(TEAM_ALIASES[team] ?? [])];
-  return Array.from(new Set(names.map(normalizeTeam)));
 }
 
 type ESPNScore = { homeScore: number; awayScore: number; status: 'live' | 'finished'; clock: string };
