@@ -48,7 +48,7 @@ export default async function DashboardPage() {
   });
 
   // One leaderboard row per entry, matching the standings page
-  const leaderboard = allUsers
+  const allRows = allUsers
     .flatMap((u) =>
       Array.from({ length: u.entriesCount }, (_, i) => i + 1).map((entry) => ({
         id: u.id,
@@ -62,7 +62,16 @@ export default async function DashboardPage() {
         trophies: u.poolWins,
       })),
     )
-    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username) || a.entry - b.entry)
+    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username) || a.entry - b.entry);
+
+  // Competition ranking (ties share a rank, shown as T1) computed on the
+  // full list so ties cut off by the top-5 slice still label correctly
+  const leaderboard = allRows
+    .map((row) => {
+      const firstIdx = allRows.findIndex((r) => r.score === row.score);
+      const tied = allRows.filter((r) => r.score === row.score).length > 1;
+      return { ...row, rankLabel: tied ? `T${firstIdx + 1}` : `${firstIdx + 1}` };
+    })
     .slice(0, 5);
 
   // Show the best of the player's entries on the stats card
@@ -339,13 +348,13 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {leaderboard.map((entry, i) => {
+            {leaderboard.map((entry) => {
               const isMe = user ? entry.username === user.username : false;
               const entryLabel = entry.displayName ?? entry.username;
               return (
                 <div key={`${entry.id}-${entry.entry}`}
                   className={`flex items-center gap-3 py-3 ${isMe ? 'text-wc-blue-600' : ''}`}>
-                  <span className="text-gray-400 text-sm font-mono w-4 text-center flex-shrink-0">{i + 1}</span>
+                  <span className="text-gray-400 text-sm font-mono w-6 text-center flex-shrink-0">{entry.rankLabel}</span>
                   {entry.avatarUrl ? (
                     <img
                       src={entry.avatarUrl}
