@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import type { MatchData } from '@/app/api/scores/route';
 import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
@@ -267,8 +268,13 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
                       <div className="text-[11px] text-gray-300">—</div>
                     ) : (
                       pickers[side].map((p) => (
-                        <div key={`${p.username}-${p.entry}`} className="text-[11px] text-gray-500 truncate">
-                          {p.label}
+                        <div key={`${p.username}-${p.entry}`} className="truncate">
+                          <Link
+                            href={`/app/players/${encodeURIComponent(p.username)}`}
+                            className="text-[11px] text-gray-500 hover:text-wc-blue-500 hover:underline underline-offset-2 transition-colors"
+                          >
+                            {p.label}
+                          </Link>
                         </div>
                       ))
                     )}
