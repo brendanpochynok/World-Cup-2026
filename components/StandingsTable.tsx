@@ -36,6 +36,14 @@ export interface StandingsRow {
 export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
   const [selected, setSelected] = useState<StandingsRow | null>(null);
 
+  // Competition ranking: tied scores share the first position's rank
+  // (shown as T1, T4, …) and the next distinct score skips ahead
+  const rankInfo = scores.map((u) => {
+    const firstIdx = scores.findIndex((s) => s.score === u.score);
+    const tied = scores.filter((s) => s.score === u.score).length > 1;
+    return { rank: firstIdx + 1, tied };
+  });
+
   return (
     <>
       <div className="overflow-x-auto">
@@ -64,7 +72,9 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                 >
                   <td className="py-4 px-5">
                     <span className="inline-flex items-center gap-1.5">
-                      <span className="font-bold text-sm text-gray-400 tabular-nums">{index + 1}</span>
+                      <span className="font-bold text-sm text-gray-400 tabular-nums">
+                        {rankInfo[index].tied ? `T${rankInfo[index].rank}` : rankInfo[index].rank}
+                      </span>
                       {u.movement != null && u.movement !== 0 && (
                         <span
                           className={`text-[11px] font-bold tabular-nums ${u.movement > 0 ? 'text-wc-green-600' : 'text-red-500'}`}
@@ -133,7 +143,7 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                     </div>
                   </td>
                   <td className="py-4 px-4 text-right">
-                    <span className={`font-bold text-xl tabular-nums ${index === 0 ? 'text-wc-gold-500' : 'text-gray-900'}`}>
+                    <span className={`font-bold text-xl tabular-nums ${rankInfo[index].rank === 1 ? 'text-wc-gold-500' : 'text-gray-900'}`}>
                       {u.score}
                     </span>
                     <span className="text-gray-400 text-xs font-normal ml-1">pts</span>
