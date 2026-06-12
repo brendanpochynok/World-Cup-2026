@@ -100,19 +100,20 @@ export async function GET() {
     const kickoffIso = m.kickoffIso;
     const espnKey = normalizeTeam(m.home) + ':' + normalizeTeam(m.away);
 
-    // ESPN live/finished (today only)
-    if (m.date === todayISO) {
-      const espn = espnLiveMap.get(espnKey);
-      if (espn) {
-        return {
-          matchId: m.matchId, group: m.group, matchNumber: m.matchNumber,
-          date: m.date, kickoffIso,
-          home: m.home, away: m.away,
-          homeScore: espn.homeScore, awayScore: espn.awayScore,
-          status: espn.status, clock: espn.clock,
-          venue: m.venue, city: m.city,
-        };
-      }
+    // ESPN live/finished. No date gate: ESPN's scoreboard only lists games
+    // it currently reports, group-stage pairings are unique, and gating on
+    // a UTC "today" drops evening games in the Americas whose kickoff falls
+    // on the next UTC day (e.g. an 8pm MDT match is 02:00Z tomorrow).
+    const espn = espnLiveMap.get(espnKey);
+    if (espn) {
+      return {
+        matchId: m.matchId, group: m.group, matchNumber: m.matchNumber,
+        date: m.date, kickoffIso,
+        home: m.home, away: m.away,
+        homeScore: espn.homeScore, awayScore: espn.awayScore,
+        status: espn.status, clock: espn.clock,
+        venue: m.venue, city: m.city,
+      };
     }
 
     // Admin DB result

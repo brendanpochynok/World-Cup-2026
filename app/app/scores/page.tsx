@@ -7,11 +7,18 @@ import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
 function formatDateHeading(dateStr: string): string {
-  // dateStr is YYYY-MM-DD; parse as UTC noon to avoid timezone edge cases
-  const d = new Date(dateStr + 'T12:00:00Z');
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
+  // dateStr is a local YYYY-MM-DD key; parse as local date
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  return new Date(y, mo - 1, d).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
   });
+}
+
+// The viewer-local calendar date a match belongs to, from its kickoff time.
+// Evening games in the Americas fall on the next UTC day, so the schedule's
+// listed date can't be compared against a UTC "today".
+function localDateOf(m: MatchData): string {
+  return m.kickoffIso ? new Date(m.kickoffIso).toLocaleDateString('en-CA') : m.date;
 }
 
 function SectionHeader({ label, live = false, count }: { label: string; live?: boolean; count?: number }) {
@@ -64,7 +71,6 @@ function DateGroup({ date, matches, matchPicks, distribution, oddsMap, onPickCha
 
 export default function ScoresPage() {
   const [matches, setMatches] = useState<MatchData[]>([]);
-  const [serverDate, setServerDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState('');
@@ -94,7 +100,6 @@ export default function ScoresPage() {
         setError(data.error);
       } else {
         setMatches(data.matches ?? []);
-        setServerDate(data.serverDate ?? '');
         setLastUpdated(new Date());
         setError('');
       }
@@ -147,8 +152,8 @@ export default function ScoresPage() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchScores, matches]);
 
-  // Use serverDate as the "today" cutoff so server and client agree
-  const today = serverDate || new Date().toISOString().slice(0, 10);
+  // Group by the viewer's local calendar day, not UTC
+  const today = new Date().toLocaleDateString('en-CA');
 
   // Apply search filter
   const q = searchQuery.trim().toLowerCase();
@@ -161,15 +166,16 @@ export default function ScoresPage() {
   const liveMatches = visible.filter((m) => m.status === 'live');
 
   // Today's non-live matches
-  const todayMatches = visible.filter((m) => m.date === today && m.status !== 'live');
+  const todayMatches = visible.filter((m) => localDateOf(m) === today && m.status !== 'live');
 
   // Future dates grouped by date ascending
   const upcomingMap = new Map<string, MatchData[]>();
   for (const m of visible) {
-    if (m.date > today) {
-      const list = upcomingMap.get(m.date) ?? [];
+    const d = localDateOf(m);
+    if (d > today) {
+      const list = upcomingMap.get(d) ?? [];
       list.push(m);
-      upcomingMap.set(m.date, list);
+      upcomingMap.set(d, list);
     }
   }
   const upcomingDates = Array.from(upcomingMap.keys()).sort();
@@ -177,10 +183,11 @@ export default function ScoresPage() {
   // Past dates (before today) grouped by date descending
   const pastMap = new Map<string, MatchData[]>();
   for (const m of visible) {
-    if (m.date < today) {
-      const list = pastMap.get(m.date) ?? [];
+    const d = localDateOf(m);
+    if (d < today) {
+      const list = pastMap.get(d) ?? [];
       list.push(m);
-      pastMap.set(m.date, list);
+      pastMap.set(d, list);
     }
   }
   const pastDates = Array.from(pastMap.keys()).sort().reverse(); // newest first
@@ -299,6 +306,44 @@ export default function ScoresPage() {
       ) : (
         <div className="space-y-10">
 
+          {/* ─── Past Scores (collapsed, auto-opens when searching) ─── */}
+          {pastDates.length > 0 && (
+            <section>
+              <button
+                onClick={() => setPastOpen((o) => !o)}
+                className="w-full flex items-center justify-between gap-3 py-4 px-5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
+                  <span className="text-sm font-bold text-gray-500 group-hover:text-gray-700 transition-colors">
+                    Past Scores
+                  </span>
+                  <span className="text-xs text-gray-400 font-semibold tabular-nums">
+                    {pastTotal} match{pastTotal !== 1 ? 'es' : ''}
+                  </span>
+                </div>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${effectivePastOpen ? 'rotate-180' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {effectivePastOpen && (
+                <div className="mt-6 space-y-8">
+                  {pastDates.map((date) => (
+                    <DateGroup
+                      key={date} date={date} matches={pastMap.get(date)!}
+                      matchPicks={matchPicks} distribution={distribution}
+                      oddsMap={oddsMap} onPickChange={handlePickChange}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
           {/* ─── Live Now ─── */}
           {liveMatches.length > 0 && (
             <section>
@@ -369,44 +414,6 @@ export default function ScoresPage() {
                 </>
               )}
             </div>
-          )}
-
-          {/* ─── Past Scores (collapsed, auto-opens when searching) ─── */}
-          {pastDates.length > 0 && (
-            <section>
-              <button
-                onClick={() => setPastOpen((o) => !o)}
-                className="w-full flex items-center justify-between gap-3 py-4 px-5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
-                  <span className="text-sm font-bold text-gray-500 group-hover:text-gray-700 transition-colors">
-                    Past Scores
-                  </span>
-                  <span className="text-xs text-gray-400 font-semibold tabular-nums">
-                    {pastTotal} match{pastTotal !== 1 ? 'es' : ''}
-                  </span>
-                </div>
-                <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${effectivePastOpen ? 'rotate-180' : ''}`}
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {effectivePastOpen && (
-                <div className="mt-6 space-y-8">
-                  {pastDates.map((date) => (
-                    <DateGroup
-                      key={date} date={date} matches={pastMap.get(date)!}
-                      matchPicks={matchPicks} distribution={distribution}
-                      oddsMap={oddsMap} onPickChange={handlePickChange}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
           )}
 
         </div>
