@@ -1,18 +1,22 @@
 import { prisma } from './prisma';
 import { GROUP_MATCHES } from './worldcup-data';
+import { normalizeTeam, teamKeys } from './espn-teams';
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
 const ESPN_HEADERS = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
 const TOURNAMENT_START = '2026-06-11';
 
-function normalizeTeam(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-// Pre-built lookup: normalizedHome:normalizedAway → matchId
+// Pre-built lookups covering team-name aliases and flipped home/away
+// listings (group-stage pairings are unique, so no key collides)
 const matchByKey = new Map<string, string>();
+const matchByFlippedKey = new Map<string, string>();
 for (const m of GROUP_MATCHES) {
-  matchByKey.set(normalizeTeam(m.home) + ':' + normalizeTeam(m.away), m.matchId);
+  for (const hk of teamKeys(m.home)) {
+    for (const ak of teamKeys(m.away)) {
+      matchByKey.set(hk + ':' + ak, m.matchId);
+      matchByFlippedKey.set(ak + ':' + hk, m.matchId);
+    }
+  }
 }
 
 function toDateStr(d: Date) {
@@ -71,19 +75,29 @@ export async function syncESPNResults(): Promise<{ synced: number; unmatched: st
     const finished = await fetchFinishedForDate(dateStr);
     for (const r of finished) {
       const key = normalizeTeam(r.homeTeam) + ':' + normalizeTeam(r.awayTeam);
-      const matchId = matchByKey.get(key);
+      let matchId = matchByKey.get(key);
+      let homeScore = r.homeScore;
+      let awayScore = r.awayScore;
+      if (!matchId) {
+        // ESPN listed the fixture with home/away flipped — swap scores back
+        matchId = matchByFlippedKey.get(key);
+        if (matchId) {
+          homeScore = r.awayScore;
+          awayScore = r.homeScore;
+        }
+      }
       if (!matchId) {
         unmatched.push(`${r.homeTeam} vs ${r.awayTeam}`);
         continue;
       }
       const result =
-        r.homeScore > r.awayScore ? 'home'
-        : r.awayScore > r.homeScore ? 'away'
+        homeScore > awayScore ? 'home'
+        : awayScore > homeScore ? 'away'
         : 'draw';
       await prisma.matchResult.upsert({
         where: { matchId },
-        update: { homeGoals: r.homeScore, awayGoals: r.awayScore, result, status: 'finished' },
-        create: { matchId, homeGoals: r.homeScore, awayGoals: r.awayScore, result, status: 'finished' },
+        update: { homeGoals: homeScore, awayGoals: awayScore, result, status: 'finished' },
+        create: { matchId, homeGoals: homeScore, awayGoals: awayScore, result, status: 'finished' },
       });
       synced++;
     }
