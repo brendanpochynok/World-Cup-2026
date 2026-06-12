@@ -100,14 +100,15 @@ function isEventResolved(event: PolyEvent): boolean {
   return event.markets.every((m) => m.closed);
 }
 
-// Live in-game prices straight from the CLOB order book midpoint —
-// gamma's outcomePrices field lags several minutes behind during games
-async function fetchClobOdds(
+type OutcomeKey = 'home' | 'draw' | 'away';
+
+// The "Yes" CLOB token for each of the three outcome markets
+function collectYesTokens(
   event: PolyEvent,
   homeCode: string,
   awayCode: string
-): Promise<{ home: number; draw: number; away: number } | null> {
-  const tokens: { key: 'home' | 'draw' | 'away'; tokenId: string }[] = [];
+): { key: OutcomeKey; tokenId: string }[] | null {
+  const tokens: { key: OutcomeKey; tokenId: string }[] = [];
   for (const market of event.markets) {
     let ids: string[];
     try {
@@ -122,9 +123,25 @@ async function fetchClobOdds(
     else if (mSlug.endsWith('-' + awayCode)) tokens.push({ key: 'away', tokenId: yesToken });
     else if (mSlug.endsWith('-draw')) tokens.push({ key: 'draw', tokenId: yesToken });
   }
-  if (tokens.length !== 3) return null;
+  return tokens.length === 3 ? tokens : null;
+}
 
-  const probs: Partial<Record<'home' | 'draw' | 'away', number>> = {};
+function normalize(probs: Record<OutcomeKey, number>): { home: number; draw: number; away: number } {
+  const total = probs.home + probs.draw + probs.away || 1;
+  return { home: probs.home / total, draw: probs.draw / total, away: probs.away / total };
+}
+
+// Live in-game prices straight from the CLOB order book midpoint —
+// gamma's outcomePrices field lags several minutes behind during games
+async function fetchClobOdds(
+  event: PolyEvent,
+  homeCode: string,
+  awayCode: string
+): Promise<{ home: number; draw: number; away: number } | null> {
+  const tokens = collectYesTokens(event, homeCode, awayCode);
+  if (!tokens) return null;
+
+  const probs: Partial<Record<OutcomeKey, number>> = {};
   await Promise.all(
     tokens.map(async ({ key, tokenId }) => {
       try {
@@ -141,8 +158,59 @@ async function fetchClobOdds(
   );
 
   if (probs.home === undefined || probs.draw === undefined || probs.away === undefined) return null;
-  const total = probs.home + probs.draw + probs.away || 1;
-  return { home: probs.home / total, draw: probs.draw / total, away: probs.away / total };
+  return normalize(probs as Record<OutcomeKey, number>);
+}
+
+// Last traded price for a token just before `endTs` (unix seconds),
+// from the CLOB price history
+async function fetchHistoryPoint(tokenId: string, endTs: number): Promise<number | null> {
+  try {
+    const url = `https://clob.polymarket.com/prices-history?market=${tokenId}&startTs=${endTs - 6 * 3600}&endTs=${endTs}&fidelity=10`;
+    const res = await fetch(url, { headers: FETCH_HEADERS, next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { history?: { t: number; p: number }[] };
+    const hist = data?.history;
+    if (!Array.isArray(hist) || hist.length === 0) return null;
+    const p = Number(hist[hist.length - 1]?.p);
+    return !isNaN(p) && p >= 0 && p <= 1 ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+// Reconstruct the pre-match line for a finished match with no stored
+// snapshot, from order-book prices just before kickoff, and store it.
+async function backfillSnapshot(
+  event: PolyEvent,
+  homeCode: string,
+  awayCode: string,
+  kickoffIso: string,
+  matchId: string
+): Promise<Snapshot | null> {
+  const tokens = collectYesTokens(event, homeCode, awayCode);
+  if (!tokens) return null;
+
+  const endTs = Math.floor(new Date(kickoffIso).getTime() / 1000);
+  if (!Number.isFinite(endTs) || endTs <= 0) return null;
+
+  const probs: Partial<Record<OutcomeKey, number>> = {};
+  await Promise.all(
+    tokens.map(async ({ key, tokenId }) => {
+      const p = await fetchHistoryPoint(tokenId, endTs);
+      if (p !== null) probs[key] = p;
+    })
+  );
+  if (probs.home === undefined || probs.draw === undefined || probs.away === undefined) return null;
+
+  const snap = normalize(probs as Record<OutcomeKey, number>);
+  await prisma.oddsSnapshot
+    .upsert({
+      where: { matchId },
+      update: snap,
+      create: { matchId, ...snap },
+    })
+    .catch(() => null);
+  return snap;
 }
 
 function uniqueCodes(primary: string, team: string): string[] {
@@ -181,9 +249,11 @@ async function fetchMatchOdds(
   snapshot: Snapshot | undefined,
   now: number
 ): Promise<MatchOddsResult | null> {
-  // Finished matches show the stored pre-match odds — no Polymarket fetch needed
-  if (finished) {
-    return snapshot ? snapshotOdds(match.matchId, snapshot) : null;
+  // Finished matches show the stored pre-match odds — no Polymarket fetch
+  // needed. Without a snapshot, fall through to discover the event and
+  // backfill the pre-match line from price history.
+  if (finished && snapshot) {
+    return snapshotOdds(match.matchId, snapshot);
   }
 
   const hCode = TEAM_CODES[match.home];
@@ -213,6 +283,12 @@ async function fetchMatchOdds(
     if (!odds) continue;
 
     const kickoff = event.startTime ?? match.kickoffIso;
+
+    if (finished) {
+      const snap = await backfillSnapshot(event, h, a, kickoff, match.matchId);
+      return snap ? snapshotOdds(match.matchId, snap) : null;
+    }
+
     const started = now >= new Date(kickoff).getTime();
 
     if (!started) {
@@ -228,9 +304,11 @@ async function fetchMatchOdds(
     // from the order book; fall back to gamma prices if the CLOB is down
     const liveEvent = (await fetchEventBySlug(slug, true)) ?? event;
 
-    // Market resolved (game decided) — fall back to the pre-match snapshot
+    // Market resolved (game decided) — fall back to the pre-match snapshot,
+    // reconstructing it from price history if it was never stored
     if (isEventResolved(liveEvent)) {
-      return snapshot ? snapshotOdds(match.matchId, snapshot) : null;
+      const snap = snapshot ?? (await backfillSnapshot(liveEvent, h, a, kickoff, match.matchId));
+      return snap ? snapshotOdds(match.matchId, snap) : null;
     }
 
     const liveOdds =

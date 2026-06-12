@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GROUP_MATCHES } from '@/lib/worldcup-data';
 import { POLYMARKET_TEAM_CODES as TEAM_CODES, POLYMARKET_TEAM_ALT_CODES as ALT_CODES } from '@/lib/polymarket-codes';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +78,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: `missing team code: ${!hCode ? match.home : match.away}` });
   }
 
+  const [storedSnapshot, dbResult] = await Promise.all([
+    prisma.oddsSnapshot.findUnique({ where: { matchId } }).catch(() => null),
+    prisma.matchResult.findUnique({ where: { matchId } }).catch(() => null),
+  ]);
+
   // Same slug discovery as /api/odds
   const toTry: { slug: string; hCode: string; aCode: string }[] = [];
   for (const h of allCodes(hCode, match.home)) {
@@ -141,6 +147,10 @@ export async function GET(request: Request) {
     startTime: event.startTime ?? null,
     serverNow: new Date(now).toISOString(),
     started: now >= new Date(kickoff).getTime(),
+    dbStatus: dbResult?.status ?? null,
+    storedSnapshot: storedSnapshot
+      ? { home: storedSnapshot.home, draw: storedSnapshot.draw, away: storedSnapshot.away, updatedAt: storedSnapshot.updatedAt }
+      : null,
     markets,
   });
 }
