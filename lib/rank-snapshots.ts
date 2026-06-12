@@ -1,7 +1,10 @@
 import { prisma } from './prisma';
 
-function todayUTC(): string {
-  return new Date().toISOString().slice(0, 10);
+// Day boundary in the pool's home timezone. A UTC boundary would roll over
+// at 6pm Mountain — mid-evening-games — making movement arrows compare
+// against the same afternoon instead of yesterday's end-of-day standings.
+function todayLocal(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
 }
 
 export type EntryKey = `${number}-${number}`;
@@ -16,7 +19,7 @@ export function entryKey(userId: number, entry: number): EntryKey {
 export async function updateRankSnapshots(
   ranked: { userId: number; entry: number; rank: number; score: number }[],
 ): Promise<void> {
-  const date = todayUTC();
+  const date = todayLocal();
 
   // Ranks only change when match results are entered, so most page views
   // need no writes at all — compare against today's stored rows first.
@@ -44,7 +47,7 @@ export async function updateRankSnapshots(
 
 // Latest snapshot per entry from before today: Map<"userId-entry", rank>
 export async function getPreviousRanks(): Promise<Map<EntryKey, number>> {
-  const date = todayUTC();
+  const date = todayLocal();
   const rows = await prisma.rankSnapshot.findMany({
     where: { date: { lt: date } },
     orderBy: { date: 'desc' },

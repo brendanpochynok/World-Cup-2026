@@ -78,7 +78,9 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
   const groupKeys = byGroup ? Array.from(byGroup.keys()).sort() : [];
 
   const correct = picks?.filter((p) => p.result && p.pick === p.result).length ?? 0;
-  const wrong   = picks?.filter((p) => p.result && p.pick !== p.result).length ?? 0;
+  // Picking a side when the match draws is a push (0 pts), not a wrong pick
+  const wrong   = picks?.filter((p) => p.result && p.result !== 'draw' && p.pick !== p.result).length ?? 0;
+  const pushes  = picks?.filter((p) => p.result === 'draw' && p.pick !== 'draw').length ?? 0;
   const score   = correct - wrong;
   const agreed  = (picks && myPicks) ? picks.filter((p) => myPicks[p.matchId] === p.pick).length : null;
 
@@ -105,12 +107,18 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
               {picks !== null && picks.length > 0 && (
                 <p className="text-gray-400 text-xs mt-0.5">
                   {picks.length} locked pick{picks.length !== 1 ? 's' : ''}
-                  {correct + wrong > 0 && (
+                  {correct + wrong + pushes > 0 && (
                     <>
                       <span className="mx-1.5 text-gray-300">·</span>
                       <span className="text-wc-green-600 font-semibold">{correct} correct</span>
                       <span className="mx-1 text-gray-300">/</span>
                       <span className="text-wc-red-500 font-semibold">{wrong} wrong</span>
+                      {pushes > 0 && (
+                        <>
+                          <span className="mx-1 text-gray-300">/</span>
+                          <span className="text-gray-500 font-semibold">{pushes} draw</span>
+                        </>
+                      )}
                       <span className="mx-1.5 text-gray-300">·</span>
                       <span className={`font-bold ${score > 0 ? 'text-wc-green-600' : score < 0 ? 'text-wc-red-500' : 'text-gray-500'}`}>
                         {score > 0 ? '+' : ''}{score} pts
@@ -216,7 +224,9 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
                   <div className="divide-y divide-gray-100">
                     {groupPicks.map((entry) => {
                       const isCorrect = entry.result && entry.pick === entry.result;
-                      const isWrong   = entry.result && entry.pick !== entry.result;
+                      // Side pick on a draw = push, 0 pts — only a real miss is wrong
+                      const isPush    = entry.result === 'draw' && entry.pick !== 'draw';
+                      const isWrong   = entry.result && entry.result !== 'draw' && entry.pick !== entry.result;
                       const pickLabel =
                         entry.pick === 'home' ? shortenName(entry.home)
                         : entry.pick === 'away' ? shortenName(entry.away)
@@ -241,6 +251,7 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
                             <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
                               isCorrect ? 'bg-wc-green-50 text-wc-green-700 border border-wc-green-200'
                               : isWrong  ? 'bg-red-50 text-wc-red-600 border border-red-200'
+                              : isPush   ? 'bg-gray-50 text-gray-500 border border-gray-200'
                               : 'bg-wc-blue-50 text-wc-blue-600 border border-wc-blue-200'
                             }`}>
                               {pickLabel}
@@ -250,6 +261,9 @@ export default function PlayerPicksModal({ username, displayName, avatarUrl: ava
                             )}
                             {isWrong && (
                               <span className="text-[11px] font-bold text-wc-red-500">−1</span>
+                            )}
+                            {isPush && (
+                              <span className="text-[11px] font-bold text-gray-400" title="Match drew — no penalty">0</span>
                             )}
                             {myPicks && (
                               <span className={`text-[11px] font-bold ${myPicks[entry.matchId] === entry.pick ? 'text-wc-blue-400' : 'text-gray-300'}`} title={myPicks[entry.matchId] === entry.pick ? 'Same pick' : 'Different pick'}>
