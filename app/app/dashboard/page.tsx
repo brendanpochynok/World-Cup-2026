@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { GROUP_MATCHES, GROUPS, SCORING, getTeamMeta, getFlagUrl, computeGroupStandings } from '@/lib/worldcup-data';
 import { calculateTotalScore } from '@/lib/scoring';
 import Link from 'next/link';
-import AnnouncementModal from '@/components/AnnouncementModal';
 import DashboardChat from '@/components/DashboardChat';
 import TrophyIcon from '@/components/TrophyIcon';
 import type { Metadata } from 'next';
@@ -117,9 +116,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8 max-w-5xl">
-
-      {/* Pool announcement — shows until the user acknowledges it */}
-      {user && <AnnouncementModal />}
 
       {/* ─── Header ─── */}
       <div className="flex items-end justify-between gap-4">
