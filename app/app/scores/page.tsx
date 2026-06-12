@@ -79,6 +79,7 @@ export default function ScoresPage() {
   const [matchPicks, setMatchPicks] = useState<Record<string, string> | null>(null);
   const [distribution, setDistribution] = useState<Record<string, PickDistribution>>({});
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
+  const [prematchMap, setPrematchMap] = useState<Record<string, { home: number; draw: number; away: number }>>({});
   const [entriesCount, setEntriesCount] = useState(1);
   const [activeEntry, setActiveEntry] = useState(1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -88,6 +89,7 @@ export default function ScoresPage() {
       const res = await fetch('/api/odds');
       const data = await res.json();
       if (data?.odds) setOddsMap(data.odds);
+      if (data?.prematch) setPrematchMap(data.prematch);
     } catch { /* keep last known odds */ }
   }, []);
 
@@ -151,6 +153,21 @@ export default function ScoresPage() {
     intervalRef.current = setInterval(fetchScores, hasLive ? 30_000 : 60_000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchScores, matches]);
+
+  // Per-card odds: the card knows match status before the odds server's
+  // finished signals catch up, so finished matches always show the stored
+  // pre-match line (or nothing) — never lingering "live" resolved prices
+  const displayOdds: Record<string, MatchOdds> = {};
+  for (const m of matches) {
+    if (m.status === 'finished') {
+      const snap = prematchMap[m.matchId];
+      const o = oddsMap[m.matchId];
+      if (snap) displayOdds[m.matchId] = { ...snap, source: 'polymarket', phase: 'prematch' };
+      else if (o?.phase === 'prematch') displayOdds[m.matchId] = o;
+    } else if (oddsMap[m.matchId]) {
+      displayOdds[m.matchId] = oddsMap[m.matchId];
+    }
+  }
 
   // Group by the viewer's local calendar day, not UTC
   const today = new Date().toLocaleDateString('en-CA');
@@ -336,7 +353,7 @@ export default function ScoresPage() {
                     <DateGroup
                       key={date} date={date} matches={pastMap.get(date)!}
                       matchPicks={matchPicks} distribution={distribution}
-                      oddsMap={oddsMap} onPickChange={handlePickChange}
+                      oddsMap={displayOdds} onPickChange={handlePickChange}
                     />
                   ))}
                 </div>
@@ -352,7 +369,7 @@ export default function ScoresPage() {
                 {liveMatches.map((m) => (
                   <LiveScoreCard
                     key={m.matchId} match={m}
-                    odds={oddsMap[m.matchId] ?? null}
+                    odds={displayOdds[m.matchId] ?? null}
                     currentPick={matchPicks?.[m.matchId] ?? null}
                     distribution={distribution[m.matchId] ?? null}
                     onPickChange={matchPicks !== null ? handlePickChange : undefined}
@@ -370,7 +387,7 @@ export default function ScoresPage() {
                 {todayMatches.map((m) => (
                   <LiveScoreCard
                     key={m.matchId} match={m}
-                    odds={oddsMap[m.matchId] ?? null}
+                    odds={displayOdds[m.matchId] ?? null}
                     currentPick={matchPicks?.[m.matchId] ?? null}
                     distribution={distribution[m.matchId] ?? null}
                     onPickChange={matchPicks !== null ? handlePickChange : undefined}
@@ -387,7 +404,7 @@ export default function ScoresPage() {
                 <DateGroup
                   key={date} date={date} matches={upcomingMap.get(date)!}
                   matchPicks={matchPicks} distribution={distribution}
-                  oddsMap={oddsMap} onPickChange={handlePickChange}
+                  oddsMap={displayOdds} onPickChange={handlePickChange}
                 />
               ))}
             </div>

@@ -17,6 +17,9 @@ export interface MatchOdds {
 interface OddsResponse {
   odds: Record<string, MatchOdds>;
   kickoffTimes: Record<string, string>;
+  // Stored pre-match lines — clients use these for matches they know are
+  // finished, even before the server-side finished signals catch up
+  prematch: Record<string, { home: number; draw: number; away: number }>;
 }
 
 const FETCH_HEADERS = {
@@ -243,16 +246,23 @@ function snapshotOdds(matchId: string, snap: Snapshot): MatchOddsResult {
   };
 }
 
+// Past this point after kickoff the game is over even if the DB result and
+// Polymarket's closed flag haven't caught up (90' + halftime + stoppage)
+const ASSUME_FINISHED_MS = 150 * 60_000;
+
 async function fetchMatchOdds(
   match: (typeof GROUP_MATCHES)[0],
   finished: boolean,
   snapshot: Snapshot | undefined,
   now: number
 ): Promise<MatchOddsResult | null> {
+  const assumedDone =
+    finished || now >= new Date(match.kickoffIso).getTime() + ASSUME_FINISHED_MS;
+
   // Finished matches show the stored pre-match odds — no Polymarket fetch
   // needed. Without a snapshot, fall through to discover the event and
   // backfill the pre-match line from price history.
-  if (finished && snapshot) {
+  if (assumedDone && snapshot) {
     return snapshotOdds(match.matchId, snapshot);
   }
 
@@ -284,7 +294,7 @@ async function fetchMatchOdds(
 
     const kickoff = event.startTime ?? match.kickoffIso;
 
-    if (finished) {
+    if (assumedDone) {
       const snap = await backfillSnapshot(event, h, a, kickoff, match.matchId);
       return snap ? snapshotOdds(match.matchId, snap) : null;
     }
@@ -380,8 +390,17 @@ export async function GET() {
     );
   }
 
+  // Freshen the snapshot map with this request's pre-kickoff prices
+  for (const s of toSnapshot) {
+    snapshotMap.set(s.matchId, { home: s.home, draw: s.draw, away: s.away });
+  }
+
   const hasLive = Object.values(odds).some((o) => o.phase === 'live');
-  const responseData: OddsResponse = { odds, kickoffTimes };
+  const responseData: OddsResponse = {
+    odds,
+    kickoffTimes,
+    prematch: Object.fromEntries(snapshotMap),
+  };
   oddsCache = { data: responseData, at: now, hasLive };
   return NextResponse.json(responseData);
 }
