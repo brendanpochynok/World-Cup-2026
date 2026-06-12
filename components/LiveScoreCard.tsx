@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import type { MatchData } from '@/app/api/scores/route';
 import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
+import type { MatchPickers } from '@/app/api/picks/match/route';
 import { getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
 
 function localTime(iso: string): string {
@@ -48,6 +49,8 @@ interface LiveScoreCardProps {
 export default function LiveScoreCard({ match, odds, currentPick, distribution, onPickChange }: LiveScoreCardProps) {
   const [showPlayers, setShowPlayers] = useState(false);
   const [countdown, setCountdown] = useState<string | null>(null);
+  const [showPickers, setShowPickers] = useState(false);
+  const [pickers, setPickers] = useState<MatchPickers | null>(null);
   const { home, away, homeScore, awayScore, status, clock, group, matchNumber, venue, city, kickoffIso } = match;
   const isLive      = status === 'live';
   const isFinished  = status === 'finished';
@@ -63,6 +66,16 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
     return () => clearInterval(id);
   }, [isScheduled, kickoffIso]);
   const canPick = !locked && !!onPickChange;
+
+  function togglePickers() {
+    setShowPickers((s) => !s);
+    if (!pickers) {
+      fetch(`/api/picks/match?matchId=${match.matchId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d?.home) setPickers(d); })
+        .catch(() => {});
+    }
+  }
 
   const homeMeta = getTeamMeta(home);
   const awayMeta = getTeamMeta(away);
@@ -234,6 +247,38 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
               );
             })}
           </div>
+
+          {/* Who picked which side */}
+          <button
+            onClick={togglePickers}
+            className="w-full mt-2 flex items-center justify-center gap-1 text-[11px] text-gray-400 font-semibold hover:text-gray-600 transition-colors"
+          >
+            Who picked
+            <svg className={`w-3 h-3 transition-transform duration-150 ${showPickers ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showPickers && (
+            pickers ? (
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                {(['home', 'draw', 'away'] as const).map((side) => (
+                  <div key={side} className="space-y-0.5 text-center min-w-0">
+                    {pickers[side].length === 0 ? (
+                      <div className="text-[11px] text-gray-300">—</div>
+                    ) : (
+                      pickers[side].map((p) => (
+                        <div key={`${p.username}-${p.entry}`} className="text-[11px] text-gray-500 truncate">
+                          {p.label}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400 text-center mt-1.5">Loading…</p>
+            )
+          )}
         </div>
       )}
 
