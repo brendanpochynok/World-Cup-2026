@@ -31,7 +31,7 @@ interface TrophyRow {
 interface PlayerRow {
   username: string;
   displayName: string | null;
-  announcementAckedAt: string | null;
+  lastSeenAt: string | null;
 }
 
 interface Props {
@@ -43,7 +43,18 @@ interface Props {
   players: PlayerRow[];
 }
 
-type Tab = 'results' | 'bracket' | 'pool' | 'trophies' | 'announcement';
+type Tab = 'results' | 'bracket' | 'pool' | 'trophies' | 'activity';
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return 'Never';
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'Yesterday' : `${d}d ago`;
+}
 
 // ── per-match edit state ─────────────────────────────────────────────────────
 
@@ -326,15 +337,12 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
 
   // ── render ─────────────────────────────────────────────────────────────────
 
-  const ackedCount = players.filter((p) => p.announcementAckedAt != null).length;
-  const pendingCount = players.length - ackedCount;
-
   const tabs: { id: Tab; label: string; onClick?: () => void; badge?: number }[] = [
     { id: 'results', label: 'Match Results' },
     { id: 'bracket', label: 'Bracket' },
     { id: 'pool', label: 'Pool Config' },
     { id: 'trophies', label: 'Trophies', onClick: handleTrophyTab },
-    { id: 'announcement', label: 'Announcement', badge: pendingCount > 0 ? pendingCount : undefined },
+    { id: 'activity', label: 'Activity' },
   ];
 
   return (
@@ -709,43 +717,47 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
         </div>
       )}
 
-      {/* ── Tab: Announcement ── */}
-      {tab === 'announcement' && (
+      {/* ── Tab: Activity ── */}
+      {tab === 'activity' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">Track who has acknowledged the pool announcement.</p>
-            <div className="flex gap-2 text-xs font-semibold">
-              <span className="text-wc-green-600">{ackedCount} acknowledged</span>
-              <span className="text-gray-300">·</span>
-              <span className={pendingCount > 0 ? 'text-red-500' : 'text-gray-400'}>{pendingCount} pending</span>
-            </div>
-          </div>
+          <p className="text-sm text-gray-500">
+            When each player last visited the site. Accurate to ~5 minutes while they have it open.
+          </p>
           <div className="divide-y divide-gray-100 rounded-2xl border border-gray-200 overflow-hidden">
-            {players.map((p) => {
-              const acked = p.announcementAckedAt != null;
-              const label = p.displayName ?? p.username;
-              const ackedAt = acked
-                ? new Date(p.announcementAckedAt!).toLocaleString('en-US', {
-                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-                  })
-                : null;
-              return (
-                <div key={p.username} className={`flex items-center justify-between px-5 py-3 ${acked ? 'bg-white' : 'bg-red-50'}`}>
-                  <div>
-                    <div className="font-semibold text-sm text-gray-900">{label}</div>
-                    {p.displayName && <div className="text-xs text-gray-400 font-mono">{p.username}</div>}
-                  </div>
-                  {acked ? (
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-wc-green-600">✓ Acknowledged</span>
-                      {ackedAt && <div className="text-[11px] text-gray-400">{ackedAt}</div>}
+            {[...players]
+              .sort((a, b) => (b.lastSeenAt ?? '').localeCompare(a.lastSeenAt ?? ''))
+              .map((p) => {
+                const label = p.displayName ?? p.username;
+                const online =
+                  p.lastSeenAt != null && Date.now() - new Date(p.lastSeenAt).getTime() < 6 * 60_000;
+                const exact = p.lastSeenAt
+                  ? new Date(p.lastSeenAt).toLocaleString('en-US', {
+                      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                    })
+                  : null;
+                return (
+                  <div key={p.username} className="flex items-center justify-between px-5 py-3 bg-white">
+                    <div>
+                      <div className="font-semibold text-sm text-gray-900 flex items-center gap-1.5">
+                        {label}
+                        {online && (
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-wc-green-600">
+                            <span className="w-1.5 h-1.5 bg-wc-green-500 rounded-full animate-pulse" />
+                            online
+                          </span>
+                        )}
+                      </div>
+                      {p.displayName && <div className="text-xs text-gray-400 font-mono">{p.username}</div>}
                     </div>
-                  ) : (
-                    <span className="text-xs font-bold text-red-500">Pending</span>
-                  )}
-                </div>
-              );
-            })}
+                    <div className="text-right">
+                      <span className={`text-xs font-bold ${online ? 'text-wc-green-600' : p.lastSeenAt ? 'text-gray-600' : 'text-gray-300'}`}>
+                        {online ? 'Now' : relativeTime(p.lastSeenAt)}
+                      </span>
+                      {exact && !online && <div className="text-[11px] text-gray-400">{exact}</div>}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}
