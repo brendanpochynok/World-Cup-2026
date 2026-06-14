@@ -198,7 +198,20 @@ Per-game, a draw pick is −EV (§3.2). But as a **tournament leverage play** it
 - Empirical draw rate is **37.5%** (3 of 8 games) vs a field allocation of 0–10%. Draws are both over-performing the model and badly under-bet by rivals.
 - Lower ceiling than catching an upset (+1 vs +2) but a much higher hit rate (~27–37% vs ~17%). It is the best **risk-adjusted** separation play currently available.
 
-The §4.3 "never pick draw" rule was EV-correct and prize-wrong. Draws return to the toolkit — on the variance entry only.
+The §4.3 "never pick draw" rule was EV-correct and prize-wrong. Draws return to the toolkit — **but on the bracket, not the group stage (§4.4.3).**
+
+### 4.4.3 Where the variance should come from: the bracket, not the groups
+
+§4.4 says you must take variance to win. §8 says the bracket is 80 of ~152 total points and swings ±16 on a single pick. Put those together:
+
+**The bracket alone supplies more than enough separation variance to escape the chalk cluster.** You do not need to manufacture variance in the group stage — and doing so is actively wrong, because:
+
+1. **Group deviations are −EV (§4.1–4.3) and their variance is dominated by the bracket's.** A ±2 group swing is noise next to a ±16 Final pick. You'd be paying EV for redundant variance in the *cheap* half of the tournament.
+2. **It lowers your floor.** Two entries on pure chalk arrive at the bracket with the maximum group score and the smallest gap to the leaders (group leads are fragile — see point 3).
+3. **It burns optionality.** Identical chalk entries reach the bracket from a common base, from which you can build two *maximally different* brackets — one to win if favorites hold, one for chaos. If you'd diverged in the groups, a buried entry can't serve as a clean ceiling line.
+4. **Group standings barely survive the bracket.** A −3 group deficit is erased by one correct SF pick (+8). The reshuffle at the bracket makes group-stage rank close to irrelevant.
+
+**Resolution: run ONE pure-chalk line through the entire group stage on both entries. Concentrate 100% of the divergence in the bracket, where leverage is 16–20× and the points actually live.** The barbell (§6.4) is therefore a *bracket-stage* structure, not a group-stage one.
 
 ---
 
@@ -290,10 +303,9 @@ With 19 rivals (pot grows with each entry):
 | 3 | $220 | $165 | ~85% | ~$152 | $30 | **~$122** | $6 |
 
 Notes on the 2-entry calculation:
-- Two **identical** entries cover the same point in outcome-space. They share a finishing position and only help on tie-splits — you have effectively paid $20 for one position. P(≥1 wins) collapses to P(that single line wins).
+- Two **identical** entries cover the same point in outcome-space. They share a finishing position and only help on tie-splits.
 - Two **differentiated** entries cover different outcome-space. P(≥1 wins) ≈ 1 − P(neither), which is materially higher.
-
-**This is the single biggest correction to the original plan: do not run the entries identically through the group stage. Differentiate them now (§6.4).**
+- **But where you differentiate matters.** Per §4.4.3, the divergence should happen at the *bracket*, not the groups. Two entries running identical pure chalk through the groups are not "wasted" — they reach the bracket from a shared maximal-floor base and then split into two maximally-different brackets, which is where the ±16-point swings make P(≥1 wins) jump. Diverging in the groups instead would spend −EV variance in the cheap half and burn that optionality.
 
 ### 6.3 Entry 3 Assessment
 
@@ -303,33 +315,23 @@ Marginal E[net] ≈ $6 on a $10 cost. Below break-even.
 
 ---
 
-## 6.4 The Barbell — How to Use Two Entries
+## 6.4 The Barbell — A Bracket-Stage Structure
 
-Given §4.4 (prizes are the max-order-statistic) and §6.2 (identical entries waste the second slot), the two entries must play **different roles**:
+Given §4.4.3 (the bracket supplies all the separation variance you need, at 16–20× the leverage), the two entries run **identically through the group stage** and split **only at the bracket**:
+
+| Phase | Both entries | Why |
+|---|---|---|
+| **Group stage** | One pure-chalk line, identical on both entries | Max floor, smallest gap to leaders, full optionality preserved into the bracket (§4.4.3) |
+| **Bracket** | Split into Anchor + Dagger (below) | This is where the 80 points and ±16 swings live |
+
+**At the bracket, split into:**
 
 | Entry | Role | Policy | Wins in the world where… |
 |---|---|---|---|
-| **Anchor** | Floor | Pure chalk, every game, group and bracket | Favorites hold; the chalk pack ties and splits — Anchor is in the split |
-| **Dagger** | Ceiling | Chalk default + selective high-leverage deviations | An upset/draw separates someone from the pack — Dagger is that someone |
+| **Anchor** | Floor | Chalk bracket — favorite to advance every slot | Favorites hold; the chalk pack ties and splits — Anchor is in the split |
+| **Dagger** | Ceiling | Chalk most slots + 1–2 targeted late-round upsets | A bracket upset separates someone — Dagger is that someone |
 
-Between them they cover both branches of the tournament: the Anchor cashes the ~20% "chalk dominates" world; the Dagger is the only line with a real shot at clean 1st in the ~80% "someone separates" world.
-
-### 6.4.1 Dagger deviation selection
-
-Spend deviations only where leverage per unit EV-cost is highest. Take roughly **1 in 4–5 games** — the highest-concentration spots — not every game.
-
-```
-Trigger a Dagger deviation when:
-  field concentration ≥ ~80% on the favorite        (max rivals to leapfrog)
-  AND ( p_dog ≥ ~0.30   OR   p_draw ≥ ~0.27 )         (a real hit rate)
-  AND not a home-continent team (USA/CAN/MEX)         (their dogs are too long, games dead)
-```
-
-Pick the **draw** when p_draw is the elevated leg (higher hit rate, +1 separation); pick the **dog** when p_dog is live and you want the full +2 separation. The Australia-vs-Turkey spot (86% on a 56% favorite, dog 17%, draw 26%) was a textbook Dagger draw/dog spot that a pure-chalk plan missed.
-
-### 6.4.2 Don't over-spray
-
-Each deviation still costs EV (§4). Spraying every game buries the Dagger's mean so far it falls out of contention even when a few hit. The Dagger must stay *near* the pack (mostly chalk) and separate with a **handful** of well-chosen variance spots across the 72-game stage.
+Between them they cover both branches: the Anchor cashes the "chalk holds" world; the Dagger is the only line with a shot at clean 1st in the "chaos" world. See §8 for Dagger bracket-slot selection.
 
 ---
 
@@ -337,19 +339,13 @@ Each deviation still costs EV (§4). Spraying every game buries the Dagger's mea
 
 ### 7.1 The Rule
 
-**Anchor entry — every game: pick the team with the higher outright win probability per Polymarket at lock.** This maximizes absolute EV and is the correct floor strategy.
+**Both entries, every game: pick the team with the higher outright win probability per Polymarket at lock.** Pure chalk, identical lines. This maximizes absolute EV, holds the highest floor, and preserves the optionality you cash in at the bracket (§4.4.3). No group-stage deviations on either entry.
 
-**Dagger entry — chalk by default, deviate on the high-leverage spots per §6.4.** The Dagger is the line that has to win the tournament, so it deliberately buys variance where it is cheapest and most concentrated.
+### 7.2 The One Exception (and why it almost never fires)
 
-### 7.2 When Deviation Is Rational
+The *only* time group deviation is rational is a true late-stage emergency: you are buried so deep that even a perfect bracket cannot recover the gap. With the bracket worth 80 points, that threshold is enormous — realistically it never happens. A −3, −5, even −10 group deficit is fully recoverable in the bracket, so the answer in every realistic group spot is **chalk**.
 
-Deviation from chalk is only rational when:
-
-1. **You are trailing by N ≥ 2 points** with few games remaining, AND
-2. **The game is near-even** (p_dog ≥ 40%), AND
-3. **The crowd concentrates heavily on chalk** (meaning your rival likely picks chalk)
-
-The mechanism: a dog win gives you +2 vs a chalk-picking rival. A fav win gives −2. Draw gives 0. For a trailing player, variance is your friend — you need the ±2 swings to close the gap.
+For completeness, the mechanics of a forced catch-up deviation (should it ever apply): a dog win gives you +2 vs a chalk-picking rival, a fav win −2, a draw 0 — you need the ±2 swings, taken in the nearest-to-even games against a concentrated field.
 
 **How many dog picks to close a gap of N points:**
 
@@ -375,16 +371,16 @@ This is expensive. The better strategy when trailing is to wait for a coin-flip 
 
 ### 7.3 Current Position Strategy
 
-**Current state (after 8 games):** I am at **+3**, **−2 to the leader** (an Australia-picker at +5; acolben7 +4, 2nd). Both my entries are still identical at +3. ~64 group games remaining.
+**Current state (after 8 games):** I am at **+3**, **−3 to the leader** (DasReboot +6; baseballpaul & scolban7 +4). Both entries identical at +3, T4 in a 10-way chalk pack. ~64 group games remaining; bracket not yet submitted.
 
-**Do not "stay chalk and wait."** The earlier draft assumed the leader would regress to me. The field has falsified this: each slate produces a *new* upset-catcher who jumps the pack, so there is no single leader to out-wait — the chalk pack is a moving target that variance keeps passing. Waiting = staying in the middle.
+**The −3 deficit does not require any group-stage action.** It is small against the 80-point bracket — one correct SF pick erases it. The field's leaders got ahead via group variance, but those group leads are equally fragile and will be reshuffled by the bracket. Chasing them with group deviations would lower our floor and burn the optionality we want at the bracket (§4.4.3).
 
-**Action from Game 9:**
-1. **Split the entries (§6.4).** Anchor stays pure chalk. Dagger goes live.
-2. **Dagger manufactures separation.** Trailing by 2 means the Dagger needs either one upset-catch (+2 swing vs the pack) or two heavy-favorite draws (+1 each). It does this by deploying §6.4 deviations on the highest-concentration spots — not by hoping.
-3. **Anchor is the hedge.** If favorites run hot and the Dagger's variance misses, the Anchor is still in the chalk-pack tie for the prizes.
+**Action:**
+1. **Both entries: pure chalk through the entire group stage.** Identical lines. Hold the floor.
+2. **Submit a bracket before group stage ends** — priority #1; the unsubmitted bracket is the only thing that currently makes the pool unwinnable (MAX capped at 67).
+3. **Split at the bracket (§6.4, §8):** Anchor chalk, Dagger with 1–2 targeted late-round upsets. That is where the −3 (and far more) is made up.
 
-This is not "trailing-player desperation" deviation (§7.2) — it is the structural barbell. The Dagger would be taking these spots even from a tie, because §4.4 says the chalk line cannot win clean.
+This supersedes the earlier "split now / Dagger group deviations" draft. With the bracket quantified at 80 points, concentrating all divergence there is strictly better than spending it in the groups.
 
 ---
 
@@ -482,21 +478,20 @@ P(a chalk entry is outright max of 21):                ~21%
 P(MY pure-chalk entry takes clean 1st):                low single digits (tie-split)
 
 Objective:                                             max-order-statistic (top 2–3), NOT expected score
-Strategy:                                              BARBELL — Anchor (chalk) + Dagger (selective deviations)
-Cost of dog deviation (Class D):                       −0.14 pts/game  (price of variance — pay it on best spots)
-Cost of draw deviation:                                negative per-game, BUT +1 vs whole field when it hits
-Empirical draw rate:                                   37.5% (3/8) vs field allocation 0–10% → under-bet
+Strategy:                                              ONE chalk line through groups; BARBELL split at the BRACKET
+Group stage:                                           both entries pure chalk, identical — no deviations
+Why not deviate in groups:                             −EV + redundant variance (bracket dominates) + burns optionality (§4.4.3)
+Empirical draw rate:                                   37.5% (3/8) vs field allocation 0–10% → exploit it IN THE BRACKET
 Class B observed chalk concentration:                  ~85% (higher = correct fades pay MORE, §4.4.1)
 
-Dagger deviation trigger:    field ≥80% chalk AND (p_dog ≥0.30 OR p_draw ≥0.27), non-home-continent
-Bracket leverage ratio:                                14–20x (vs 14x for group)
+Bracket leverage ratio:                                16–20x (vs ~14x for group) — variance belongs here
 
 Group stage max:                                       72 pts  |  Bracket max: 80 pts (the larger half)
 Current deficit to leader:                             −3 pts (DasReboot +6; me +3, T4) — trivial vs 80-pt bracket
 My MAX:                                                67 (capped — bracket NOT submitted; rivals 140–150)
 Priority #1:                                           SUBMIT A BRACKET before group stage ends, or cannot win
-Recommended action:                                    Anchor chalk; Dagger's first divergence = Japan over a
-                                                       concentrated Dutch field (Jun 14); save real leverage for bracket
+Recommended action:                                    both entries chalk every group game (incl. Netherlands Jun 14);
+                                                       concentrate 100% of divergence in the bracket split
 ```
 
 ---
@@ -504,21 +499,16 @@ Recommended action:                                    Anchor chalk; Dagger's fi
 ## 11. Decision Tree (Quick Reference)
 
 ```
-ANCHOR entry (floor):
-  └── Every game → pick higher outright win probability (chalk). Never deviate.
+GROUP STAGE — both entries, every game:
+  └── Pick the higher outright win probability (chalk). Identical lines. Never deviate.
+      (Hold the floor + preserve optionality for the bracket. §4.4.3)
 
-DAGGER entry (ceiling):
-  └── Default → chalk (stay near the pack)
-  └── Override → DEVIATE when:
-        field ≥ ~80% on the favorite
-        AND ( p_dog ≥ ~0.30  OR  p_draw ≥ ~0.27 )
-        AND not a home-continent team (USA/CAN/MEX)
-        → pick the DRAW if p_draw is the elevated leg (hits more, +1 vs field)
-        → pick the DOG  if you want full +2 separation and p_dog is live
-  └── Cap it: ~1 deviation per 4–5 games. Don't bury the mean.
+BEFORE GROUP STAGE ENDS:
+  └── Submit a bracket on BOTH entries — without it, MAX is capped and you cannot win.
 
-Bracket (both entries split fully):
-  └── Anchor: chalk every slot
-  └── Dagger: chalk most slots; dog in 1–2 QF/SF slots where
-              p_dog ≥ 0.40 AND crowd 80%+ chalk (leverage 16–20x)
+BRACKET — split the two entries:
+  └── Anchor: chalk every slot (favorite to advance)
+  └── Dagger: chalk most slots; underdog in 1–2 QF/SF/Final slots where
+              p_dog ≥ ~0.40 AND crowd 80%+ chalk (leverage 16–20x — this is
+              where the draws/upsets we tracked all stage get exploited)
 ```
