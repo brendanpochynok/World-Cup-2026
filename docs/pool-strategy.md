@@ -13,9 +13,13 @@
 | 1st prize | $157.50 (75%) |
 | 2nd prize | $52.50 (25%) |
 | 3rd prize | Free entry ($10 value) |
-| Group stage games | 72 (12 groups × 6 games) |
-| Bracket games | 31 (R32 through Final) |
+| Group stage games | 72 (12 groups × 6 games) — **max 72 pts** |
+| Bracket games | 31 (R32 through Final) — **max 80 pts** (see §8) |
 | My entries | 2 — barbell: Anchor (chalk) + Dagger (selective high-leverage deviations). See §6.4. |
+
+**Scoring-weight headline (decoded from the leaderboard MAX column, Jun 14):** the bracket is worth up to **80 points** vs **72** for the entire group stage. With ~64 group points remaining mid-stage, **the bracket is the larger half of the whole tournament.** Group-stage deviations are ±0.5-pt decisions; the bracket decides the pool. See §8.
+
+⚠️ **An unsubmitted bracket caps your ceiling.** The leaderboard MAX column = current pts + best-case remaining. Entries with no bracket picks show MAX ≈ current + remaining-groups only (e.g. my entries: MAX 67 = 3 + 64), while bracketed rivals show MAX ≈ 140–150. **Until a bracket is submitted you mathematically cannot win.** Submitting the bracket before group stage ends is priority #1, ahead of any single group pick.
 
 ---
 
@@ -388,6 +392,10 @@ This is not "trailing-player desperation" deviation (§7.2) — it is the struct
 
 Bracket game values: R32=+1, R16=+2, QF=+4, SF=+8, Final=+16
 
+**Each round is worth 16 points** (16×1, 8×2, 4×4, 2×8, 1×16), for **80 points total — more than the 72-point group stage.** The pool is decided here. A correct Final pick (+16) outweighs 16 group games; one correct SF pick (+8) erases an 8-point group deficit. Whatever happens in the groups, the standings reset to near-irrelevance once the bracket scores.
+
+**This is also where having no submitted bracket is fatal:** your MAX is capped at group-only until you enter one (§1). Submit before group stage closes.
+
 This is where the 2-entry structure becomes powerful. With entries diverging at bracket:
 
 **Entry 1: pure chalk bracket**
@@ -456,7 +464,11 @@ Bracket deviations are more efficient than group deviations for creating gap vs 
 | C2: Haiti vs Scotland | Scotland | Scotland 1–0 ✓ | +1 | +3 |
 | D2: Australia vs Turkey | Turkey | **Australia 2–0** ✗ | −1 | +3, **−2 to new leader** |
 
-**Current standings (8 games):** new leader (Australia-picker) **+5**, acolben7 **+4** (2nd), me **+3** (both entries), chalk pack clustered at +3. Record: 6/8 GTO picks scored (3 wins, 3 draws=0, 1 loss). **8/8 correct GTO process — and tied for the back of the contender pack.** This is the order-statistic problem (§4.4) made concrete.
+**Current standings (8 games, exact, Jun 14):** DasReboot **+6** (1st, runaway variance leader), baseballpaul **+4** (T2, ▲9 — caught the Australia upset), scolban7 **+4** (T2, Canada-draw catcher), then a 10-way chalk pack at **+3** including both my entries (T4). Bottom: three entries at −1 (losing deviations).
+
+Record: 6/8 GTO picks scored (3 wins, 3 draws=0, 1 loss). **8/8 correct GTO process — and stuck in the back of the contender pack, −3 to the leader.** The top 3 (all the money) are deviation-catchers; the entire chalk pack is jammed at T4. The order-statistic problem (§4.4) made concrete, twice over.
+
+**Bracket caveat (decoded from MAX column):** my MAX is 67 (= 3 + 64 remaining group games, **bracket = 0**) while bracketed rivals show MAX 140–150. The +3 deficit is trivial next to the 80-pt bracket; submitting a bracket is the binding constraint on winning (§1, §8).
 
 ---
 
@@ -479,8 +491,12 @@ Class B observed chalk concentration:                  ~85% (higher = correct fa
 Dagger deviation trigger:    field ≥80% chalk AND (p_dog ≥0.30 OR p_draw ≥0.27), non-home-continent
 Bracket leverage ratio:                                14–20x (vs 14x for group)
 
-Current deficit to leader:                             −2 pts (leader +5 via Australia upset; acolben7 +4)
-Recommended action:                                    split entries now — Anchor chalk, Dagger hunts leverage
+Group stage max:                                       72 pts  |  Bracket max: 80 pts (the larger half)
+Current deficit to leader:                             −3 pts (DasReboot +6; me +3, T4) — trivial vs 80-pt bracket
+My MAX:                                                67 (capped — bracket NOT submitted; rivals 140–150)
+Priority #1:                                           SUBMIT A BRACKET before group stage ends, or cannot win
+Recommended action:                                    Anchor chalk; Dagger's first divergence = Japan over a
+                                                       concentrated Dutch field (Jun 14); save real leverage for bracket
 ```
 
 ---
