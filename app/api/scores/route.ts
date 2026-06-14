@@ -33,10 +33,15 @@ export interface MatchData {
 // ── Caches ────────────────────────────────────────────────────────────────────
 let liveCache: { data: unknown; at: number } | null = null;
 
+// Past this point after kickoff a group game is over even if ESPN hasn't
+// flipped its state or has dropped the game from the scoreboard (90' +
+// halftime + generous stoppage). Group games have no extra time.
+const ASSUME_FINISHED_MS = 150 * 60_000;
+
 // ── ESPN (today's live/finished scores) ───────────────────────────────────────
 interface ESPNComp {
   competitors: Array<{ homeAway: string; team: { displayName: string }; score: string }>;
-  status: { type: { state: string }; displayClock: string };
+  status: { type: { state: string; completed?: boolean; description?: string }; displayClock: string };
 }
 interface ESPNEvent {
   date: string;
@@ -77,11 +82,14 @@ async function fetchESPNLive(): Promise<
       if (!home || !away) continue;
       const state = comp.status?.type?.state;
       if (state !== 'in' && state !== 'post') continue;
+      // ESPN occasionally lingers on state 'in' at the whistle; trust the
+      // explicit completed flag too
+      const done = state === 'post' || comp.status?.type?.completed === true;
       const key = normalizeTeam(home.team.displayName) + ':' + normalizeTeam(away.team.displayName);
       map.set(key, {
         homeScore: parseInt(home.score || '0'),
         awayScore: parseInt(away.score || '0'),
-        status: state === 'in' ? 'live' : 'finished',
+        status: done ? 'finished' : 'live',
         clock: comp.status?.displayClock || '',
       });
     }
@@ -89,15 +97,40 @@ async function fetchESPNLive(): Promise<
   return map;
 }
 
+// Raw ESPN events with full status, for the debug endpoint
+async function fetchESPNRaw(): Promise<unknown[]> {
+  try {
+    const res = await fetch(ESPN_BASE, { headers: ESPN_HEADERS, cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data?.events ?? []) as ESPNEvent[]).map((e) => {
+      const comp = e.competitions?.[0];
+      const home = comp?.competitors.find((c) => c.homeAway === 'home');
+      const away = comp?.competitors.find((c) => c.homeAway === 'away');
+      return {
+        home: home?.team.displayName, away: away?.team.displayName,
+        homeScore: home?.score, awayScore: away?.score,
+        state: comp?.status?.type?.state,
+        completed: comp?.status?.type?.completed,
+        description: comp?.status?.type?.description,
+        displayClock: comp?.status?.displayClock,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function GET(request: Request) {
   const now = Date.now();
   const todayISO = new Date().toISOString().slice(0, 10);
 
-  // ?debug=1 → raw ESPN keys vs our expected keys, bypassing the cache
+  // ?debug=1 → raw ESPN events + parsed keys vs our expected keys, no cache
   if (new URL(request.url).searchParams.get('debug')) {
-    const espnMap = await fetchESPNLive();
+    const [espnMap, rawEvents] = await Promise.all([fetchESPNLive(), fetchESPNRaw()]);
     return NextResponse.json({
+      rawEvents,
       espnKeys: Array.from(espnMap.entries()).map(([k, v]) => ({ key: k, ...v })),
       ourKeys: GROUP_MATCHES.map((m) => ({
         matchId: m.matchId,
@@ -123,8 +156,14 @@ export async function GET(request: Request) {
 
   const dbMap = new Map(dbResults.map((r) => [r.matchId, r]));
 
+  // Finished results observed from ESPN that the DB doesn't yet record — we
+  // persist these so the game stays "finished" once ESPN drops it from the
+  // scoreboard, without waiting on the 10-minute sync cron.
+  const toPersist: { matchId: string; homeGoals: number; awayGoals: number; result: string }[] = [];
+
   const matches: MatchData[] = GROUP_MATCHES.map((m) => {
     const kickoffIso = m.kickoffIso;
+    const pastFullTime = now >= new Date(kickoffIso).getTime() + ASSUME_FINISHED_MS;
 
     // ESPN live/finished. No date gate: ESPN's scoreboard only lists games
     // it currently reports, group-stage pairings are unique, and gating on
@@ -132,17 +171,29 @@ export async function GET(request: Request) {
     // on the next UTC day (e.g. an 8pm MDT match is 02:00Z tomorrow).
     const espn = findESPN(espnLiveMap, m.home, m.away);
     if (espn) {
+      // A game ESPN still calls "live" well past full time is over —
+      // trust the clock so it doesn't hang on live forever.
+      const status = espn.status === 'finished' || pastFullTime ? 'finished' : 'live';
+      const db = dbMap.get(m.matchId);
+      if (status === 'finished' && db?.status !== 'finished') {
+        toPersist.push({
+          matchId: m.matchId,
+          homeGoals: espn.homeScore,
+          awayGoals: espn.awayScore,
+          result: espn.homeScore > espn.awayScore ? 'home' : espn.awayScore > espn.homeScore ? 'away' : 'draw',
+        });
+      }
       return {
         matchId: m.matchId, group: m.group, matchNumber: m.matchNumber,
         date: m.date, kickoffIso,
         home: m.home, away: m.away,
         homeScore: espn.homeScore, awayScore: espn.awayScore,
-        status: espn.status, clock: espn.clock,
+        status, clock: status === 'finished' ? '' : espn.clock,
         venue: m.venue, city: m.city,
       };
     }
 
-    // Admin DB result
+    // Admin / synced DB result
     const db = dbMap.get(m.matchId);
     if (db && db.status !== 'scheduled') {
       return {
@@ -164,6 +215,19 @@ export async function GET(request: Request) {
       status: 'scheduled', clock: '', venue: m.venue, city: m.city,
     };
   });
+
+  // Persist newly-finished games (drives scoring + survives ESPN dropping them)
+  if (toPersist.length > 0) {
+    await Promise.all(
+      toPersist.map((r) =>
+        prisma.matchResult.upsert({
+          where: { matchId: r.matchId },
+          update: { homeGoals: r.homeGoals, awayGoals: r.awayGoals, result: r.result, status: 'finished' },
+          create: { matchId: r.matchId, homeGoals: r.homeGoals, awayGoals: r.awayGoals, result: r.result, status: 'finished' },
+        }).catch(() => null),
+      ),
+    );
+  }
 
   const responseData = { matches, serverDate: todayISO, fetchedAt: new Date().toISOString() };
   liveCache = { data: responseData, at: now };
