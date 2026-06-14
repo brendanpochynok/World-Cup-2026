@@ -15,7 +15,7 @@
 | 3rd prize | Free entry ($10 value) |
 | Group stage games | 72 (12 groups × 6 games) |
 | Bracket games | 31 (R32 through Final) |
-| My entries | 2 (running identical through group stage; split at bracket) |
+| My entries | 2 — barbell: Anchor (chalk) + Dagger (selective high-leverage deviations). See §6.4. |
 
 ---
 
@@ -159,7 +159,42 @@ For E > 0: **d > 2p**. Requires draw probability > twice the favorite win probab
 
 Draw deviations cost 3x more than dog deviations in Class D. This is because when draw hits, chalk pickers score 0 (not −1), so you only gain +1 relative (not +2) when your draw bet lands.
 
-**Conclusion: Draw deviations are never correct. Dog deviations in Class D are the only deviation with manageable cost.**
+**Conclusion (per-game EV): every deviation has negative expected score.** The cheapest is a Class D dog. This is the right lens for maximizing your *mean* — but the pool does not pay out on the mean. See §4.4.
+
+---
+
+## 4.4 EV-Max vs Prize-Max: The Tournament Correction
+
+Sections 3–4.3 maximize **expected score**. That is the wrong objective for a top-heavy pool, and the live results prove it.
+
+**The payout is the max-order-statistic, not the mean.** Prizes go to 1st (75%), 2nd (25%), and 3rd (free entry) of 21 entries. You are not paid for being above average — you are paid for being at the **top** of 21 noisy scores. The maximum of 21 random walks is drawn from the high-variance tail, never from the dense low-variance middle.
+
+**Pure chalk lands you in the middle, by construction.** If ~half the field takes some variance and you take none:
+
+- In the worlds where favorites mostly hold, the ~10+ chalk players finish **tied** and split 1st. Your share of that outcome is ~1/(number of chalk players) — a few percent.
+- In the worlds where even one deviator catches an upset, that deviator separates and takes 1st clean. The entire chalk pack — you included — cashes nothing.
+
+**Empirical confirmation (after 8 games):** the pool lead has changed hands twice, both times to a deviator who hit (a Draw pick on Canada → +4; an Australia pick vs 86%-Turkey → +5). A pure-chalk entry going 8/8 on GTO picks sits at +3, behind both — in the dense middle, exactly as the order-statistic predicts.
+
+### 4.4.1 Why higher chalk concentration *increases* deviation value
+
+The field is more chalk-heavy than the §5 model assumed (Class B running ~85%, not 75%; Class A 95–100%). Counterintuitively this makes correct deviations **more** valuable, not less:
+
+```
+Separation when a faded favorite loses = +2 × (number of chalk rivals)
+```
+
+At 86% concentration that is +2 against ~18 rivals in a single game. The tighter the pack clusters on chalk, the further a correct fade vaults you past it. Concentration is leverage.
+
+### 4.4.2 Reinstating the draw
+
+Per-game, a draw pick is −EV (§3.2). But as a **tournament leverage play** it is live:
+
+- When a heavy favorite (field ≥ 80%) is held to a draw, draw-pickers gain **+1 on the entire field** at once.
+- Empirical draw rate is **37.5%** (3 of 8 games) vs a field allocation of 0–10%. Draws are both over-performing the model and badly under-bet by rivals.
+- Lower ceiling than catching an upset (+1 vs +2) but a much higher hit rate (~27–37% vs ~17%). It is the best **risk-adjusted** separation play currently available.
+
+The §4.3 "never pick draw" rule was EV-correct and prize-wrong. Draws return to the toolkit — on the variance entry only.
 
 ---
 
@@ -231,13 +266,14 @@ Rough approximation (independence — rivals are actually positively correlated,
 P(chalk beats all 19) ≈ (1 − 0.078)^19 ≈ 0.92^19 ≈ 0.21
 ```
 
-Independence assumption understates this because rivals' errors are correlated (they all deviate similarly on the same games). A more realistic estimate accounting for correlation (ρ ≈ 0.5 between rivals):
+The earlier draft inflated this to ~52% via a hand-waved correlation adjustment. **That was wrong, and the live results expose it.** The independence figure (~21%) is closer to the truth:
 
 ```
-P(chalk wins 1st) ≈ 50–55%
+P(at least one rival beats a chalk entry) ≈ 1 − 0.922^19 ≈ 79%
+P(a chalk entry is the outright max of 21) ≈ 21%
 ```
 
-This matches the original pre-tournament estimate.
+And even that 21% overstates **my** chalk entry's value, because when chalk "wins" it is usually a multi-way tie of all the chalk players splitting 1st — my share is ~1/(chalk-pack size). Realistic P(my pure-chalk entry takes clean 1st) is low single digits. Confirmed in the field: 8 games in, no chalk entry has led since Game 2.
 
 ### 6.2 Two-Entry EV Table (Revised)
 
@@ -250,13 +286,10 @@ With 19 rivals (pot grows with each entry):
 | 3 | $220 | $165 | ~85% | ~$152 | $30 | **~$122** | $6 |
 
 Notes on the 2-entry calculation:
-- Entry 1 = pure chalk (maximizes P(E1 wins))
-- Entry 2 = same as Entry 1 for group stage; differentiated at bracket
-- P(at least one entry wins) ≈ 1 − P(neither wins) ≈ 1 − (0.48)² = 0.77 if entries are independent
+- Two **identical** entries cover the same point in outcome-space. They share a finishing position and only help on tie-splits — you have effectively paid $20 for one position. P(≥1 wins) collapses to P(that single line wins).
+- Two **differentiated** entries cover different outcome-space. P(≥1 wins) ≈ 1 − P(neither), which is materially higher.
 
-However, since both entries are currently identical (group stage), P(≥1 wins) = P(either entry wins) ≈ P(chalk wins 1st) ≈ 52%. No benefit from running two identical entries until they diverge at bracket.
-
-**Key: the 2-entry advantage only materializes when the entries are differentiated.** Bracket picks are where this happens.
+**This is the single biggest correction to the original plan: do not run the entries identically through the group stage. Differentiate them now (§6.4).**
 
 ### 6.3 Entry 3 Assessment
 
@@ -266,13 +299,43 @@ Marginal E[net] ≈ $6 on a $10 cost. Below break-even.
 
 ---
 
+## 6.4 The Barbell — How to Use Two Entries
+
+Given §4.4 (prizes are the max-order-statistic) and §6.2 (identical entries waste the second slot), the two entries must play **different roles**:
+
+| Entry | Role | Policy | Wins in the world where… |
+|---|---|---|---|
+| **Anchor** | Floor | Pure chalk, every game, group and bracket | Favorites hold; the chalk pack ties and splits — Anchor is in the split |
+| **Dagger** | Ceiling | Chalk default + selective high-leverage deviations | An upset/draw separates someone from the pack — Dagger is that someone |
+
+Between them they cover both branches of the tournament: the Anchor cashes the ~20% "chalk dominates" world; the Dagger is the only line with a real shot at clean 1st in the ~80% "someone separates" world.
+
+### 6.4.1 Dagger deviation selection
+
+Spend deviations only where leverage per unit EV-cost is highest. Take roughly **1 in 4–5 games** — the highest-concentration spots — not every game.
+
+```
+Trigger a Dagger deviation when:
+  field concentration ≥ ~80% on the favorite        (max rivals to leapfrog)
+  AND ( p_dog ≥ ~0.30   OR   p_draw ≥ ~0.27 )         (a real hit rate)
+  AND not a home-continent team (USA/CAN/MEX)         (their dogs are too long, games dead)
+```
+
+Pick the **draw** when p_draw is the elevated leg (higher hit rate, +1 separation); pick the **dog** when p_dog is live and you want the full +2 separation. The Australia-vs-Turkey spot (86% on a 56% favorite, dog 17%, draw 26%) was a textbook Dagger draw/dog spot that a pure-chalk plan missed.
+
+### 6.4.2 Don't over-spray
+
+Each deviation still costs EV (§4). Spraying every game buries the Dagger's mean so far it falls out of contention even when a few hit. The Dagger must stay *near* the pack (mostly chalk) and separate with a **handful** of well-chosen variance spots across the 72-game stage.
+
+---
+
 ## 7. Group Stage Pick Strategy
 
 ### 7.1 The Rule
 
-**Every game: pick the team with the higher outright win probability per Polymarket at lock.**
+**Anchor entry — every game: pick the team with the higher outright win probability per Polymarket at lock.** This maximizes absolute EV and is the correct floor strategy.
 
-This is not just a heuristic — it is mathematically optimal for both absolute EV and for pool-relative position when you are near the lead.
+**Dagger entry — chalk by default, deviate on the high-leverage spots per §6.4.** The Dagger is the line that has to win the tournament, so it deliberately buys variance where it is cheapest and most concentrated.
 
 ### 7.2 When Deviation Is Rational
 
@@ -308,17 +371,16 @@ This is expensive. The better strategy when trailing is to wait for a coin-flip 
 
 ### 7.3 Current Position Strategy
 
-**Current state:** +2 pts, −1 to leader (acolben7 at +3). 68 group games remaining.
+**Current state (after 8 games):** I am at **+3**, **−2 to the leader** (an Australia-picker at +5; acolben7 +4, 2nd). Both my entries are still identical at +3. ~64 group games remaining.
 
-The gap of 1 point resolves naturally. With 68 games left, acolben7 will have bad games. Required action: stay chalk. Any forced deviation now has negative EV without the trailing justification.
+**Do not "stay chalk and wait."** The earlier draft assumed the leader would regress to me. The field has falsified this: each slate produces a *new* upset-catcher who jumps the pack, so there is no single leader to out-wait — the chalk pack is a moving target that variance keeps passing. Waiting = staying in the middle.
 
-**P(gap closes naturally without any deviation):**
+**Action from Game 9:**
+1. **Split the entries (§6.4).** Anchor stays pure chalk. Dagger goes live.
+2. **Dagger manufactures separation.** Trailing by 2 means the Dagger needs either one upset-catch (+2 swing vs the pack) or two heavy-favorite draws (+1 each). It does this by deploying §6.4 deviations on the highest-concentration spots — not by hoping.
+3. **Anchor is the hedge.** If favorites run hot and the Dagger's variance misses, the Anchor is still in the chalk-pack tie for the prizes.
 
-acolben7 needs to score 2 points worse than you on a decisive game where he picks one side and you pick the other. If both pick chalk (same teams), gap never closes.
-
-If acolben7 occasionally picks non-chalk (as he did with the Canada Draw): he will lose ground to pure chalk. Expected: his deviation costs him ~0.5 pts per game relative to you.
-
-Over 68 remaining games: **E[acolben7 falls back below you] is high. Stay chalk and collect.**
+This is not "trailing-player desperation" deviation (§7.2) — it is the structural barbell. The Dagger would be taking these spots even from a tie, because §4.4 says the chalk line cannot win clean.
 
 ---
 
@@ -362,18 +424,24 @@ Bracket deviations are more efficient than group deviations for creating gap vs 
 | A1: Mexico vs S. Africa | 68/21/11 | 100/0/0 | A | 100% chalk confirmed |
 | A2: S. Korea vs Czechia | 37/31/31 | 48/24/29 | D | Crowd biases toward ranked-better team even in 3-way split |
 | B1: Canada vs Bosnia | 53/27/19 | 81/10/10 | B | Canadian pool effect: +6 pts above base model prediction |
-| D1: USA vs Paraguay | 47/30/24 | TBD | C | — |
+| D1: USA vs Paraguay | 47/30/24 | 90/5/5 | C | "Home continent" effect — chalk overshoots class entirely |
+| B2: Qatar vs Switzerland | 6/12/83 | 0/0/100 | A | Unanimous; game drew → everyone 0, zero separation |
+| C1: Brazil vs Morocco | 58/25/16 | 86/10/5 | B | Global-brand effect; drew → draw-pickers +1 on field |
+| C2: Haiti vs Scotland | 16/22/63 | 0/5/95 | A | Near-unanimous; chalk held |
+| D2: Australia vs Turkey | 17/26/56 | 10/5/86 | B | **UPSET** — Australia won; the ~2 faders leapt the field +2 |
 
 ### 9.2 Crowd Model Calibration
 
 | Class | Base prediction | Observed | Calibrated |
 |---|---|---|---|
-| A | 95%+ chalk | 100% | 100% |
-| B | 75% chalk | 81% (Canada game) | ~80–85%, higher for Canada |
-| C | 50% chalk | TBD | ~55–65% (est.) |
+| A | 95%+ chalk | 100% / 100% / 95% (Mexico/Swiss/Scotland) | 95–100% |
+| B | 75% chalk | 81% / 86% / 86% (Canada/Brazil/Turkey) | **~85% (higher than original 75%)** |
+| C | 50% chalk | 90% (USA — home continent) | ~85–90% home-continent, ~55–65% otherwise |
 | D | 40% chalk | 48% | ~45–50% |
 
-**Key empirical finding:** Draw is systematically under-bet in ALL classes. This is consistent with the scoring rule — rational pool players should under-bet draw (negative EV), and the crowd intuitively does so even without knowing the math.
+**Key empirical findings:**
+1. **The field is more chalk-heavy than first modeled** — Class B is clustering ~85%, not 75%. Per §4.4.1, that *raises* the payoff of a correct fade (more rivals to leapfrog), it does not lower it.
+2. **Draw is under-bet AND over-performing.** Field allocates 0–10% to draw; actual draw rate is **37.5%** (3 of 8). Rivals under-bet draw because per-game EV is negative — but that creates the exact mispricing the Dagger exploits (§4.4.2): a heavy-favorite draw gains +1 on the whole field.
 
 ### 9.3 Results Log
 
@@ -381,10 +449,14 @@ Bracket deviations are more efficient than group deviations for creating gap vs 
 |---|---|---|---|---|
 | A1: Mexico vs S. Africa | Mexico | Mexico 2–0 ✓ | +1 | Tied at top w/ all |
 | A2: S. Korea vs Czechia | S. Korea | S. Korea 2–1 ✓ | +1 | +2, tied w/ ~9 others |
-| B1: Canada vs Bosnia | Canada | 1–1 Draw | 0 | +2, −1 to acolben7 |
-| D1: USA vs Paraguay | USA | TBD | — | — |
+| B1: Canada vs Bosnia | Canada | 1–1 Draw | 0 | +2, −1 to acolben7 (acolben7 took the draw → +3) |
+| D1: USA vs Paraguay | USA | USA 4–1 ✓ | +1 | +3, −1 to acolben7 (+4) |
+| B2: Qatar vs Switzerland | Switzerland | 1–1 Draw | 0 | +3 (everyone 0) |
+| C1: Brazil vs Morocco | Brazil | 1–1 Draw | 0 | +3 (draw-pickers gained) |
+| C2: Haiti vs Scotland | Scotland | Scotland 1–0 ✓ | +1 | +3 |
+| D2: Australia vs Turkey | Turkey | **Australia 2–0** ✗ | −1 | +3, **−2 to new leader** |
 
-**Current standings:** acolben7 +3 (1st), poch ×2 at +2 (T2), ~8 others at +2, vboeber +1, ~10 at 0.
+**Current standings (8 games):** new leader (Australia-picker) **+5**, acolben7 **+4** (2nd), me **+3** (both entries), chalk pack clustered at +3. Record: 6/8 GTO picks scored (3 wins, 3 draws=0, 1 loss). **8/8 correct GTO process — and tied for the back of the contender pack.** This is the order-statistic problem (§4.4) made concrete.
 
 ---
 
@@ -393,20 +465,22 @@ Bracket deviations are more efficient than group deviations for creating gap vs 
 ```
 τ (rival expected deviation vs chalk, group stage):   −9.5 pts
 σ (rival score SD vs chalk):                           6.7 pts
-P(chalk beats single rival):                           ~92%
-P(chalk wins 1st, 19 rivals):                          ~52%
-P(2 differentiated entries cover 1st, 19 rivals):      ~78%
+P(at least one rival beats a chalk entry):             ~79%   (← prizes are the max, not the mean)
+P(a chalk entry is outright max of 21):                ~21%
+P(MY pure-chalk entry takes clean 1st):                low single digits (tie-split)
 
-Cost of dog deviation (Class D):                       −0.14 pts/game
-Cost of draw deviation (Class D):                      −0.45 pts/game
-Draw deviation vs chalk relative EV:                   always negative
-Dog deviation threshold:                               p_dog > p_chalk (never in practice)
+Objective:                                             max-order-statistic (top 2–3), NOT expected score
+Strategy:                                              BARBELL — Anchor (chalk) + Dagger (selective deviations)
+Cost of dog deviation (Class D):                       −0.14 pts/game  (price of variance — pay it on best spots)
+Cost of draw deviation:                                negative per-game, BUT +1 vs whole field when it hits
+Empirical draw rate:                                   37.5% (3/8) vs field allocation 0–10% → under-bet
+Class B observed chalk concentration:                  ~85% (higher = correct fades pay MORE, §4.4.1)
 
-Deviation justified only when:                         trailing ≥2 pts, near-even game, few games left
+Dagger deviation trigger:    field ≥80% chalk AND (p_dog ≥0.30 OR p_draw ≥0.27), non-home-continent
 Bracket leverage ratio:                                14–20x (vs 14x for group)
 
-Current deficit to leader:                             −1 pt
-Recommended action:                                    chalk everything, wait for leader errors
+Current deficit to leader:                             −2 pts (leader +5 via Australia upset; acolben7 +4)
+Recommended action:                                    split entries now — Anchor chalk, Dagger hunts leverage
 ```
 
 ---
@@ -414,15 +488,21 @@ Recommended action:                                    chalk everything, wait fo
 ## 11. Decision Tree (Quick Reference)
 
 ```
-Each game:
-  └── Who has higher outright win probability? → pick that team
-      └── Is it a draw? → always 0 pts, no penalty, not picked
-      └── Are we trailing by 2+ pts with <20 games left?
-          └── Yes: find nearest-to-even decisive game, pick dog
-          └── No: chalk
+ANCHOR entry (floor):
+  └── Every game → pick higher outright win probability (chalk). Never deviate.
 
-Bracket:
-  └── Entry 1: chalk every slot
-  └── Entry 2: chalk most slots; pick dog in 1-2 QF/SF slots where:
-              p_dog ≥ 0.40 AND crowd goes 80%+ chalk AND we need variance
+DAGGER entry (ceiling):
+  └── Default → chalk (stay near the pack)
+  └── Override → DEVIATE when:
+        field ≥ ~80% on the favorite
+        AND ( p_dog ≥ ~0.30  OR  p_draw ≥ ~0.27 )
+        AND not a home-continent team (USA/CAN/MEX)
+        → pick the DRAW if p_draw is the elevated leg (hits more, +1 vs field)
+        → pick the DOG  if you want full +2 separation and p_dog is live
+  └── Cap it: ~1 deviation per 4–5 games. Don't bury the mean.
+
+Bracket (both entries split fully):
+  └── Anchor: chalk every slot
+  └── Dagger: chalk most slots; dog in 1–2 QF/SF slots where
+              p_dog ≥ 0.40 AND crowd 80%+ chalk (leverage 16–20x)
 ```
