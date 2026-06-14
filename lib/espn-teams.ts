@@ -7,7 +7,9 @@ export function normalizeTeam(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-// Names where ESPN's displayName can differ from our schedule's
+// Names where ESPN's displayName can differ from our schedule's. Diacritics
+// matter: normalizeTeam strips them, so "Türkiye" → "trkiye" ≠ "turkey" —
+// the variant must be listed explicitly.
 export const TEAM_ALIASES: Record<string, string[]> = {
   'Bosnia and Herzegovina': ['Bosnia-Herzegovina', 'Bosnia & Herzegovina', 'Bosnia'],
   'United States': ['USA', 'United States of America'],
@@ -15,6 +17,10 @@ export const TEAM_ALIASES: Record<string, string[]> = {
   'Czechia': ['Czech Republic'],
   'South Korea': ['Korea Republic'],
   'Iran': ['IR Iran'],
+  'Turkey': ['Türkiye', 'Turkiye'],
+  'Curacao': ['Curaçao'],
+  'Cabo Verde': ['Cape Verde'],
+  'DR Congo': ['Congo DR', 'Democratic Republic of the Congo', 'Congo'],
 };
 
 export function teamKeys(team: string): string[] {
