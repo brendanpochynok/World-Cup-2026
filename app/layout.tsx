@@ -1,9 +1,19 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
+
+// Without this, mobile browsers render at ~980px desktop width and scale
+// down — the whole UI looks shrunk and the nav never adapts. viewportFit
+// 'cover' lets the bottom nav's safe-area insets take effect on notched phones.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#1d4ed8',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://world-cup-2026-one-red.vercel.app'),
@@ -26,9 +36,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="theme-color" content="#1d4ed8" />
-      </head>
       <body className={inter.className}>
         {children}
         <Analytics />
