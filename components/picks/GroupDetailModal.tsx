@@ -7,6 +7,7 @@ import {
 } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
+import ThirdSeedBadge from './ThirdSeedBadge';
 
 interface GroupDetailModalProps {
   group: Group;
@@ -15,7 +16,7 @@ interface GroupDetailModalProps {
   // reflects reality + predictions; matchPicks still drives the pick buttons.
   standingsPicks?: Record<string, string>;
   actualScores?: Record<string, { home: number; away: number }>;
-  qualifyingThirds?: Set<string>;
+  thirdSeeds?: Record<string, { rank: number; qualifies: boolean }>;
   onPickChange: (matchId: string, pick: string) => void;
   onClose: () => void;
   oddsMap?: Record<string, MatchOdds>;
@@ -48,7 +49,7 @@ function formatKickoff(isoStr: string) {
 function pct(p: number) { return `${Math.round(p * 100)}%`; }
 
 export default function GroupDetailModal({
-  group, matchPicks, standingsPicks, actualScores, qualifyingThirds, onPickChange, onClose,
+  group, matchPicks, standingsPicks, actualScores, thirdSeeds, onPickChange, onClose,
   oddsMap = {}, kickoffTimes = {}, advancementScores, distribution = {},
 }: GroupDetailModalProps) {
   const matches = getGroupMatches(group.id);
@@ -142,7 +143,8 @@ export default function GroupDetailModal({
                   {standings.map((row, i) => {
                     const meta = getTeamMeta(row.team);
                     const advances = i < 2;
-                    const qualThird = i === 2 && (qualifyingThirds?.has(row.team) ?? false);
+                    const seed = i === 2 ? thirdSeeds?.[row.team] : undefined;
+                    const qualThird = seed?.qualifies ?? false;
                     return (
                       <tr key={row.team}
                         className={`border-b border-gray-100 last:border-0 ${advances ? 'bg-wc-blue-500/4' : qualThird ? 'bg-wc-green-500/10' : ''}`}>
@@ -154,7 +156,7 @@ export default function GroupDetailModal({
                             <img src={getFlagUrl(meta.flag)} alt={row.team} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" />
                             <span className={`font-medium ${advances ? 'text-gray-900' : qualThird ? 'text-wc-green-700' : 'text-gray-500'}`}>{shortenName(row.team)}</span>
                             {advances && row.pts > 0 && <span className="text-[11px] text-wc-blue-400 ml-0.5">↑</span>}
-                            {qualThird && <span className="text-[11px] text-wc-green-500 ml-0.5" title="Best-8 third place">↑</span>}
+                            {seed && <ThirdSeedBadge rank={seed.rank} qualifies={seed.qualifies} />}
                           </div>
                         </td>
                         <td className="py-1.5 text-center text-gray-400">{row.p}</td>

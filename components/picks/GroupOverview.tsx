@@ -1,6 +1,9 @@
 'use client';
 
 import { Group, getGroupMatches, getTeamMeta, getFlagUrl, computeGroupStandings } from '@/lib/worldcup-data';
+import ThirdSeedBadge from './ThirdSeedBadge';
+
+type ThirdSeeds = Record<string, { rank: number; qualifies: boolean }>;
 
 interface GroupOverviewProps {
   groups: Group[];
@@ -10,8 +13,8 @@ interface GroupOverviewProps {
   standingsPicks: Record<string, string>;
   advancementScores?: Record<string, number>;
   actualScores?: Record<string, { home: number; away: number }>;
-  // Third-place teams currently ranked in the qualifying top 8.
-  qualifyingThirds?: Set<string>;
+  // team → seed rank (1–12) among third-place teams + qualifying flag.
+  thirdSeeds?: ThirdSeeds;
   onSelectGroup: (groupId: string) => void;
 }
 
@@ -28,13 +31,13 @@ function shortenName(name: string): string {
   return map[name] ?? (name.length > 11 ? name.slice(0, 10) + '…' : name);
 }
 
-function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, actualScores, qualifyingThirds, onClick }: {
+function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, actualScores, thirdSeeds, onClick }: {
   group: Group;
   matchPicks: Record<string, string>;
   standingsPicks: Record<string, string>;
   advancementScores?: Record<string, number>;
   actualScores?: Record<string, { home: number; away: number }>;
-  qualifyingThirds?: Set<string>;
+  thirdSeeds?: ThirdSeeds;
   onClick: () => void;
 }) {
   const matches = getGroupMatches(group.id);
@@ -77,8 +80,8 @@ function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, a
             {standings.map((row, i) => {
               const meta = getTeamMeta(row.team);
               const autoAdvance = i < 2;
-              // 3rd place: green if currently in the best-8 qualifying thirds
-              const qualThird = i === 2 && (qualifyingThirds?.has(row.team) ?? false);
+              const seed = i === 2 ? thirdSeeds?.[row.team] : undefined;
+              const qualThird = seed?.qualifies ?? false;
               return (
                 <div key={row.team}
                   className={`grid items-center rounded px-0.5 py-0.5 ${autoAdvance ? 'bg-wc-blue-500/5' : qualThird ? 'bg-wc-green-500/10' : ''}`}
@@ -88,8 +91,9 @@ function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, a
                   <div className="flex items-center gap-1 min-w-0">
                     <img src={getFlagUrl(meta.flag)} alt={row.team} className="w-4 h-3 object-cover rounded-sm flex-shrink-0" loading="lazy" />
                     <div className="min-w-0">
-                      <span className={`text-[11px] truncate block leading-tight ${autoAdvance ? 'text-gray-900 font-medium' : qualThird ? 'text-wc-green-700 font-medium' : 'text-gray-400'}`}>
-                        {shortenName(row.team)}
+                      <span className={`text-[11px] truncate leading-tight flex items-center gap-1 ${autoAdvance ? 'text-gray-900 font-medium' : qualThird ? 'text-wc-green-700 font-medium' : 'text-gray-400'}`}>
+                        <span className="truncate">{shortenName(row.team)}</span>
+                        {seed && <ThirdSeedBadge rank={seed.rank} qualifies={seed.qualifies} />}
                       </span>
                       <span className="text-[11px] text-gray-400 leading-none">#{meta.fifaRank}</span>
                     </div>
@@ -144,7 +148,7 @@ function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, a
   );
 }
 
-export default function GroupOverview({ groups, matchPicks, standingsPicks, advancementScores, actualScores, qualifyingThirds, onSelectGroup }: GroupOverviewProps) {
+export default function GroupOverview({ groups, matchPicks, standingsPicks, advancementScores, actualScores, thirdSeeds, onSelectGroup }: GroupOverviewProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       {groups.map((group) => (
@@ -155,7 +159,7 @@ export default function GroupOverview({ groups, matchPicks, standingsPicks, adva
           standingsPicks={standingsPicks}
           advancementScores={advancementScores}
           actualScores={actualScores}
-          qualifyingThirds={qualifyingThirds}
+          thirdSeeds={thirdSeeds}
           onClick={() => onSelectGroup(group.id)}
         />
       ))}

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
-import ThirdPlaceRanking from '@/components/picks/ThirdPlaceRanking';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
 import { GROUPS, GROUP_MATCHES, ALL_TEAMS, SCORING, computeGroupStandings, rankThirdPlace, getGroupMatches, getTeamMeta, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
 import type { GroupStanding, ThirdPlaceEntry } from '@/lib/worldcup-data';
@@ -285,10 +284,13 @@ export default function PicksPage() {
     return rankThirdPlace(thirds, advancementScores);
   }, [groupRows, advancementScores]);
 
-  const qualifyingThirds = useMemo(
-    () => new Set(thirdsRanking.filter((t) => t.qualifies).map((t) => t.team)),
-    [thirdsRanking]
-  );
+  // team → its rank among the 12 third-place teams (1–12) and whether it's
+  // in the qualifying top 8. Drives the seed badge on the standings rows.
+  const thirdSeeds = useMemo((): Record<string, { rank: number; qualifies: boolean }> => {
+    const m: Record<string, { rank: number; qualifies: boolean }> = {};
+    for (const t of thirdsRanking) m[t.team] = { rank: t.rank, qualifies: t.qualifies };
+    return m;
+  }, [thirdsRanking]);
 
   const r32Teams = useMemo((): Record<number, [string, string]> => {
     const result: Record<number, [string, string]> = {};
@@ -455,15 +457,9 @@ export default function PicksPage() {
           standingsPicks={effectivePicks}
           advancementScores={advancementScores}
           actualScores={actualScores}
-          qualifyingThirds={qualifyingThirds}
+          thirdSeeds={thirdSeeds}
           onSelectGroup={setSelectedGroup}
         />
-
-        {thirdsRanking.length > 0 && (
-          <div className="mt-4">
-            <ThirdPlaceRanking thirds={thirdsRanking} />
-          </div>
-        )}
 
         {selectedGroup && (
           <GroupDetailModal
@@ -471,7 +467,7 @@ export default function PicksPage() {
             matchPicks={matchPicks}
             standingsPicks={effectivePicks}
             actualScores={actualScores}
-            qualifyingThirds={qualifyingThirds}
+            thirdSeeds={thirdSeeds}
             onPickChange={handleMatchPickChange}
             onClose={() => setSelectedGroup(null)}
             oddsMap={oddsMap}
