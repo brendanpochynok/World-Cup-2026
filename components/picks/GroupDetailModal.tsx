@@ -11,6 +11,9 @@ import type { PickDistribution } from '@/app/api/picks/distribution/route';
 interface GroupDetailModalProps {
   group: Group;
   matchPicks: Record<string, string>;
+  // Standings source: real results merged over the user's picks. The table
+  // reflects reality + predictions; matchPicks still drives the pick buttons.
+  standingsPicks?: Record<string, string>;
   onPickChange: (matchId: string, pick: string) => void;
   onClose: () => void;
   oddsMap?: Record<string, MatchOdds>;
@@ -43,15 +46,16 @@ function formatKickoff(isoStr: string) {
 function pct(p: number) { return `${Math.round(p * 100)}%`; }
 
 export default function GroupDetailModal({
-  group, matchPicks, onPickChange, onClose,
+  group, matchPicks, standingsPicks, onPickChange, onClose,
   oddsMap = {}, kickoffTimes = {}, advancementScores, distribution = {},
 }: GroupDetailModalProps) {
   const matches = getGroupMatches(group.id);
   const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
 
+  const standingsSource = standingsPicks ?? matchPicks;
   const standings = useMemo(
-    () => computeGroupStandings(group.id, matchPicks, advancementScores),
-    [group.id, matchPicks, advancementScores]
+    () => computeGroupStandings(group.id, standingsSource, advancementScores),
+    [group.id, standingsSource, advancementScores]
   );
 
   const hasAnyPick = pickedCount > 0;
