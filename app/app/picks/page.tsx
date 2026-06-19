@@ -40,6 +40,7 @@ function BracketLockBadge() {
 
 export default function PicksPage() {
   const [matchPicks, setMatchPicks] = useState<Record<string, string>>({});
+  const [actualResults, setActualResults] = useState<Record<string, string>>({});
   const [bracketPicks, setBracketPicks] = useState<Record<string, string>>({});
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const [kickoffTimes, setKickoffTimes] = useState<Record<string, string>>({});
@@ -62,11 +63,12 @@ export default function PicksPage() {
 
   const fetchPicks = useCallback(async (entry: number) => {
     try {
-      const [groupRes, bracketRes, oddsRes, distRes] = await Promise.all([
+      const [groupRes, bracketRes, oddsRes, distRes, resultsRes] = await Promise.all([
         fetch(`/api/picks/groups?entry=${entry}`),
         fetch(`/api/picks/bracket?entry=${entry}`),
         fetch('/api/odds'),
         fetch('/api/picks/distribution'),
+        fetch('/api/results'),
       ]);
       const groupData = await groupRes.json();
       if (groupData.picks) setMatchPicks(groupData.picks);
@@ -86,6 +88,9 @@ export default function PicksPage() {
 
       const distData = await distRes.json().catch(() => ({}));
       setDistribution(distData);
+
+      const resultsData = await resultsRes.json().catch(() => ({}));
+      if (resultsData.results) setActualResults(resultsData.results);
     } catch (err) {
       console.error('Error loading picks', err);
     } finally {
@@ -243,14 +248,23 @@ export default function PicksPage() {
     return scores;
   }, [oddsMap]);
 
+  // Seed the bracket from reality where known: actual finished results
+  // override the user's predictions; unplayed matches use their picks. So as
+  // group games complete the bracket converges on the true draw, and once the
+  // group stage ends it reflects exactly who advanced.
+  const effectivePicks = useMemo(
+    (): Record<string, string> => ({ ...matchPicks, ...actualResults }),
+    [matchPicks, actualResults]
+  );
+
   const r32Teams = useMemo((): Record<number, [string, string]> => {
     const standings: Record<string, string[]> = {};
     for (let gi = 0; gi < GROUPS.length; gi++) {
       const g = GROUPS[gi];
       const matches = getGroupMatches(g.id);
-      const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
+      const pickedCount = matches.filter((m) => effectivePicks[m.matchId]).length;
       if (pickedCount === matches.length) {
-        const rows = computeGroupStandings(g.id, matchPicks, advancementScores);
+        const rows = computeGroupStandings(g.id, effectivePicks, advancementScores);
         standings[g.id] = rows.map((r) => r.team);
       }
     }
@@ -297,7 +311,7 @@ export default function PicksPage() {
     if (allGroupsDone) {
       const thirds: { team: string; pts: number }[] = [];
       for (let gi = 0; gi < GROUPS.length; gi++) {
-        const rows = computeGroupStandings(GROUPS[gi].id, matchPicks, advancementScores);
+        const rows = computeGroupStandings(GROUPS[gi].id, effectivePicks, advancementScores);
         if (rows[2]) thirds.push({ team: rows[2].team, pts: rows[2].pts });
       }
       thirds.sort((a, b) => {
@@ -317,7 +331,7 @@ export default function PicksPage() {
     }
 
     return result;
-  }, [matchPicks, advancementScores]);
+  }, [effectivePicks, advancementScores]);
 
   if (loading) {
     return (
