@@ -5,6 +5,10 @@ import { Group, getGroupMatches, getTeamMeta, getFlagUrl, computeGroupStandings 
 interface GroupOverviewProps {
   groups: Group[];
   matchPicks: Record<string, string>;
+  // Standings source: real results merged over the user's picks. Drives the
+  // table + advance coloring, while matchPicks still drives pick progress.
+  standingsPicks: Record<string, string>;
+  advancementScores?: Record<string, number>;
   onSelectGroup: (groupId: string) => void;
 }
 
@@ -21,15 +25,22 @@ function shortenName(name: string): string {
   return map[name] ?? (name.length > 11 ? name.slice(0, 10) + '…' : name);
 }
 
-function GroupMiniCard({ group, matchPicks, onClick }: {
-  group: Group; matchPicks: Record<string, string>; onClick: () => void;
+function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, onClick }: {
+  group: Group;
+  matchPicks: Record<string, string>;
+  standingsPicks: Record<string, string>;
+  advancementScores?: Record<string, number>;
+  onClick: () => void;
 }) {
   const matches = getGroupMatches(group.id);
   const pickedCount = matches.filter((m) => matchPicks[m.matchId]).length;
   const total = matches.length;
   const complete = pickedCount === total;
   const started = pickedCount > 0;
-  const standings = started ? computeGroupStandings(group.id, matchPicks) : null;
+  // Standings reflect real results + predictions, so they can show even for
+  // games the user hasn't picked yet (already-finished matches).
+  const standingsStarted = matches.some((m) => standingsPicks[m.matchId]);
+  const standings = standingsStarted ? computeGroupStandings(group.id, standingsPicks, advancementScores) : null;
 
   return (
     <div
@@ -50,7 +61,7 @@ function GroupMiniCard({ group, matchPicks, onClick }: {
 
       <div className="border-t border-gray-100 mb-2" />
 
-      {started && standings ? (
+      {standings ? (
         <div>
           <div className="grid text-[11px] text-gray-400 mb-1 px-0.5" style={{ gridTemplateColumns: '12px 1fr 16px 16px 16px 20px' }}>
             <span></span><span>Team</span>
@@ -127,11 +138,18 @@ function GroupMiniCard({ group, matchPicks, onClick }: {
   );
 }
 
-export default function GroupOverview({ groups, matchPicks, onSelectGroup }: GroupOverviewProps) {
+export default function GroupOverview({ groups, matchPicks, standingsPicks, advancementScores, onSelectGroup }: GroupOverviewProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       {groups.map((group) => (
-        <GroupMiniCard key={group.id} group={group} matchPicks={matchPicks} onClick={() => onSelectGroup(group.id)} />
+        <GroupMiniCard
+          key={group.id}
+          group={group}
+          matchPicks={matchPicks}
+          standingsPicks={standingsPicks}
+          advancementScores={advancementScores}
+          onClick={() => onSelectGroup(group.id)}
+        />
       ))}
     </div>
   );

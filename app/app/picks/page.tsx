@@ -451,6 +451,8 @@ export default function PicksPage() {
         <GroupOverview
           groups={GROUPS}
           matchPicks={matchPicks}
+          standingsPicks={effectivePicks}
+          advancementScores={advancementScores}
           onSelectGroup={setSelectedGroup}
         />
 
@@ -458,6 +460,7 @@ export default function PicksPage() {
           <GroupDetailModal
             group={GROUPS.find((g) => g.id === selectedGroup)!}
             matchPicks={matchPicks}
+            standingsPicks={effectivePicks}
             onPickChange={handleMatchPickChange}
             onClose={() => setSelectedGroup(null)}
             oddsMap={oddsMap}
