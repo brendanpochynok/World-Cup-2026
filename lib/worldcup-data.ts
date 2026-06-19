@@ -1243,14 +1243,37 @@ export interface GroupStanding {
   d: number;
   l: number;
   pts: number;
+  gf: number;
+  ga: number;
+  gd: number;
 }
 
+// Goals per match for goal-difference tiebreaks. Picks only carry win/draw/away,
+// so we model a predicted win as 1–0 and a predicted draw as 0–0; finished games
+// use their real scoreline (passed in actualScores). This makes FIFA's
+// goal-difference / goals-scored / head-to-head tiebreakers computable.
+function matchGoals(
+  matchId: string,
+  pick: string,
+  actualScores?: Record<string, { home: number; away: number }>
+): { hg: number; ag: number } {
+  const real = actualScores?.[matchId];
+  if (real) return { hg: real.home, ag: real.away };
+  if (pick === 'home') return { hg: 1, ag: 0 };
+  if (pick === 'away') return { hg: 0, ag: 1 };
+  return { hg: 0, ag: 0 };
+}
+
+// Standings with full FIFA tiebreakers: points → goal difference → goals
+// scored → head-to-head (points, GD, goals among tied teams) → Polymarket
+// expectation → FIFA rank (stands in for the drawing of lots).
 // advancementScores: Polymarket-derived expected group points per team.
-// Higher score = more likely to advance. Used as automatic tiebreaker.
+// actualScores: real scorelines for finished matches (synthetic otherwise).
 export function computeGroupStandings(
   groupId: string,
   picks: Record<string, string>,
-  advancementScores?: Record<string, number>
+  advancementScores?: Record<string, number>,
+  actualScores?: Record<string, { home: number; away: number }>
 ): GroupStanding[] {
   const group = GROUPS.find((g) => g.id === groupId);
   if (!group) return [];
@@ -1258,34 +1281,90 @@ export function computeGroupStandings(
   const table: Record<string, GroupStanding> = {};
   for (let i = 0; i < group.teams.length; i++) {
     const t = group.teams[i];
-    table[t] = { team: t, p: 0, w: 0, d: 0, l: 0, pts: 0 };
+    table[t] = { team: t, p: 0, w: 0, d: 0, l: 0, pts: 0, gf: 0, ga: 0, gd: 0 };
   }
+  // Per-match record retained for head-to-head computation
+  const played: { home: string; away: string; hg: number; ag: number }[] = [];
+
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
     const pick = picks[m.matchId];
     if (!pick) continue;
-    table[m.home].p++;
-    table[m.away].p++;
-    if (pick === 'home') {
-      table[m.home].w++; table[m.home].pts += 3; table[m.away].l++;
-    } else if (pick === 'away') {
-      table[m.away].w++; table[m.away].pts += 3; table[m.home].l++;
-    } else {
-      table[m.home].d++; table[m.home].pts++;
-      table[m.away].d++; table[m.away].pts++;
-    }
+    const { hg, ag } = matchGoals(m.matchId, pick, actualScores);
+    const H = table[m.home], A = table[m.away];
+    H.p++; A.p++;
+    H.gf += hg; H.ga += ag; A.gf += ag; A.ga += hg;
+    if (pick === 'home') { H.w++; H.pts += 3; A.l++; }
+    else if (pick === 'away') { A.w++; A.pts += 3; H.l++; }
+    else { H.d++; A.d++; H.pts++; A.pts++; }
+    played.push({ home: m.home, away: m.away, hg, ag });
   }
+  for (const t of group.teams) table[t].gd = table[t].gf - table[t].ga;
+
+  // Mini-league among a set of tied teams, counting only matches between them
+  function headToHead(teams: string[]): Record<string, { pts: number; gd: number; gf: number }> {
+    const mini: Record<string, { pts: number; gd: number; gf: number }> = {};
+    for (const t of teams) mini[t] = { pts: 0, gd: 0, gf: 0 };
+    const set = new Set(teams);
+    for (const g of played) {
+      if (!set.has(g.home) || !set.has(g.away)) continue;
+      mini[g.home].gf += g.hg; mini[g.home].gd += g.hg - g.ag;
+      mini[g.away].gf += g.ag; mini[g.away].gd += g.ag - g.hg;
+      if (g.hg > g.ag) mini[g.home].pts += 3;
+      else if (g.ag > g.hg) mini[g.away].pts += 3;
+      else { mini[g.home].pts++; mini[g.away].pts++; }
+    }
+    return mini;
+  }
+
   return group.teams
     .map((t) => table[t])
     .sort((a, b) => {
       if (b.pts !== a.pts) return b.pts - a.pts;
-      if (b.w !== a.w) return b.w - a.w;
-      // Polymarket-based tiebreak: higher expected group pts = ranks higher
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      if (b.gf !== a.gf) return b.gf - a.gf;
+      // Head-to-head among every team tied on the overall criteria above
+      const tied = group.teams.filter((t) => {
+        const s = table[t];
+        return s.pts === a.pts && s.gd === a.gd && s.gf === a.gf;
+      });
+      if (tied.length > 1) {
+        const mini = headToHead(tied);
+        const ma = mini[a.team], mb = mini[b.team];
+        if (mb.pts !== ma.pts) return mb.pts - ma.pts;
+        if (mb.gd !== ma.gd) return mb.gd - ma.gd;
+        if (mb.gf !== ma.gf) return mb.gf - ma.gf;
+      }
+      // Deterministic fallbacks: Polymarket expectation, then FIFA rank
       const sa = advancementScores?.[a.team];
       const sb = advancementScores?.[b.team];
       if (sa !== undefined && sb !== undefined && sa !== sb) return sb - sa;
-      // Final fallback: FIFA rank (lower number = stronger)
       return getTeamMeta(a.team).fifaRank - getTeamMeta(b.team).fifaRank;
     });
+}
+
+// Rank the 12 group third-place teams; the top 8 advance (2026 format).
+// Cross-group, so no head-to-head: points → GD → goals → Polymarket → FIFA rank.
+export interface ThirdPlaceEntry extends GroupStanding {
+  groupId: string;
+  rank: number;       // 1-based position among all thirds
+  qualifies: boolean; // top 8
+}
+
+export function rankThirdPlace(
+  thirds: { groupId: string; standing: GroupStanding }[],
+  advancementScores?: Record<string, number>
+): ThirdPlaceEntry[] {
+  const sorted = [...thirds].sort((x, y) => {
+    const a = x.standing, b = y.standing;
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    if (b.gd !== a.gd) return b.gd - a.gd;
+    if (b.gf !== a.gf) return b.gf - a.gf;
+    const sa = advancementScores?.[a.team];
+    const sb = advancementScores?.[b.team];
+    if (sa !== undefined && sb !== undefined && sa !== sb) return sb - sa;
+    return getTeamMeta(a.team).fifaRank - getTeamMeta(b.team).fifaRank;
+  });
+  return sorted.map((e, i) => ({ ...e.standing, groupId: e.groupId, rank: i + 1, qualifies: i < 8 }));
 }
 

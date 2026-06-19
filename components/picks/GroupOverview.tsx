@@ -9,6 +9,9 @@ interface GroupOverviewProps {
   // table + advance coloring, while matchPicks still drives pick progress.
   standingsPicks: Record<string, string>;
   advancementScores?: Record<string, number>;
+  actualScores?: Record<string, { home: number; away: number }>;
+  // Third-place teams currently ranked in the qualifying top 8.
+  qualifyingThirds?: Set<string>;
   onSelectGroup: (groupId: string) => void;
 }
 
@@ -25,11 +28,13 @@ function shortenName(name: string): string {
   return map[name] ?? (name.length > 11 ? name.slice(0, 10) + '…' : name);
 }
 
-function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, onClick }: {
+function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, actualScores, qualifyingThirds, onClick }: {
   group: Group;
   matchPicks: Record<string, string>;
   standingsPicks: Record<string, string>;
   advancementScores?: Record<string, number>;
+  actualScores?: Record<string, { home: number; away: number }>;
+  qualifyingThirds?: Set<string>;
   onClick: () => void;
 }) {
   const matches = getGroupMatches(group.id);
@@ -40,7 +45,7 @@ function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, o
   // Standings reflect real results + predictions, so they can show even for
   // games the user hasn't picked yet (already-finished matches).
   const standingsStarted = matches.some((m) => standingsPicks[m.matchId]);
-  const standings = standingsStarted ? computeGroupStandings(group.id, standingsPicks, advancementScores) : null;
+  const standings = standingsStarted ? computeGroupStandings(group.id, standingsPicks, advancementScores, actualScores) : null;
 
   return (
     <div
@@ -72,17 +77,18 @@ function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, o
             {standings.map((row, i) => {
               const meta = getTeamMeta(row.team);
               const autoAdvance = i < 2;
-              const mayAdvance = i === 2 && row.pts > 0;
+              // 3rd place: green if currently in the best-8 qualifying thirds
+              const qualThird = i === 2 && (qualifyingThirds?.has(row.team) ?? false);
               return (
                 <div key={row.team}
-                  className={`grid items-center rounded px-0.5 py-0.5 ${autoAdvance ? 'bg-wc-blue-500/5' : mayAdvance ? 'bg-gray-50' : ''}`}
+                  className={`grid items-center rounded px-0.5 py-0.5 ${autoAdvance ? 'bg-wc-blue-500/5' : qualThird ? 'bg-wc-green-500/10' : ''}`}
                   style={{ gridTemplateColumns: '12px 1fr 16px 16px 16px 20px' }}
                 >
-                  <span className={`text-[11px] font-bold ${autoAdvance ? 'text-wc-blue-500' : mayAdvance ? 'text-gray-500' : 'text-gray-300'}`}>{i + 1}</span>
+                  <span className={`text-[11px] font-bold ${autoAdvance ? 'text-wc-blue-500' : qualThird ? 'text-wc-green-600' : 'text-gray-300'}`}>{i + 1}</span>
                   <div className="flex items-center gap-1 min-w-0">
                     <img src={getFlagUrl(meta.flag)} alt={row.team} className="w-4 h-3 object-cover rounded-sm flex-shrink-0" loading="lazy" />
                     <div className="min-w-0">
-                      <span className={`text-[11px] truncate block leading-tight ${autoAdvance ? 'text-gray-900 font-medium' : mayAdvance ? 'text-gray-600' : 'text-gray-400'}`}>
+                      <span className={`text-[11px] truncate block leading-tight ${autoAdvance ? 'text-gray-900 font-medium' : qualThird ? 'text-wc-green-700 font-medium' : 'text-gray-400'}`}>
                         {shortenName(row.team)}
                       </span>
                       <span className="text-[11px] text-gray-400 leading-none">#{meta.fifaRank}</span>
@@ -91,14 +97,14 @@ function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, o
                   <span className="text-[11px] text-center text-gray-500">{row.w}</span>
                   <span className="text-[11px] text-center text-gray-400">{row.d}</span>
                   <span className="text-[11px] text-center text-gray-400">{row.l}</span>
-                  <span className={`text-[11px] text-right font-bold ${autoAdvance ? 'text-wc-blue-500' : mayAdvance ? 'text-gray-500' : 'text-gray-300'}`}>{row.pts}</span>
+                  <span className={`text-[11px] text-right font-bold ${autoAdvance ? 'text-wc-blue-500' : qualThird ? 'text-wc-green-600' : 'text-gray-300'}`}>{row.pts}</span>
                 </div>
               );
             })}
           </div>
           {complete && (
             <div className="mt-1.5 text-[11px] text-gray-400 leading-tight">
-              <span className="text-wc-blue-400">■</span> advance · <span className="text-gray-400">■</span> may qualify
+              <span className="text-wc-blue-400">■</span> advance · <span className="text-wc-green-500">■</span> best 3rd
             </div>
           )}
         </div>
@@ -138,7 +144,7 @@ function GroupMiniCard({ group, matchPicks, standingsPicks, advancementScores, o
   );
 }
 
-export default function GroupOverview({ groups, matchPicks, standingsPicks, advancementScores, onSelectGroup }: GroupOverviewProps) {
+export default function GroupOverview({ groups, matchPicks, standingsPicks, advancementScores, actualScores, qualifyingThirds, onSelectGroup }: GroupOverviewProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       {groups.map((group) => (
@@ -148,6 +154,8 @@ export default function GroupOverview({ groups, matchPicks, standingsPicks, adva
           matchPicks={matchPicks}
           standingsPicks={standingsPicks}
           advancementScores={advancementScores}
+          actualScores={actualScores}
+          qualifyingThirds={qualifyingThirds}
           onClick={() => onSelectGroup(group.id)}
         />
       ))}

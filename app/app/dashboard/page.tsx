@@ -102,15 +102,17 @@ export default async function DashboardPage() {
 
   // Build real standings from finished match results
   const realPicks: Record<string, string> = {};
+  const realScores: Record<string, { home: number; away: number }> = {};
   for (const r of matchResults) {
     if (r.status === 'finished' && r.homeGoals !== null && r.awayGoals !== null) {
       realPicks[r.matchId] = r.homeGoals > r.awayGoals ? 'home' : r.homeGoals < r.awayGoals ? 'away' : 'draw';
+      realScores[r.matchId] = { home: r.homeGoals, away: r.awayGoals };
     }
   }
   const groupStandings = GROUPS.map((g) => ({
     id: g.id,
     name: g.name,
-    rows: computeGroupStandings(g.id, realPicks),
+    rows: computeGroupStandings(g.id, realPicks, undefined, realScores),
   }));
   const tournamentStarted = Object.keys(realPicks).length > 0;
 
