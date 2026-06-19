@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
+import ThirdPlaceRanking from '@/components/picks/ThirdPlaceRanking';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
-import { GROUPS, GROUP_MATCHES, ALL_TEAMS, SCORING, computeGroupStandings, getGroupMatches, getTeamMeta, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
+import { GROUPS, GROUP_MATCHES, ALL_TEAMS, SCORING, computeGroupStandings, rankThirdPlace, getGroupMatches, getTeamMeta, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
+import type { GroupStanding, ThirdPlaceEntry } from '@/lib/worldcup-data';
 import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
@@ -41,6 +43,7 @@ function BracketLockBadge() {
 export default function PicksPage() {
   const [matchPicks, setMatchPicks] = useState<Record<string, string>>({});
   const [actualResults, setActualResults] = useState<Record<string, string>>({});
+  const [actualScores, setActualScores] = useState<Record<string, { home: number; away: number }>>({});
   const [bracketPicks, setBracketPicks] = useState<Record<string, string>>({});
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const [kickoffTimes, setKickoffTimes] = useState<Record<string, string>>({});
@@ -91,6 +94,7 @@ export default function PicksPage() {
 
       const resultsData = await resultsRes.json().catch(() => ({}));
       if (resultsData.results) setActualResults(resultsData.results);
+      if (resultsData.scores) setActualScores(resultsData.scores);
     } catch (err) {
       console.error('Error loading picks', err);
     } finally {
@@ -257,27 +261,45 @@ export default function PicksPage() {
     [matchPicks, actualResults]
   );
 
-  const r32Teams = useMemo((): Record<number, [string, string]> => {
-    const standings: Record<string, string[]> = {};
-    for (let gi = 0; gi < GROUPS.length; gi++) {
-      const g = GROUPS[gi];
+  // Full standings per group (null until the group's effective table is
+  // complete), with real-goal + synthetic-goal FIFA tiebreaks.
+  const groupRows = useMemo((): Record<string, GroupStanding[] | null> => {
+    const out: Record<string, GroupStanding[] | null> = {};
+    for (const g of GROUPS) {
       const matches = getGroupMatches(g.id);
-      const pickedCount = matches.filter((m) => effectivePicks[m.matchId]).length;
-      if (pickedCount === matches.length) {
-        const rows = computeGroupStandings(g.id, effectivePicks, advancementScores);
-        standings[g.id] = rows.map((r) => r.team);
-      }
+      const complete = matches.every((m) => effectivePicks[m.matchId]);
+      out[g.id] = complete
+        ? computeGroupStandings(g.id, effectivePicks, advancementScores, actualScores)
+        : null;
     }
+    return out;
+  }, [effectivePicks, advancementScores, actualScores]);
 
+  // Cross-group ranking of every known third-place team; top 8 qualify.
+  const thirdsRanking = useMemo((): ThirdPlaceEntry[] => {
+    const thirds: { groupId: string; standing: GroupStanding }[] = [];
+    for (const g of GROUPS) {
+      const rows = groupRows[g.id];
+      if (rows && rows[2]) thirds.push({ groupId: g.id, standing: rows[2] });
+    }
+    return rankThirdPlace(thirds, advancementScores);
+  }, [groupRows, advancementScores]);
+
+  const qualifyingThirds = useMemo(
+    () => new Set(thirdsRanking.filter((t) => t.qualifies).map((t) => t.team)),
+    [thirdsRanking]
+  );
+
+  const r32Teams = useMemo((): Record<number, [string, string]> => {
     const result: Record<number, [string, string]> = {};
 
     function team(groupId: string, pos: number): string | null {
-      return standings[groupId] ? standings[groupId][pos] ?? null : null;
+      const rows = groupRows[groupId];
+      return rows ? rows[pos]?.team ?? null : null;
     }
 
     // Fixed R32 pairings (no 3rd-place teams) — official 2026 FIFA bracket
-    // [group1, pos1, group2, pos2, slot]
-    // pos 0 = winner, pos 1 = runner-up
+    // [group1, pos1, group2, pos2, slot] · pos 0 = winner, pos 1 = runner-up
     const fixedPairs: [string, number, string, number, number][] = [
       ['A', 1, 'B', 1, 2],  // slot 2:  2A vs 2B
       ['F', 0, 'C', 1, 3],  // slot 3:  1F vs 2C
@@ -293,45 +315,24 @@ export default function PicksPage() {
       if (t1 && t2) result[slot] = [t1, t2];
     }
 
-    // Winner vs 3rd-place slots — exact opponent determined after all group stage
-    // [group, winnerSlot] pairs ordered to match bracket slot indices
+    // Winner vs 3rd-place slots — opponent set once all groups resolve
     const thirdMatchups: [string, number][] = [
-      ['I', 0],  // slot 0:  1I vs 3rd*
-      ['E', 0],  // slot 1:  1E vs 3rd*
-      ['A', 0],  // slot 6:  1A vs 3rd*
-      ['L', 0],  // slot 7:  1L vs 3rd*
-      ['G', 0],  // slot 10: 1G vs 3rd*
-      ['D', 0],  // slot 11: 1D vs 3rd*
-      ['K', 0],  // slot 14: 1K vs 3rd*
-      ['B', 0],  // slot 15: 1B vs 3rd*
+      ['I', 0], ['E', 0], ['A', 0], ['L', 0],
+      ['G', 0], ['D', 0], ['K', 0], ['B', 0],
     ];
     const thirdSlots = [0, 1, 6, 7, 10, 11, 14, 15];
 
-    const allGroupsDone = GROUPS.every((g) => standings[g.id]);
+    const allGroupsDone = GROUPS.every((g) => groupRows[g.id]);
     if (allGroupsDone) {
-      const thirds: { team: string; pts: number }[] = [];
-      for (let gi = 0; gi < GROUPS.length; gi++) {
-        const rows = computeGroupStandings(GROUPS[gi].id, effectivePicks, advancementScores);
-        if (rows[2]) thirds.push({ team: rows[2].team, pts: rows[2].pts });
-      }
-      thirds.sort((a, b) => {
-        if (b.pts !== a.pts) return b.pts - a.pts;
-        const sa = advancementScores[a.team];
-        const sb = advancementScores[b.team];
-        if (sa !== undefined && sb !== undefined && sa !== sb) return sb - sa;
-        return getTeamMeta(a.team).fifaRank - getTeamMeta(b.team).fifaRank;
-      });
-      // Top 8 third-place teams face group winners (per official 2026 bracket)
-      for (let i = 0; i < 8 && i < thirds.length; i++) {
-        const slot = thirdSlots[i];
+      for (let i = 0; i < 8 && i < thirdsRanking.length; i++) {
         const [grp, pos] = thirdMatchups[i];
         const winner = team(grp, pos);
-        if (winner) result[slot] = [winner, thirds[i].team];
+        if (winner) result[thirdSlots[i]] = [winner, thirdsRanking[i].team];
       }
     }
 
     return result;
-  }, [effectivePicks, advancementScores]);
+  }, [groupRows, thirdsRanking]);
 
   if (loading) {
     return (
@@ -453,14 +454,24 @@ export default function PicksPage() {
           matchPicks={matchPicks}
           standingsPicks={effectivePicks}
           advancementScores={advancementScores}
+          actualScores={actualScores}
+          qualifyingThirds={qualifyingThirds}
           onSelectGroup={setSelectedGroup}
         />
+
+        {thirdsRanking.length > 0 && (
+          <div className="mt-4">
+            <ThirdPlaceRanking thirds={thirdsRanking} />
+          </div>
+        )}
 
         {selectedGroup && (
           <GroupDetailModal
             group={GROUPS.find((g) => g.id === selectedGroup)!}
             matchPicks={matchPicks}
             standingsPicks={effectivePicks}
+            actualScores={actualScores}
+            qualifyingThirds={qualifyingThirds}
             onPickChange={handleMatchPickChange}
             onClose={() => setSelectedGroup(null)}
             oddsMap={oddsMap}

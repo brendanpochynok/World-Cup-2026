@@ -14,6 +14,8 @@ interface GroupDetailModalProps {
   // Standings source: real results merged over the user's picks. The table
   // reflects reality + predictions; matchPicks still drives the pick buttons.
   standingsPicks?: Record<string, string>;
+  actualScores?: Record<string, { home: number; away: number }>;
+  qualifyingThirds?: Set<string>;
   onPickChange: (matchId: string, pick: string) => void;
   onClose: () => void;
   oddsMap?: Record<string, MatchOdds>;
@@ -46,7 +48,7 @@ function formatKickoff(isoStr: string) {
 function pct(p: number) { return `${Math.round(p * 100)}%`; }
 
 export default function GroupDetailModal({
-  group, matchPicks, standingsPicks, onPickChange, onClose,
+  group, matchPicks, standingsPicks, actualScores, qualifyingThirds, onPickChange, onClose,
   oddsMap = {}, kickoffTimes = {}, advancementScores, distribution = {},
 }: GroupDetailModalProps) {
   const matches = getGroupMatches(group.id);
@@ -54,8 +56,8 @@ export default function GroupDetailModal({
 
   const standingsSource = standingsPicks ?? matchPicks;
   const standings = useMemo(
-    () => computeGroupStandings(group.id, standingsSource, advancementScores),
-    [group.id, standingsSource, advancementScores]
+    () => computeGroupStandings(group.id, standingsSource, advancementScores, actualScores),
+    [group.id, standingsSource, advancementScores, actualScores]
   );
 
   const hasAnyPick = pickedCount > 0;
@@ -132,6 +134,7 @@ export default function GroupDetailModal({
                     <th className="text-center py-1.5 font-medium w-7">W</th>
                     <th className="text-center py-1.5 font-medium w-7">D</th>
                     <th className="text-center py-1.5 font-medium w-7">L</th>
+                    <th className="text-center py-1.5 font-medium w-8" title="Goal difference">GD</th>
                     <th className="text-center py-1.5 pr-1 font-bold w-8">Pts</th>
                   </tr>
                 </thead>
@@ -139,23 +142,26 @@ export default function GroupDetailModal({
                   {standings.map((row, i) => {
                     const meta = getTeamMeta(row.team);
                     const advances = i < 2;
+                    const qualThird = i === 2 && (qualifyingThirds?.has(row.team) ?? false);
                     return (
                       <tr key={row.team}
-                        className={`border-b border-gray-100 last:border-0 ${advances ? 'bg-wc-blue-500/4' : ''}`}>
+                        className={`border-b border-gray-100 last:border-0 ${advances ? 'bg-wc-blue-500/4' : qualThird ? 'bg-wc-green-500/10' : ''}`}>
                         <td className="py-1.5 px-3">
-                          <span className={`font-bold ${advances ? 'text-wc-blue-500' : 'text-gray-300'}`}>{i + 1}</span>
+                          <span className={`font-bold ${advances ? 'text-wc-blue-500' : qualThird ? 'text-wc-green-600' : 'text-gray-300'}`}>{i + 1}</span>
                         </td>
                         <td className="py-1.5 pl-0">
                           <div className="flex items-center gap-1.5">
                             <img src={getFlagUrl(meta.flag)} alt={row.team} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" />
-                            <span className={`font-medium ${advances ? 'text-gray-900' : 'text-gray-500'}`}>{shortenName(row.team)}</span>
+                            <span className={`font-medium ${advances ? 'text-gray-900' : qualThird ? 'text-wc-green-700' : 'text-gray-500'}`}>{shortenName(row.team)}</span>
                             {advances && row.pts > 0 && <span className="text-[11px] text-wc-blue-400 ml-0.5">↑</span>}
+                            {qualThird && <span className="text-[11px] text-wc-green-500 ml-0.5" title="Best-8 third place">↑</span>}
                           </div>
                         </td>
                         <td className="py-1.5 text-center text-gray-400">{row.p}</td>
                         <td className="py-1.5 text-center text-gray-600">{row.w}</td>
                         <td className="py-1.5 text-center text-gray-400">{row.d}</td>
                         <td className="py-1.5 text-center text-gray-400">{row.l}</td>
+                        <td className="py-1.5 text-center text-gray-500 tabular-nums">{row.gd > 0 ? `+${row.gd}` : row.gd}</td>
                         <td className="py-1.5 text-center pr-1 font-bold text-gray-900">{row.pts}</td>
                       </tr>
                     );
@@ -163,7 +169,7 @@ export default function GroupDetailModal({
                 </tbody>
               </table>
               <div className="bg-gray-50 px-3 py-1.5 text-[11px] text-gray-400 border-t border-gray-100">
-                Top 2 advance · Best 8 third-place also advance · Ties broken by Polymarket odds
+                Top 2 advance · 8 best 3rd-place also advance · Ties: goal diff, then goals, then head-to-head
               </div>
             </div>
 
