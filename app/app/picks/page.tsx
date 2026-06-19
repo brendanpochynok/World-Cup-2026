@@ -163,6 +163,17 @@ export default function PicksPage() {
     }
   }
 
+  async function handleClearBracket() {
+    setSaveStatus('saving');
+    setBracketPicks({});
+    try {
+      const res = await fetch(`/api/picks/bracket?entry=${activeEntry}`, { method: 'DELETE' });
+      res.ok ? showSaved() : showError();
+    } catch {
+      showError();
+    }
+  }
+
   async function handleAutoPick() {
     setSaveStatus('saving');
     const newPicks: Record<string, string> = {};
@@ -487,7 +498,21 @@ export default function PicksPage() {
               March Madness style · R32={SCORING.r32} · R16={SCORING.r16} · QF={SCORING.qf} · SF={SCORING.sf} · Final={SCORING.final} pts
             </p>
           </div>
-          <BracketLockBadge />
+          <div className="flex items-center gap-2">
+            {!isBracketLocked() && Object.keys(bracketPicks).length > 0 && (
+              <button
+                onClick={handleClearBracket}
+                disabled={saveStatus === 'saving'}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-wc-red-500 hover:text-wc-red-600 text-xs font-bold transition-all disabled:opacity-40"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Clear bracket
+              </button>
+            )}
+            <BracketLockBadge />
+          </div>
         </div>
 
         <div className={`bg-white border rounded-xl overflow-x-auto shadow-sm ${isBracketLocked() ? 'border-gray-300' : 'border-gray-200'}`}>
