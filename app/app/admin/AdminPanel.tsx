@@ -123,6 +123,39 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminPanel({ matchResults, bracketResults, entryFee, playerCount, users, players }: Props) {
   const [tab, setTab] = useState<Tab>('results');
 
+  // ── password reset state ──────────────────────────────────────────────────
+  const [resetUser, setResetUser] = useState('');
+  const [resetPw, setResetPw] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetMsg, setResetMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function resetPassword() {
+    if (!resetUser || resetPw.length < 6) {
+      setResetMsg({ ok: false, text: 'Pick a player and a password of at least 6 characters.' });
+      return;
+    }
+    setResetting(true);
+    setResetMsg(null);
+    try {
+      const res = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: resetUser, newPassword: resetPw }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setResetMsg({ ok: true, text: `Password updated for ${resetUser}. Send it to them and have them change it in Profile.` });
+        setResetPw('');
+      } else {
+        setResetMsg({ ok: false, text: j.error ?? 'Failed to reset password' });
+      }
+    } catch {
+      setResetMsg({ ok: false, text: 'Failed to reset password' });
+    } finally {
+      setResetting(false);
+    }
+  }
+
   // ── trophies state ────────────────────────────────────────────────────────
   const [trophies, setTrophies] = useState<TrophyRow[]>([]);
   const [trophiesLoaded, setTrophiesLoaded] = useState(false);
@@ -720,6 +753,49 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
       {/* ── Tab: Activity ── */}
       {tab === 'activity' && (
         <div className="space-y-4">
+          {/* Reset a player's password */}
+          <div className="card space-y-3">
+            <div>
+              <h2 className="font-bold text-gray-900">Reset a password</h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Set a new password for a player who&rsquo;s locked out, then send it to them privately.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={resetUser}
+                onChange={(e) => { setResetUser(e.target.value); setResetMsg(null); }}
+                className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:border-wc-blue-300 focus:ring-2 focus:ring-wc-blue-500/10"
+              >
+                <option value="">Select player…</option>
+                {users.map((u) => (
+                  <option key={u.username} value={u.username}>
+                    {u.displayName ? `${u.displayName} (${u.username})` : u.username}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={resetPw}
+                onChange={(e) => { setResetPw(e.target.value); setResetMsg(null); }}
+                placeholder="New password (6+ chars)"
+                className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-wc-blue-300 focus:ring-2 focus:ring-wc-blue-500/10 placeholder:text-gray-400"
+              />
+              <button
+                onClick={resetPassword}
+                disabled={resetting || !resetUser || resetPw.length < 6}
+                className="btn-primary text-sm px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {resetting ? 'Resetting…' : 'Reset'}
+              </button>
+            </div>
+            {resetMsg && (
+              <p className={`text-xs font-semibold ${resetMsg.ok ? 'text-wc-green-600' : 'text-wc-red-500'}`}>
+                {resetMsg.text}
+              </p>
+            )}
+          </div>
+
           <p className="text-sm text-gray-500">
             When each player last visited the site. Accurate to ~5 minutes while they have it open.
           </p>
