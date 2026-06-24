@@ -4,11 +4,13 @@ import { getSessionUser } from '@/lib/auth';
 import { isAdminRequest } from '@/lib/admin-auth';
 
 const MAX_LENGTH = 500;
+const MAX_IMAGE_CHARS = 700_000; // ~500KB image as a data URL
 const PAGE_SIZE = 100;
 
 export interface ChatMessageData {
   id: number;
   body: string;
+  imageUrl: string | null;
   createdAt: string;
   userId: number;
   username: string;
@@ -62,6 +64,7 @@ async function recentReactions(meId: number): Promise<Record<number, MessageReac
 const USER_SELECT = {
   id: true,
   body: true,
+  imageUrl: true,
   createdAt: true,
   user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
 } as const;
@@ -69,6 +72,7 @@ const USER_SELECT = {
 type MessageRow = {
   id: number;
   body: string;
+  imageUrl: string | null;
   createdAt: Date;
   user: { id: number; username: string; displayName: string | null; avatarUrl: string | null };
 };
@@ -77,6 +81,7 @@ function toData(m: MessageRow): ChatMessageData {
   return {
     id: m.id,
     body: m.body,
+    imageUrl: m.imageUrl,
     createdAt: m.createdAt.toISOString(),
     userId: m.user.id,
     username: m.user.username,
@@ -119,20 +124,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ messages: messages.reverse().map(toData), reactions });
 }
 
-// POST: send a message. Body: { body: string }
+// POST: send a message. Body: { body?: string, imageUrl?: string }
+// At least one of text or an image is required.
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { body } = (await request.json()) as { body?: string };
+    const { body, imageUrl } = (await request.json()) as { body?: string; imageUrl?: string };
     const text = (body ?? '').trim();
-    if (!text) return NextResponse.json({ error: 'Message is empty' }, { status: 400 });
+    const image = typeof imageUrl === 'string' && imageUrl ? imageUrl : null;
+
+    if (!text && !image) return NextResponse.json({ error: 'Message is empty' }, { status: 400 });
     if (text.length > MAX_LENGTH)
       return NextResponse.json({ error: `Message too long (max ${MAX_LENGTH} characters)` }, { status: 400 });
+    if (image) {
+      if (!image.startsWith('data:image/'))
+        return NextResponse.json({ error: 'Invalid image' }, { status: 400 });
+      if (image.length > MAX_IMAGE_CHARS)
+        return NextResponse.json({ error: 'Image is too large' }, { status: 400 });
+    }
 
     const message = await prisma.chatMessage.create({
-      data: { userId: user.userId, body: text },
+      data: { userId: user.userId, body: text, imageUrl: image },
       select: USER_SELECT,
     });
     return NextResponse.json({ message: toData(message) });

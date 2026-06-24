@@ -13,6 +13,35 @@ const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '⚽', '🔥'];
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 const IMG_RE = /\.(gif|png|jpe?g|webp)$/i;
 
+// Downscale an attached image to a compact JPEG data URL (aspect preserved),
+// matching the avatar approach — no blob storage needed.
+function resizeToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1000;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          const scale = MAX / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = reject;
+      img.src = e.target!.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function formatTime(iso: string): string {
   const d = new Date(iso);
   const today = new Date().toDateString() === d.toDateString();
@@ -72,6 +101,7 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
   const [gifs, setGifs] = useState<GifResult[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const stickToBottom = useRef(true);
   const lastReadSent = useRef(0);
 
@@ -177,15 +207,16 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
     stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   }
 
-  const send = useCallback(async (text: string) => {
-    if (!text || sending) return false;
+  const send = useCallback(async (payload: { text?: string; imageUrl?: string }) => {
+    const text = payload.text ?? '';
+    if ((!text && !payload.imageUrl) || sending) return false;
     setSending(true);
     setError('');
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: text }),
+        body: JSON.stringify({ body: text, imageUrl: payload.imageUrl }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -204,16 +235,27 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
   }, [sending, appendMessages]);
 
   async function handleSend() {
-    if (await send(input.trim())) {
+    if (await send({ text: input.trim() })) {
       setInput('');
       setShowEmoji(false);
     }
   }
 
   async function handleSendGif(url: string) {
-    if (await send(url)) {
+    if (await send({ text: url })) {
       setShowGif(false);
       setGifQuery('');
+    }
+  }
+
+  async function handleAttach(file: File) {
+    if (!file.type.startsWith('image/')) { setError('Only image files are supported'); return; }
+    setShowEmoji(false); setShowGif(false); setReactPickerFor(null);
+    try {
+      const dataUrl = await resizeToDataUrl(file);
+      await send({ imageUrl: dataUrl });
+    } catch {
+      setError('Could not read that image');
     }
   }
 
@@ -345,7 +387,17 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
                       )}
                     </span>
                   </div>
-                  <MessageBody body={m.body} />
+                  {m.body && <MessageBody body={m.body} />}
+                  {m.imageUrl && (
+                    <a href={m.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-block">
+                      <img
+                        src={m.imageUrl}
+                        alt="attachment"
+                        loading="lazy"
+                        className="block max-w-[240px] max-h-60 rounded-lg border border-gray-200 mt-1 object-cover"
+                      />
+                    </a>
+                  )}
                   {(reactions[m.id]?.length ?? 0) > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {reactions[m.id].map((r) => (
@@ -384,20 +436,20 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
             autoFocus
             className="w-full text-sm px-3 py-2 mb-2 rounded-lg border border-gray-200 focus:outline-none focus:border-wc-blue-300 focus:ring-2 focus:ring-wc-blue-500/10 placeholder:text-gray-400"
           />
-          <div className="h-40 overflow-y-auto">
+          <div className={`${tall ? 'h-[40vh]' : 'h-72'} overflow-y-auto`}>
             {gifLoading ? (
               <p className="text-gray-400 text-sm text-center py-8">Searching…</p>
             ) : gifs.length === 0 ? (
               <p className="text-gray-400 text-sm text-center py-8">No GIFs found</p>
             ) : (
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {gifs.map((g) => (
                   <button key={g.id} onClick={() => handleSendGif(g.url)} className="block">
                     <img
                       src={g.preview ?? g.url}
                       alt=""
                       loading="lazy"
-                      className="w-full h-20 object-cover rounded-lg border border-gray-200 hover:border-wc-blue-300 transition-colors"
+                      className="w-full h-28 object-cover rounded-lg border border-gray-200 hover:border-wc-blue-300 transition-colors"
                     />
                   </button>
                 ))}
@@ -469,6 +521,27 @@ export default function DashboardChat({ me, isAdmin, tall = false }: DashboardCh
               GIF
             </button>
           )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleAttach(f);
+              e.target.value = '';
+            }}
+          />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={sending}
+            className="text-gray-400 hover:text-gray-600 flex-shrink-0 transition-colors disabled:opacity-40"
+            aria-label="Attach image"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+          </button>
           <input
             type="text"
             value={input}
