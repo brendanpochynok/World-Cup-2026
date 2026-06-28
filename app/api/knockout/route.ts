@@ -11,12 +11,14 @@ export interface KnockoutMatchData {
   kickoff: string | null;
 }
 
-// Public: the admin-set knockout fixtures. Drives bracket seeding, per-game
-// locking, and the scores-page knockout display.
+// Public: the admin-set knockout fixtures plus recorded winners. Drives
+// bracket seeding, per-game locking, the scores-page display, and the
+// green/red result colouring on the bracket.
 export async function GET(): Promise<NextResponse> {
-  const rows = await prisma.knockoutMatch.findMany({
-    orderBy: [{ round: 'asc' }, { slot: 'asc' }],
-  });
+  const [rows, bracketResults] = await Promise.all([
+    prisma.knockoutMatch.findMany({ orderBy: [{ round: 'asc' }, { slot: 'asc' }] }),
+    prisma.bracketResult.findMany(),
+  ]);
   const matches: KnockoutMatchData[] = rows.map((r) => ({
     round: r.round,
     slot: r.slot,
@@ -24,5 +26,7 @@ export async function GET(): Promise<NextResponse> {
     away: r.away,
     kickoff: r.kickoff ? r.kickoff.toISOString() : null,
   }));
-  return NextResponse.json({ matches });
+  const results: Record<string, string> = {};
+  for (const r of bracketResults) results[`${r.round}-${r.slot}`] = r.team;
+  return NextResponse.json({ matches, results });
 }

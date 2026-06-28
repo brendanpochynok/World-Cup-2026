@@ -150,13 +150,15 @@ export async function GET(request: Request) {
     return NextResponse.json(liveCache.data);
   }
 
-  const [dbResults, espnLiveMap, koFixtures] = await Promise.all([
+  const [dbResults, espnLiveMap, koFixtures, bracketResults] = await Promise.all([
     prisma.matchResult.findMany(),
     fetchESPNLive(),
     prisma.knockoutMatch.findMany({ where: { home: { not: null }, away: { not: null } } }),
+    prisma.bracketResult.findMany(),
   ]);
 
   const dbMap = new Map(dbResults.map((r) => [r.matchId, r]));
+  const bracketResultMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
 
   // Finished results observed from ESPN that the DB doesn't yet record — we
   // persist these so the game stays "finished" once ESPN drops it from the
@@ -231,17 +233,27 @@ export async function GET(request: Request) {
     );
   }
 
-  // Knockout fixtures (admin-set) with live ESPN scores — display only,
-  // results are recorded separately via the admin Bracket tab.
+  // Knockout fixtures (admin-set) with live ESPN scores. A finished game with
+  // a clear winner is auto-recorded as a BracketResult so picks score and turn
+  // green; draws (penalty shootouts) are left for manual admin entry.
   const ROUND_NAMES: Record<string, string> = {
     R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter-Final', SF: 'Semi-Final', Final: 'Final',
   };
+  const koResultsToPersist: { round: string; slot: number; team: string }[] = [];
   const knockout: MatchData[] = koFixtures.map((k) => {
     const kickoffIso = k.kickoff ? k.kickoff.toISOString() : null;
     const espn = findESPN(espnLiveMap, k.home!, k.away!);
     const pastFT = kickoffIso ? now >= new Date(kickoffIso).getTime() + ASSUME_FINISHED_MS : false;
     const status: 'scheduled' | 'live' | 'finished' =
       espn ? (espn.status === 'finished' || pastFT ? 'finished' : 'live') : 'scheduled';
+
+    if (status === 'finished' && espn && espn.homeScore !== espn.awayScore) {
+      const winner = espn.homeScore > espn.awayScore ? k.home! : k.away!;
+      if (bracketResultMap.get(`${k.round}-${k.slot}`) !== winner) {
+        koResultsToPersist.push({ round: k.round, slot: k.slot, team: winner });
+      }
+    }
+
     return {
       matchId: `${k.round}-${k.slot}`,
       group: k.round, matchNumber: k.slot + 1,
@@ -255,6 +267,18 @@ export async function GET(request: Request) {
       stageLabel: ROUND_NAMES[k.round] ?? k.round,
     };
   });
+
+  if (koResultsToPersist.length > 0) {
+    await Promise.all(
+      koResultsToPersist.map((r) =>
+        prisma.bracketResult.upsert({
+          where: { round_slot: { round: r.round, slot: r.slot } },
+          update: { team: r.team },
+          create: r,
+        }).catch(() => null),
+      ),
+    );
+  }
 
   const responseData = { matches, knockout, serverDate: todayISO, fetchedAt: new Date().toISOString() };
   liveCache = { data: responseData, at: now };

@@ -43,6 +43,7 @@ export default function PicksPage() {
   const [actualScores, setActualScores] = useState<Record<string, { home: number; away: number }>>({});
   const [bracketPicks, setBracketPicks] = useState<Record<string, string>>({});
   const [knockoutMatches, setKnockoutMatches] = useState<KnockoutMatchData[]>([]);
+  const [bracketResults, setBracketResults] = useState<Record<string, string>>({});
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const [kickoffTimes, setKickoffTimes] = useState<Record<string, string>>({});
   const [distribution, setDistribution] = useState<Record<string, PickDistribution>>({});
@@ -63,7 +64,10 @@ export default function PicksPage() {
 
     fetch('/api/knockout')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (Array.isArray(d?.matches)) setKnockoutMatches(d.matches); })
+      .then((d) => {
+        if (Array.isArray(d?.matches)) setKnockoutMatches(d.matches);
+        if (d?.results) setBracketResults(d.results);
+      })
       .catch(() => {});
   }, []);
 
@@ -571,6 +575,7 @@ export default function PicksPage() {
             locked={isBracketLocked()}
             lockedSlots={lockedSlots}
             r32Labels={r32Labels}
+            results={bracketResults}
             allTeams={ALL_TEAMS}
             r32Teams={bracketR32}
           />

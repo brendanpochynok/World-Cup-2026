@@ -8,6 +8,7 @@ interface KnockoutBracketProps {
   locked: boolean;                  // global lock (kept for compatibility)
   lockedSlots?: Set<string>;        // per-slot lock keys ("R32-0") whose game started
   r32Labels?: Record<number, string>; // R32 slot → label (kickoff time) replacing the seed label
+  results?: Record<string, string>;   // round-slot → actual winner, for green/red colouring
   allTeams: string[];
   r32Teams?: Record<number, [string, string]>;
 }
@@ -126,18 +127,23 @@ interface MatchSlotProps {
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
   r32Labels: Record<number, string>;
+  results: Record<string, string>;
 }
 
-function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked, r32Labels }: MatchSlotProps) {
+function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked, r32Labels, results }: MatchSlotProps) {
   const key = `${round}-${slot}`;
   const selected = effectivePicks[key] ?? null;
   const label = (round === 'R32' && r32Labels[slot]) ? r32Labels[slot] : getSlotLabel(round, slot);
   const teams = slotTeams[key] ?? null;
   const selectedMeta = selected ? getTeamMeta(selected) : null;
+  const winner = results[key] ?? null;
+  const correct = winner && selected ? selected === winner : null; // true/false/null
 
   return (
     <div className={`rounded-lg border text-xs w-full transition-colors ${
-      selected ? 'border-wc-blue-300 bg-white' : 'border-gray-200 bg-gray-50'
+      correct === true ? 'border-wc-green-300 bg-wc-green-500/5'
+      : correct === false ? 'border-red-200 bg-red-50'
+      : selected ? 'border-wc-blue-300 bg-white' : 'border-gray-200 bg-gray-50'
     }`}>
       <div className="px-1.5 py-0.5 text-gray-400 border-b border-gray-200 truncate text-[11px] leading-tight bg-gray-50 rounded-t-lg">
         {label}
@@ -147,9 +153,13 @@ function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked, r
           {selectedMeta && (
             <img src={getFlagUrl(selectedMeta.flag)} alt={selected!} className="w-4 h-3 object-cover rounded-sm" />
           )}
-          <span className={`text-[11px] ${selected ? 'text-wc-blue-600 font-semibold' : 'text-gray-400'}`}>
+          <span className={`text-[11px] font-semibold ${
+            correct === true ? 'text-wc-green-700' : correct === false ? 'text-wc-red-600' : selected ? 'text-wc-blue-600' : 'text-gray-400'
+          }`}>
             {selected ? shortBracketName(selected) : 'Locked'}
           </span>
+          {correct === true && <span className="text-[11px] text-wc-green-600 ml-auto">✓</span>}
+          {correct === false && <span className="text-[11px] text-wc-red-500 ml-auto">✕</span>}
         </div>
       ) : teams ? (
         <div className="flex gap-1 p-1">
@@ -178,7 +188,7 @@ function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked, r
 const LEFT_HALF: Record<string, number[]> = { R32: [0,1,2,3,4,5,6,7], R16: [0,1,2,3], QF: [0,1], SF: [0] };
 const RIGHT_HALF: Record<string, number[]> = { R32: [8,9,10,11,12,13,14,15], R16: [4,5,6,7], QF: [2,3], SF: [1] };
 
-function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, lockedSlots, r32Labels }: {
+function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, lockedSlots, r32Labels, results }: {
   side: 'left' | 'right';
   effectivePicks: Record<string, string>;
   slotTeams: Record<string, [string, string]>;
@@ -186,6 +196,7 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, locked
   locked: boolean;
   lockedSlots: Set<string>;
   r32Labels: Record<number, string>;
+  results: Record<string, string>;
 }) {
   const halfMap = side === 'left' ? LEFT_HALF : RIGHT_HALF;
   const rounds = side === 'left'
@@ -205,7 +216,7 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, locked
             <div className="flex flex-col justify-around flex-1 gap-1.5" style={{ minHeight: `${slots.length * 72}px` }}>
               {slots.map((slot) => (
                 <MatchSlot key={`${round}-${slot}`} round={round} slot={slot}
-                  effectivePicks={effectivePicks} slotTeams={slotTeams} r32Labels={r32Labels}
+                  effectivePicks={effectivePicks} slotTeams={slotTeams} r32Labels={r32Labels} results={results}
                   onChange={onChange} locked={locked || lockedSlots.has(`${round}-${slot}`)} />
               ))}
             </div>
@@ -216,7 +227,7 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, locked
   );
 }
 
-export default function KnockoutBracket({ picks, onChange, locked, lockedSlots = new Set(), r32Labels = {}, allTeams, r32Teams = {} }: KnockoutBracketProps) {
+export default function KnockoutBracket({ picks, onChange, locked, lockedSlots = new Set(), r32Labels = {}, results = {}, allTeams, r32Teams = {} }: KnockoutBracketProps) {
   const effectivePicks = computeEffectivePicks(picks, r32Teams);
   const slotTeams = computeSlotTeams(effectivePicks, r32Teams);
   const championLocked = locked || lockedSlots.has('Final-0');
@@ -235,7 +246,7 @@ export default function KnockoutBracket({ picks, onChange, locked, lockedSlots =
       <div className="min-w-[1160px] px-2 pb-4">
         <div className="flex items-start gap-2 justify-center">
 
-          <HalfBracket side="left" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} />
+          <HalfBracket side="left" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} results={results} />
 
           {/* Center: Final */}
           <div className="flex flex-col items-center justify-center self-stretch" style={{ minWidth: '158px' }}>
@@ -339,7 +350,7 @@ export default function KnockoutBracket({ picks, onChange, locked, lockedSlots =
             </div>
           </div>
 
-          <HalfBracket side="right" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} />
+          <HalfBracket side="right" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} results={results} />
         </div>
 
         {/* Legend */}
