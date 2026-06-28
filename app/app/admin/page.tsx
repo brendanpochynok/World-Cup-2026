@@ -20,7 +20,7 @@ export default async function AdminPage() {
     prisma.poolConfig.findUnique({ where: { id: 1 } }),
     prisma.user.count(),
     prisma.user.findMany({
-      select: { username: true, displayName: true, lastSeenAt: true },
+      select: { username: true, displayName: true, lastSeenAt: true, entriesCount: true },
       orderBy: { username: 'asc' },
     }),
   ]);
@@ -47,7 +47,7 @@ export default async function AdminPage() {
       }))}
       entryFee={poolConfig?.entryFeePerPlayer ?? 0}
       playerCount={playerCount}
-      users={users.map((u) => ({ username: u.username, displayName: u.displayName }))}
+      users={users.map((u) => ({ username: u.username, displayName: u.displayName, entriesCount: u.entriesCount }))}
       players={users.map((u) => ({
         username: u.username,
         displayName: u.displayName,

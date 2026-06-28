@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { GROUP_MATCHES, GROUPS, ALL_TEAMS, BRACKET_ROUNDS } from '@/lib/worldcup-data';
 import { calculatePayouts } from '@/lib/payouts';
 import TrophyIcon from '@/components/TrophyIcon';
+import BracketView from '@/components/BracketView';
 
 interface MatchResultRow {
   matchId: string;
@@ -48,11 +49,11 @@ interface Props {
   knockoutMatches: KnockoutFixtureRow[];
   entryFee: number;
   playerCount: number;
-  users: { username: string; displayName: string | null }[];
+  users: { username: string; displayName: string | null; entriesCount: number }[];
   players: PlayerRow[];
 }
 
-type Tab = 'results' | 'bracket' | 'knockout' | 'pool' | 'trophies' | 'activity';
+type Tab = 'results' | 'bracket' | 'knockout' | 'brackets' | 'pool' | 'trophies' | 'activity';
 
 // R32 slot labels mirror the bracket order so the admin knows which matchup
 // each row feeds.
@@ -263,6 +264,26 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
       setKoMsg({ slot, ok: false });
     } finally {
       setKoSaving(null);
+    }
+  }
+
+  // ── view-everyone's-brackets state ────────────────────────────────────────
+  const [viewUser, setViewUser] = useState('');
+  const [viewEntry, setViewEntry] = useState(1);
+  const [viewPicks, setViewPicks] = useState<{ round: string; slot: number; team: string }[] | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  async function loadPlayerBracket(username: string, entry: number) {
+    if (!username) { setViewPicks(null); return; }
+    setViewLoading(true);
+    try {
+      const res = await fetch(`/api/admin/player-bracket?username=${encodeURIComponent(username)}&entry=${entry}`);
+      const j = await res.json().catch(() => ({}));
+      setViewPicks(Array.isArray(j.picks) ? j.picks : []);
+    } catch {
+      setViewPicks([]);
+    } finally {
+      setViewLoading(false);
     }
   }
 
@@ -517,6 +538,7 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
     { id: 'results', label: 'Match Results' },
     { id: 'knockout', label: 'R32 Setup' },
     { id: 'bracket', label: 'Bracket' },
+    { id: 'brackets', label: 'View Brackets' },
     { id: 'pool', label: 'Pool Config' },
     { id: 'trophies', label: 'Trophies', onClick: handleTrophyTab },
     { id: 'activity', label: 'Activity' },
@@ -949,6 +971,73 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Tab: View Brackets ── */}
+      {tab === 'brackets' && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="font-bold text-gray-900">Review player brackets</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Pick a player to see their knockout bracket and check it&rsquo;s filled in correctly.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={viewUser}
+              onChange={(e) => {
+                const name = e.target.value;
+                setViewUser(name); setViewEntry(1);
+                loadPlayerBracket(name, 1);
+              }}
+              className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:border-wc-blue-300"
+            >
+              <option value="">Select player…</option>
+              {users.map((u) => (
+                <option key={u.username} value={u.username}>
+                  {u.displayName ? `${u.displayName} (${u.username})` : u.username}
+                </option>
+              ))}
+            </select>
+            {viewUser && (() => {
+              const u = users.find((x) => x.username === viewUser);
+              if (!u || u.entriesCount <= 1) return null;
+              return (
+                <div className="flex gap-1">
+                  {Array.from({ length: u.entriesCount }, (_, i) => i + 1).map((e) => (
+                    <button
+                      key={e}
+                      onClick={() => { setViewEntry(e); loadPlayerBracket(viewUser, e); }}
+                      className={`px-3 py-2 text-sm font-semibold rounded-lg border ${
+                        viewEntry === e ? 'bg-wc-blue-500 text-white border-wc-blue-500' : 'border-gray-300 text-gray-600'
+                      }`}
+                    >
+                      Entry {e}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+
+          {viewLoading ? (
+            <p className="text-sm text-gray-400 py-8 text-center">Loading…</p>
+          ) : viewPicks === null ? (
+            <p className="text-sm text-gray-400 py-8 text-center">Choose a player above.</p>
+          ) : viewPicks.length === 0 ? (
+            <div className="card text-center py-8">
+              <p className="font-semibold text-gray-900">No bracket picks yet</p>
+              <p className="text-gray-400 text-xs mt-1">This player hasn&rsquo;t filled in their bracket.</p>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="text-xs text-gray-400 font-semibold mb-3">
+                {viewPicks.length} pick{viewPicks.length !== 1 ? 's' : ''} · R32 {viewPicks.filter((p) => p.round === 'R32').length}/16
+              </div>
+              <BracketView picks={viewPicks} results={bracketResults} />
+            </div>
+          )}
         </div>
       )}
 
