@@ -71,6 +71,19 @@ export default function PicksPage() {
     return s;
   }, [knockoutMatches]);
 
+  // R32 slot → kickoff label, replacing the obsolete group-seed labels
+  const r32Labels = useMemo((): Record<number, string> => {
+    const out: Record<number, string> = {};
+    for (const m of knockoutMatches) {
+      if (m.round === 'R32' && m.kickoff) {
+        out[m.slot] = new Date(m.kickoff).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        });
+      }
+    }
+    return out;
+  }, [knockoutMatches]);
+
   const fetchPicks = useCallback(async (entry: number) => {
     try {
       const [groupRes, bracketRes, oddsRes, distRes, resultsRes] = await Promise.all([
@@ -535,6 +548,7 @@ export default function PicksPage() {
             onChange={handleBracketChange}
             locked={false}
             lockedSlots={lockedSlots}
+            r32Labels={r32Labels}
             allTeams={ALL_TEAMS}
             r32Teams={bracketR32}
           />

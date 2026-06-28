@@ -65,22 +65,24 @@ const R32_SLOT_LABELS = [
 // local datetime-input values (admin's timezone). The live first game gets a
 // past placeholder so it locks; adjust any of these in the rows before saving.
 const SUGGESTED_R32: { home: string; away: string; kickoff: string }[] = [
-  { home: 'South Africa', away: 'Canada', kickoff: '2026-06-28T10:00' },
-  { home: 'Netherlands', away: 'Morocco', kickoff: '2026-06-29T19:00' },
+  // Left half (slots 0–7), top to bottom per the official bracket
   { home: 'Germany', away: 'Paraguay', kickoff: '2026-06-29T14:30' },
   { home: 'France', away: 'Sweden', kickoff: '2026-06-30T15:00' },
-  { home: 'Belgium', away: 'Senegal', kickoff: '2026-07-01T14:00' },
-  { home: 'United States', away: 'Bosnia and Herzegovina', kickoff: '2026-07-01T18:00' },
-  { home: 'Spain', away: 'Austria', kickoff: '2026-07-02T13:00' },
+  { home: 'South Africa', away: 'Canada', kickoff: '2026-06-28T10:00' },
+  { home: 'Netherlands', away: 'Morocco', kickoff: '2026-06-29T19:00' },
   { home: 'Portugal', away: 'Croatia', kickoff: '2026-07-02T17:00' },
+  { home: 'Spain', away: 'Austria', kickoff: '2026-07-02T13:00' },
+  { home: 'United States', away: 'Bosnia and Herzegovina', kickoff: '2026-07-01T18:00' },
+  { home: 'Belgium', away: 'Senegal', kickoff: '2026-07-01T14:00' },
+  // Right half (slots 8–15), top to bottom
   { home: 'Brazil', away: 'Japan', kickoff: '2026-06-29T11:00' },
   { home: "Cote d'Ivoire", away: 'Norway', kickoff: '2026-06-30T11:00' },
   { home: 'Mexico', away: 'Ecuador', kickoff: '2026-06-30T19:00' },
   { home: 'England', away: 'DR Congo', kickoff: '2026-07-01T10:00' },
+  { home: 'Argentina', away: 'Cabo Verde', kickoff: '2026-07-03T16:00' },
+  { home: 'Australia', away: 'Egypt', kickoff: '2026-07-03T12:00' },
   { home: 'Switzerland', away: 'Algeria', kickoff: '2026-07-02T21:00' },
   { home: 'Colombia', away: 'Ghana', kickoff: '2026-07-03T19:30' },
-  { home: 'Australia', away: 'Egypt', kickoff: '2026-07-03T12:00' },
-  { home: 'Argentina', away: 'Cabo Verde', kickoff: '2026-07-03T16:00' },
 ];
 
 // "2026-06-29T18:00:00.000Z" → "2026-06-29T12:00" for a datetime-local input
@@ -181,6 +183,34 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
   const [koSaving, setKoSaving] = useState<number | null>(null);
   const [koMsg, setKoMsg] = useState<{ slot: number; ok: boolean } | null>(null);
   const [savingAll, setSavingAll] = useState<{ done: number; total: number } | null>(null);
+
+  // ── bulk "give everyone a pick" ──
+  const [bulkSlot, setBulkSlot] = useState(0);
+  const [bulkTeam, setBulkTeam] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function applyBulkPick() {
+    if (!bulkTeam) { setBulkMsg({ ok: false, text: 'Pick a team first.' }); return; }
+    if (!confirm(`Set every player's pick for R32 slot ${bulkSlot + 1} to ${bulkTeam}? This overwrites their current pick for that game.`)) return;
+    setBulkBusy(true);
+    setBulkMsg(null);
+    try {
+      const res = await fetch('/api/admin/bracket-pick-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ round: 'R32', slot: bulkSlot, team: bulkTeam }),
+      });
+      const j = await res.json().catch(() => ({}));
+      setBulkMsg(res.ok
+        ? { ok: true, text: `Applied ${bulkTeam} to ${j.count ?? 'all'} player entries.` }
+        : { ok: false, text: j.error ?? 'Failed' });
+    } catch {
+      setBulkMsg({ ok: false, text: 'Failed' });
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   function setKoField(slot: number, patch: Partial<{ home: string; away: string; kickoff: string }>) {
     setKoRows((prev) => ({ ...prev, [slot]: { ...prev[slot], ...patch } }));
@@ -697,6 +727,51 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
                 </div>
               );
             })}
+          </div>
+
+          {/* Give every player the same pick for one game (e.g. a stranded matchup) */}
+          <div className="card space-y-3">
+            <div>
+              <h2 className="font-bold text-gray-900">Give all players a pick</h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Force one R32 game&rsquo;s pick for everyone — use this for a game whose pick got stranded.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={bulkSlot}
+                onChange={(e) => { setBulkSlot(Number(e.target.value)); setBulkTeam(''); setBulkMsg(null); }}
+                className="flex-1 text-sm px-2 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:border-wc-blue-300"
+              >
+                {Array.from({ length: 16 }, (_, slot) => {
+                  const r = koRows[slot];
+                  const lbl = r.home && r.away ? `${r.home} vs ${r.away}` : `(empty)`;
+                  return <option key={slot} value={slot}>R32 {slot + 1}: {lbl}</option>;
+                })}
+              </select>
+              <select
+                value={bulkTeam}
+                onChange={(e) => { setBulkTeam(e.target.value); setBulkMsg(null); }}
+                className="flex-1 text-sm px-2 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:border-wc-blue-300"
+              >
+                <option value="">Team to give everyone…</option>
+                {[koRows[bulkSlot]?.home, koRows[bulkSlot]?.away].filter(Boolean).map((t) => (
+                  <option key={t} value={t!}>{t}</option>
+                ))}
+              </select>
+              <button
+                onClick={applyBulkPick}
+                disabled={bulkBusy || !bulkTeam}
+                className="btn-primary text-sm px-4 py-2 disabled:opacity-40 whitespace-nowrap"
+              >
+                {bulkBusy ? 'Applying…' : 'Apply to all'}
+              </button>
+            </div>
+            {bulkMsg && (
+              <p className={`text-xs font-semibold ${bulkMsg.ok ? 'text-wc-green-600' : 'text-wc-red-500'}`}>
+                {bulkMsg.text}
+              </p>
+            )}
           </div>
         </div>
       )}

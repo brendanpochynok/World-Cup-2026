@@ -7,6 +7,7 @@ interface KnockoutBracketProps {
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;                  // global lock (kept for compatibility)
   lockedSlots?: Set<string>;        // per-slot lock keys ("R32-0") whose game started
+  r32Labels?: Record<number, string>; // R32 slot → label (kickoff time) replacing the seed label
   allTeams: string[];
   r32Teams?: Record<number, [string, string]>;
 }
@@ -124,12 +125,13 @@ interface MatchSlotProps {
   slotTeams: Record<string, [string, string]>;
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
+  r32Labels: Record<number, string>;
 }
 
-function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked }: MatchSlotProps) {
+function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked, r32Labels }: MatchSlotProps) {
   const key = `${round}-${slot}`;
   const selected = effectivePicks[key] ?? null;
-  const label = getSlotLabel(round, slot);
+  const label = (round === 'R32' && r32Labels[slot]) ? r32Labels[slot] : getSlotLabel(round, slot);
   const teams = slotTeams[key] ?? null;
   const selectedMeta = selected ? getTeamMeta(selected) : null;
 
@@ -176,13 +178,14 @@ function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked }:
 const LEFT_HALF: Record<string, number[]> = { R32: [0,1,2,3,4,5,6,7], R16: [0,1,2,3], QF: [0,1], SF: [0] };
 const RIGHT_HALF: Record<string, number[]> = { R32: [8,9,10,11,12,13,14,15], R16: [4,5,6,7], QF: [2,3], SF: [1] };
 
-function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, lockedSlots }: {
+function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, lockedSlots, r32Labels }: {
   side: 'left' | 'right';
   effectivePicks: Record<string, string>;
   slotTeams: Record<string, [string, string]>;
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
   lockedSlots: Set<string>;
+  r32Labels: Record<number, string>;
 }) {
   const halfMap = side === 'left' ? LEFT_HALF : RIGHT_HALF;
   const rounds = side === 'left'
@@ -202,7 +205,7 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, locked
             <div className="flex flex-col justify-around flex-1 gap-1.5" style={{ minHeight: `${slots.length * 72}px` }}>
               {slots.map((slot) => (
                 <MatchSlot key={`${round}-${slot}`} round={round} slot={slot}
-                  effectivePicks={effectivePicks} slotTeams={slotTeams}
+                  effectivePicks={effectivePicks} slotTeams={slotTeams} r32Labels={r32Labels}
                   onChange={onChange} locked={locked || lockedSlots.has(`${round}-${slot}`)} />
               ))}
             </div>
@@ -213,7 +216,7 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, locked
   );
 }
 
-export default function KnockoutBracket({ picks, onChange, locked, lockedSlots = new Set(), allTeams, r32Teams = {} }: KnockoutBracketProps) {
+export default function KnockoutBracket({ picks, onChange, locked, lockedSlots = new Set(), r32Labels = {}, allTeams, r32Teams = {} }: KnockoutBracketProps) {
   const effectivePicks = computeEffectivePicks(picks, r32Teams);
   const slotTeams = computeSlotTeams(effectivePicks, r32Teams);
   const championLocked = locked || lockedSlots.has('Final-0');
@@ -232,7 +235,7 @@ export default function KnockoutBracket({ picks, onChange, locked, lockedSlots =
       <div className="min-w-[1160px] px-2 pb-4">
         <div className="flex items-start gap-2 justify-center">
 
-          <HalfBracket side="left" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} />
+          <HalfBracket side="left" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} />
 
           {/* Center: Final */}
           <div className="flex flex-col items-center justify-center self-stretch" style={{ minWidth: '158px' }}>
@@ -336,7 +339,7 @@ export default function KnockoutBracket({ picks, onChange, locked, lockedSlots =
             </div>
           </div>
 
-          <HalfBracket side="right" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} />
+          <HalfBracket side="right" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} />
         </div>
 
         {/* Legend */}
