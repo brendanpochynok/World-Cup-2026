@@ -5,7 +5,8 @@ import { BRACKET_SLOTS, SCORING, getTeamMeta, getFlagUrl } from '@/lib/worldcup-
 interface KnockoutBracketProps {
   picks: Record<string, string>;
   onChange: (round: string, slot: number, team: string) => void;
-  locked: boolean;
+  locked: boolean;                  // global lock (kept for compatibility)
+  lockedSlots?: Set<string>;        // per-slot lock keys ("R32-0") whose game started
   allTeams: string[];
   r32Teams?: Record<number, [string, string]>;
 }
@@ -175,12 +176,13 @@ function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked }:
 const LEFT_HALF: Record<string, number[]> = { R32: [0,1,2,3,4,5,6,7], R16: [0,1,2,3], QF: [0,1], SF: [0] };
 const RIGHT_HALF: Record<string, number[]> = { R32: [8,9,10,11,12,13,14,15], R16: [4,5,6,7], QF: [2,3], SF: [1] };
 
-function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked }: {
+function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, lockedSlots }: {
   side: 'left' | 'right';
   effectivePicks: Record<string, string>;
   slotTeams: Record<string, [string, string]>;
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
+  lockedSlots: Set<string>;
 }) {
   const halfMap = side === 'left' ? LEFT_HALF : RIGHT_HALF;
   const rounds = side === 'left'
@@ -201,7 +203,7 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked }: {
               {slots.map((slot) => (
                 <MatchSlot key={`${round}-${slot}`} round={round} slot={slot}
                   effectivePicks={effectivePicks} slotTeams={slotTeams}
-                  onChange={onChange} locked={locked} />
+                  onChange={onChange} locked={locked || lockedSlots.has(`${round}-${slot}`)} />
               ))}
             </div>
           </div>
@@ -211,9 +213,10 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked }: {
   );
 }
 
-export default function KnockoutBracket({ picks, onChange, locked, allTeams, r32Teams = {} }: KnockoutBracketProps) {
+export default function KnockoutBracket({ picks, onChange, locked, lockedSlots = new Set(), allTeams, r32Teams = {} }: KnockoutBracketProps) {
   const effectivePicks = computeEffectivePicks(picks, r32Teams);
   const slotTeams = computeSlotTeams(effectivePicks, r32Teams);
+  const championLocked = locked || lockedSlots.has('Final-0');
 
   const finalist1 = effectivePicks['SF-0'] ?? null;
   const finalist2 = effectivePicks['SF-1'] ?? null;
@@ -229,7 +232,7 @@ export default function KnockoutBracket({ picks, onChange, locked, allTeams, r32
       <div className="min-w-[1160px] px-2 pb-4">
         <div className="flex items-start gap-2 justify-center">
 
-          <HalfBracket side="left" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} />
+          <HalfBracket side="left" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} />
 
           {/* Center: Final */}
           <div className="flex flex-col items-center justify-center self-stretch" style={{ minWidth: '158px' }}>
@@ -276,7 +279,7 @@ export default function KnockoutBracket({ picks, onChange, locked, allTeams, r32
             {/* Champion pick */}
             <div className="w-full">
               <div className="text-wc-gold-500 text-xs font-bold text-center mb-1.5">Champion</div>
-              {locked ? (
+              {championLocked ? (
                 <div className={`rounded-lg border px-3 py-2 text-center ${
                   champion ? 'border-wc-gold-300 bg-wc-gold-400/5' : 'border-gray-200 bg-gray-50'
                 }`}>
@@ -333,7 +336,7 @@ export default function KnockoutBracket({ picks, onChange, locked, allTeams, r32
             </div>
           </div>
 
-          <HalfBracket side="right" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} />
+          <HalfBracket side="right" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} />
         </div>
 
         {/* Legend */}

@@ -964,6 +964,13 @@ export function isBracketLocked(): boolean {
   return Date.now() >= new Date(BRACKET_LOCK_ISO).getTime();
 }
 
+// A knockout/bracket slot locks once its game has kicked off. Slots without a
+// set kickoff (later rounds not yet scheduled) stay open.
+export function isKnockoutKickoffPassed(kickoff: string | Date | null | undefined): boolean {
+  if (!kickoff) return false;
+  return Date.now() >= new Date(kickoff).getTime();
+}
+
 export const MAX_ENTRIES = 3;
 export const ENTRY_FEE_USD = 10;
 // Entry count changes lock at the first game kickoff

@@ -34,16 +34,40 @@ interface PlayerRow {
   lastSeenAt: string | null;
 }
 
+interface KnockoutFixtureRow {
+  round: string;
+  slot: number;
+  home: string | null;
+  away: string | null;
+  kickoff: string | null;
+}
+
 interface Props {
   matchResults: MatchResultRow[];
   bracketResults: BracketResultRow[];
+  knockoutMatches: KnockoutFixtureRow[];
   entryFee: number;
   playerCount: number;
   users: { username: string; displayName: string | null }[];
   players: PlayerRow[];
 }
 
-type Tab = 'results' | 'bracket' | 'pool' | 'trophies' | 'activity';
+type Tab = 'results' | 'bracket' | 'knockout' | 'pool' | 'trophies' | 'activity';
+
+// R32 slot labels mirror the bracket order so the admin knows which matchup
+// each row feeds.
+const R32_SLOT_LABELS = [
+  '1I vs 3rd', '1E vs 3rd', '2A vs 2B', '1F vs 2C', '2E vs 2I', '1C vs 2F', '1A vs 3rd', '1L vs 3rd',
+  '2K vs 2L', '1H vs 2J', '1G vs 3rd', '1D vs 3rd', '1J vs 2H', '2D vs 2G', '1K vs 3rd', '1B vs 3rd',
+];
+
+// "2026-06-29T18:00:00.000Z" → "2026-06-29T12:00" for a datetime-local input
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 16);
+}
 
 function relativeTime(iso: string | null): string {
   if (!iso) return 'Never';
@@ -120,8 +144,47 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export default function AdminPanel({ matchResults, bracketResults, entryFee, playerCount, users, players }: Props) {
+export default function AdminPanel({ matchResults, bracketResults, knockoutMatches, entryFee, playerCount, users, players }: Props) {
   const [tab, setTab] = useState<Tab>('results');
+
+  // ── knockout R32 fixtures state ───────────────────────────────────────────
+  const [koRows, setKoRows] = useState<Record<number, { home: string; away: string; kickoff: string }>>(() => {
+    const init: Record<number, { home: string; away: string; kickoff: string }> = {};
+    for (let slot = 0; slot < 16; slot++) {
+      const m = knockoutMatches.find((k) => k.round === 'R32' && k.slot === slot);
+      init[slot] = { home: m?.home ?? '', away: m?.away ?? '', kickoff: isoToLocalInput(m?.kickoff ?? null) };
+    }
+    return init;
+  });
+  const [koSaving, setKoSaving] = useState<number | null>(null);
+  const [koMsg, setKoMsg] = useState<{ slot: number; ok: boolean } | null>(null);
+
+  function setKoField(slot: number, patch: Partial<{ home: string; away: string; kickoff: string }>) {
+    setKoRows((prev) => ({ ...prev, [slot]: { ...prev[slot], ...patch } }));
+  }
+
+  async function saveKo(slot: number) {
+    const row = koRows[slot];
+    setKoSaving(slot);
+    setKoMsg(null);
+    try {
+      const res = await fetch('/api/admin/knockout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          round: 'R32', slot,
+          home: row.home || null,
+          away: row.away || null,
+          kickoff: row.kickoff ? new Date(row.kickoff).toISOString() : null,
+        }),
+      });
+      setKoMsg({ slot, ok: res.ok });
+    } catch {
+      setKoMsg({ slot, ok: false });
+    } finally {
+      setKoSaving(null);
+    }
+  }
 
   // ── password reset state ──────────────────────────────────────────────────
   const [resetUser, setResetUser] = useState('');
@@ -372,6 +435,7 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
 
   const tabs: { id: Tab; label: string; onClick?: () => void; badge?: number }[] = [
     { id: 'results', label: 'Match Results' },
+    { id: 'knockout', label: 'R32 Setup' },
     { id: 'bracket', label: 'Bracket' },
     { id: 'pool', label: 'Pool Config' },
     { id: 'trophies', label: 'Trophies', onClick: handleTrophyTab },
@@ -509,6 +573,63 @@ export default function AdminPanel({ matchResults, bracketResults, entryFee, pla
               />
             );
           })}
+        </div>
+      )}
+
+      {/* ── Tab: R32 Setup ── */}
+      {tab === 'knockout' && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="font-bold text-gray-900">Round of 32 fixtures</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Set the two teams and kickoff for each R32 matchup. These seed everyone&rsquo;s bracket and lock each
+              pick at its kickoff time. A kickoff in the past locks that game immediately.
+            </p>
+          </div>
+          <div className="card p-0 overflow-hidden divide-y divide-gray-100">
+            {Array.from({ length: 16 }, (_, slot) => {
+              const row = koRows[slot];
+              const saved = koMsg?.slot === slot;
+              return (
+                <div key={slot} className="px-4 py-3 flex flex-col lg:flex-row lg:items-center gap-2">
+                  <span className="text-xs font-bold text-gray-400 w-28 flex-shrink-0">
+                    R32 · {R32_SLOT_LABELS[slot]}
+                  </span>
+                  <select
+                    value={row.home}
+                    onChange={(e) => setKoField(slot, { home: e.target.value })}
+                    className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:border-wc-blue-300"
+                  >
+                    <option value="">Home…</option>
+                    {ALL_TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <span className="text-gray-300 text-xs hidden lg:inline">vs</span>
+                  <select
+                    value={row.away}
+                    onChange={(e) => setKoField(slot, { away: e.target.value })}
+                    className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:border-wc-blue-300"
+                  >
+                    <option value="">Away…</option>
+                    {ALL_TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <input
+                    type="datetime-local"
+                    value={row.kickoff}
+                    onChange={(e) => setKoField(slot, { kickoff: e.target.value })}
+                    className="text-sm px-2 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:border-wc-blue-300"
+                  />
+                  <button
+                    onClick={() => saveKo(slot)}
+                    disabled={koSaving === slot}
+                    className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-40 whitespace-nowrap"
+                  >
+                    {koSaving === slot ? 'Saving…' : saved && koMsg?.ok ? 'Saved ✓' : 'Save'}
+                  </button>
+                  {saved && !koMsg?.ok && <span className="text-xs text-wc-red-500 font-semibold">Failed</span>}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

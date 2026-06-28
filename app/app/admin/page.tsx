@@ -13,9 +13,10 @@ export default async function AdminPage() {
   const admin = await isAdminUser(user.userId, user.username);
   if (!admin) redirect('/app/dashboard');
 
-  const [matchResults, bracketResults, poolConfig, playerCount, users] = await Promise.all([
+  const [matchResults, bracketResults, knockoutMatches, poolConfig, playerCount, users] = await Promise.all([
     prisma.matchResult.findMany(),
     prisma.bracketResult.findMany(),
+    prisma.knockoutMatch.findMany({ orderBy: [{ round: 'asc' }, { slot: 'asc' }] }),
     prisma.poolConfig.findUnique({ where: { id: 1 } }),
     prisma.user.count(),
     prisma.user.findMany({
@@ -36,6 +37,13 @@ export default async function AdminPage() {
         round: r.round,
         slot: r.slot,
         team: r.team,
+      }))}
+      knockoutMatches={knockoutMatches.map((k) => ({
+        round: k.round,
+        slot: k.slot,
+        home: k.home,
+        away: k.away,
+        kickoff: k.kickoff ? k.kickoff.toISOString() : null,
       }))}
       entryFee={poolConfig?.entryFeePerPlayer ?? 0}
       playerCount={playerCount}

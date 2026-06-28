@@ -4,37 +4,21 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
-import { GROUPS, GROUP_MATCHES, ALL_TEAMS, SCORING, computeGroupStandings, rankThirdPlace, getGroupMatches, getTeamMeta, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
+import { GROUPS, GROUP_MATCHES, ALL_TEAMS, SCORING, computeGroupStandings, rankThirdPlace, getGroupMatches, getTeamMeta, isKnockoutKickoffPassed } from '@/lib/worldcup-data';
 import type { GroupStanding, ThirdPlaceEntry } from '@/lib/worldcup-data';
+import type { KnockoutMatchData } from '@/app/api/knockout/route';
 import type { MatchOdds } from '@/app/api/odds/route';
 import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 function BracketLockBadge() {
-  const locked = isBracketLocked();
-  const lockDate = new Date(BRACKET_LOCK_ISO);
-  const formatted = lockDate.toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-  });
-
-  if (locked) {
-    return (
-      <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full flex-shrink-0">
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-        Bracket locked
-      </div>
-    );
-  }
-
   return (
     <div className="flex items-center gap-1.5 text-xs font-semibold text-wc-blue-600 bg-wc-blue-50 border border-wc-blue-200 px-3 py-1.5 rounded-full flex-shrink-0">
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
       </svg>
-      Locks {formatted}
+      Each pick locks at its kickoff
     </div>
   );
 }
@@ -44,6 +28,7 @@ export default function PicksPage() {
   const [actualResults, setActualResults] = useState<Record<string, string>>({});
   const [actualScores, setActualScores] = useState<Record<string, { home: number; away: number }>>({});
   const [bracketPicks, setBracketPicks] = useState<Record<string, string>>({});
+  const [knockoutMatches, setKnockoutMatches] = useState<KnockoutMatchData[]>([]);
   const [oddsMap, setOddsMap] = useState<Record<string, MatchOdds>>({});
   const [kickoffTimes, setKickoffTimes] = useState<Record<string, string>>({});
   const [distribution, setDistribution] = useState<Record<string, PickDistribution>>({});
@@ -61,7 +46,30 @@ export default function PicksPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.entriesCount) setEntriesCount(d.entriesCount); })
       .catch(() => {});
+
+    fetch('/api/knockout')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (Array.isArray(d?.matches)) setKnockoutMatches(d.matches); })
+      .catch(() => {});
   }, []);
+
+  // Admin-set R32 matchups override the auto-seed; locked slots are games
+  // that have already kicked off.
+  const r32Override = useMemo((): Record<number, [string, string]> => {
+    const out: Record<number, [string, string]> = {};
+    for (const m of knockoutMatches) {
+      if (m.round === 'R32' && m.home && m.away) out[m.slot] = [m.home, m.away];
+    }
+    return out;
+  }, [knockoutMatches]);
+
+  const lockedSlots = useMemo((): Set<string> => {
+    const s = new Set<string>();
+    for (const m of knockoutMatches) {
+      if (isKnockoutKickoffPassed(m.kickoff)) s.add(`${m.round}-${m.slot}`);
+    }
+    return s;
+  }, [knockoutMatches]);
 
   const fetchPicks = useCallback(async (entry: number) => {
     try {
@@ -347,6 +355,12 @@ export default function PicksPage() {
     return result;
   }, [groupRows, thirdsRanking]);
 
+  // Admin-set R32 matchups win over the auto-seed wherever present.
+  const bracketR32 = useMemo(
+    (): Record<number, [string, string]> => ({ ...r32Teams, ...r32Override }),
+    [r32Teams, r32Override]
+  );
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
@@ -499,7 +513,7 @@ export default function PicksPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {!isBracketLocked() && Object.keys(bracketPicks).length > 0 && (
+            {Object.keys(bracketPicks).length > 0 && (
               <button
                 onClick={handleClearBracket}
                 disabled={saveStatus === 'saving'}
@@ -515,13 +529,14 @@ export default function PicksPage() {
           </div>
         </div>
 
-        <div className={`bg-white border rounded-xl overflow-x-auto shadow-sm ${isBracketLocked() ? 'border-gray-300' : 'border-gray-200'}`}>
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
           <KnockoutBracket
             picks={bracketPicks}
             onChange={handleBracketChange}
-            locked={isBracketLocked()}
+            locked={false}
+            lockedSlots={lockedSlots}
             allTeams={ALL_TEAMS}
-            r32Teams={r32Teams}
+            r32Teams={bracketR32}
           />
         </div>
       </section>

@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { ALL_TEAMS, isBracketLocked, MAX_ENTRIES } from '@/lib/worldcup-data';
+import { ALL_TEAMS, isKnockoutKickoffPassed, MAX_ENTRIES } from '@/lib/worldcup-data';
+
+// Slot keys ("round-slot") whose knockout game has kicked off — those picks
+// are frozen. Slots with no fixture / no kickoff stay editable.
+async function lockedSlotKeys(): Promise<Set<string>> {
+  const fixtures = await prisma.knockoutMatch.findMany({ select: { round: true, slot: true, kickoff: true } });
+  const locked = new Set<string>();
+  for (const f of fixtures) {
+    if (isKnockoutKickoffPassed(f.kickoff)) locked.add(`${f.round}-${f.slot}`);
+  }
+  return locked;
+}
 
 const VALID_ROUNDS = new Set(['R32', 'R16', 'QF', 'SF', 'Final']);
 const ROUND_MAX_SLOTS: Record<string, number> = {
@@ -43,20 +54,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ picks: rows });
 }
 
-// DELETE: clear all bracket picks for current user (optionally for a specific entry)
+// DELETE: clear the current user's bracket picks, but keep picks for slots
+// whose game has already kicked off (those are frozen).
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (isBracketLocked()) return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
 
+  const locked = await lockedSlotKeys();
   const entryParam = request.nextUrl.searchParams.get('entry');
+  const where: { userId: number; entry?: number } = { userId: user.userId };
   if (entryParam) {
     const entry = parseEntry(entryParam);
     const err = validateEntry(entry);
     if (err) return err;
-    await prisma.bracketPick.deleteMany({ where: { userId: user.userId, entry } });
-  } else {
-    await prisma.bracketPick.deleteMany({ where: { userId: user.userId } });
+    where.entry = entry;
+  }
+
+  const picks = await prisma.bracketPick.findMany({ where, select: { id: true, round: true, slot: true } });
+  const toDelete = picks.filter((p) => !locked.has(`${p.round}-${p.slot}`)).map((p) => p.id);
+  if (toDelete.length > 0) {
+    await prisma.bracketPick.deleteMany({ where: { id: { in: toDelete } } });
   }
   return NextResponse.json({ ok: true });
 }
@@ -67,9 +84,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  if (isBracketLocked()) {
-    return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
   }
 
   try {
@@ -86,6 +100,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (typeof slot !== 'number' || slot < 0 || slot > ROUND_MAX_SLOTS[round]) {
       return NextResponse.json({ error: 'Invalid slot' }, { status: 400 });
+    }
+
+    // Freeze picks for a game that has already kicked off
+    if ((await lockedSlotKeys()).has(`${round}-${slot}`)) {
+      return NextResponse.json({ error: 'This game has started' }, { status: 423 });
     }
 
     const validTeams = new Set(ALL_TEAMS);

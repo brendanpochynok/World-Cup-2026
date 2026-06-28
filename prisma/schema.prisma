@@ -144,3 +144,14 @@ model ChatReaction {
   @@unique([messageId, userId, emoji])
   @@index([messageId])
 }
+
+model KnockoutMatch {
+  id      Int       @id @default(autoincrement())
+  round   String    // "R32" | "R16" | "QF" | "SF" | "Final"
+  slot    Int       // slot index within the round
+  home    String?   // team name (null until set by admin)
+  away    String?
+  kickoff DateTime? // used for per-game locking and the scores display
+
+  @@unique([round, slot])
+}
