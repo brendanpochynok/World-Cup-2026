@@ -61,6 +61,28 @@ const R32_SLOT_LABELS = [
   '2K vs 2L', '1H vs 2J', '1G vs 3rd', '1D vs 3rd', '1J vs 2H', '2D vs 2G', '1K vs 3rd', '1B vs 3rd',
 ];
 
+// R32 fixtures provided by the admin, in bracket order (slot 0–15). Kickoffs are
+// local datetime-input values (admin's timezone). The live first game gets a
+// past placeholder so it locks; adjust any of these in the rows before saving.
+const SUGGESTED_R32: { home: string; away: string; kickoff: string }[] = [
+  { home: 'South Africa', away: 'Canada', kickoff: '2026-06-28T10:00' },
+  { home: 'Netherlands', away: 'Morocco', kickoff: '2026-06-29T19:00' },
+  { home: 'Germany', away: 'Paraguay', kickoff: '2026-06-29T14:30' },
+  { home: 'France', away: 'Sweden', kickoff: '2026-06-30T15:00' },
+  { home: 'Belgium', away: 'Senegal', kickoff: '2026-07-01T14:00' },
+  { home: 'United States', away: 'Bosnia and Herzegovina', kickoff: '2026-07-01T18:00' },
+  { home: 'Spain', away: 'Austria', kickoff: '2026-07-02T13:00' },
+  { home: 'Portugal', away: 'Croatia', kickoff: '2026-07-02T17:00' },
+  { home: 'Brazil', away: 'Japan', kickoff: '2026-06-29T11:00' },
+  { home: "Cote d'Ivoire", away: 'Norway', kickoff: '2026-06-30T11:00' },
+  { home: 'Mexico', away: 'Ecuador', kickoff: '2026-06-30T19:00' },
+  { home: 'England', away: 'DR Congo', kickoff: '2026-07-01T10:00' },
+  { home: 'Switzerland', away: 'Algeria', kickoff: '2026-07-02T21:00' },
+  { home: 'Colombia', away: 'Ghana', kickoff: '2026-07-03T19:30' },
+  { home: 'Australia', away: 'Egypt', kickoff: '2026-07-03T12:00' },
+  { home: 'Argentina', away: 'Cabo Verde', kickoff: '2026-07-03T16:00' },
+];
+
 // "2026-06-29T18:00:00.000Z" → "2026-06-29T12:00" for a datetime-local input
 function isoToLocalInput(iso: string | null): string {
   if (!iso) return '';
@@ -158,9 +180,37 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
   });
   const [koSaving, setKoSaving] = useState<number | null>(null);
   const [koMsg, setKoMsg] = useState<{ slot: number; ok: boolean } | null>(null);
+  const [savingAll, setSavingAll] = useState<{ done: number; total: number } | null>(null);
 
   function setKoField(slot: number, patch: Partial<{ home: string; away: string; kickoff: string }>) {
     setKoRows((prev) => ({ ...prev, [slot]: { ...prev[slot], ...patch } }));
+  }
+
+  function loadSuggestedR32() {
+    const init: Record<number, { home: string; away: string; kickoff: string }> = {};
+    SUGGESTED_R32.forEach((f, slot) => { init[slot] = { ...f }; });
+    setKoRows(init);
+    setKoMsg(null);
+  }
+
+  async function saveAllKo() {
+    const rows = Array.from({ length: 16 }, (_, slot) => ({ slot, ...koRows[slot] }))
+      .filter((r) => r.home && r.away);
+    setSavingAll({ done: 0, total: rows.length });
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      await fetch('/api/admin/knockout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          round: 'R32', slot: r.slot,
+          home: r.home || null, away: r.away || null,
+          kickoff: r.kickoff ? new Date(r.kickoff).toISOString() : null,
+        }),
+      }).catch(() => null);
+      setSavingAll({ done: i + 1, total: rows.length });
+    }
+    setTimeout(() => setSavingAll(null), 1500);
   }
 
   async function saveKo(slot: number) {
@@ -585,6 +635,24 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
               Set the two teams and kickoff for each R32 matchup. These seed everyone&rsquo;s bracket and lock each
               pick at its kickoff time. A kickoff in the past locks that game immediately.
             </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={loadSuggestedR32} className="btn-secondary text-xs px-3 py-1.5">
+              Load these 16 R32 games
+            </button>
+            <button
+              onClick={saveAllKo}
+              disabled={!!savingAll}
+              className="btn-primary text-xs px-3 py-1.5 disabled:opacity-40"
+            >
+              {savingAll ? `Saving ${savingAll.done}/${savingAll.total}…` : 'Save all'}
+            </button>
+            {savingAll && savingAll.done === savingAll.total && (
+              <span className="text-xs text-wc-green-600 font-semibold">All saved ✓</span>
+            )}
+            <span className="text-[11px] text-gray-400">
+              Loads your matchups + times (review, then Save all). The live first game is set to lock.
+            </span>
           </div>
           <div className="card p-0 overflow-hidden divide-y divide-gray-100">
             {Array.from({ length: 16 }, (_, slot) => {
