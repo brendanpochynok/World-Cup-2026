@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import GroupOverview from '@/components/picks/GroupOverview';
 import GroupDetailModal from '@/components/picks/GroupDetailModal';
 import KnockoutBracket from '@/components/picks/KnockoutBracket';
-import { GROUPS, GROUP_MATCHES, ALL_TEAMS, SCORING, computeGroupStandings, rankThirdPlace, getGroupMatches, getTeamMeta, isKnockoutKickoffPassed } from '@/lib/worldcup-data';
+import { GROUPS, GROUP_MATCHES, ALL_TEAMS, SCORING, computeGroupStandings, rankThirdPlace, getGroupMatches, getTeamMeta, isKnockoutKickoffPassed, isBracketLocked, BRACKET_LOCK_ISO } from '@/lib/worldcup-data';
 import type { GroupStanding, ThirdPlaceEntry } from '@/lib/worldcup-data';
 import type { KnockoutMatchData } from '@/app/api/knockout/route';
 import type { MatchOdds } from '@/app/api/odds/route';
@@ -13,12 +13,26 @@ import type { PickDistribution } from '@/app/api/picks/distribution/route';
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 function BracketLockBadge() {
+  const locked = isBracketLocked();
+  const formatted = new Date(BRACKET_LOCK_ISO).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  });
+  if (locked) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full flex-shrink-0">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        Bracket locked
+      </div>
+    );
+  }
   return (
     <div className="flex items-center gap-1.5 text-xs font-semibold text-wc-blue-600 bg-wc-blue-50 border border-wc-blue-200 px-3 py-1.5 rounded-full flex-shrink-0">
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
       </svg>
-      Each pick locks at its kickoff
+      Locks {formatted}
     </div>
   );
 }
@@ -186,7 +200,15 @@ export default function PicksPage() {
 
   async function handleClearBracket() {
     setSaveStatus('saving');
-    setBracketPicks({});
+    // Keep picks for games that have already locked (e.g. the concluded
+    // Canada game); the server preserves them too.
+    setBracketPicks((prev) => {
+      const kept: Record<string, string> = {};
+      for (const [key, team] of Object.entries(prev)) {
+        if (lockedSlots.has(key)) kept[key] = team;
+      }
+      return kept;
+    });
     try {
       const res = await fetch(`/api/picks/bracket?entry=${activeEntry}`, { method: 'DELETE' });
       res.ok ? showSaved() : showError();
@@ -526,7 +548,7 @@ export default function PicksPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {Object.keys(bracketPicks).length > 0 && (
+            {!isBracketLocked() && Object.keys(bracketPicks).length > 0 && (
               <button
                 onClick={handleClearBracket}
                 disabled={saveStatus === 'saving'}
@@ -546,7 +568,7 @@ export default function PicksPage() {
           <KnockoutBracket
             picks={bracketPicks}
             onChange={handleBracketChange}
-            locked={false}
+            locked={isBracketLocked()}
             lockedSlots={lockedSlots}
             r32Labels={r32Labels}
             allTeams={ALL_TEAMS}

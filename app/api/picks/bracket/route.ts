@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { ALL_TEAMS, isKnockoutKickoffPassed, MAX_ENTRIES } from '@/lib/worldcup-data';
+import { ALL_TEAMS, isBracketLocked, isKnockoutKickoffPassed, MAX_ENTRIES } from '@/lib/worldcup-data';
 
 // Slot keys ("round-slot") whose knockout game has kicked off — those picks
 // are frozen. Slots with no fixture / no kickoff stay editable.
@@ -59,6 +59,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // After the midnight deadline nothing can be cleared
+  if (isBracketLocked()) return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
 
   const locked = await lockedSlotKeys();
   const entryParam = request.nextUrl.searchParams.get('entry');
@@ -102,7 +104,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid slot' }, { status: 400 });
     }
 
-    // Freeze picks for a game that has already kicked off
+    // Frozen after the midnight deadline, or for a game already kicked off
+    if (isBracketLocked()) {
+      return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
+    }
     if ((await lockedSlotKeys()).has(`${round}-${slot}`)) {
       return NextResponse.json({ error: 'This game has started' }, { status: 423 });
     }

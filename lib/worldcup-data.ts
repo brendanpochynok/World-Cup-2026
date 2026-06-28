@@ -955,10 +955,11 @@ export const SCORING = {
   final: 16,
 };
 
-// Bracket lock: all picks freeze when the first R32 game kicks off.
-// Override via NEXT_PUBLIC_BRACKET_LOCK_TIME env var (ISO 8601 UTC).
+// Bracket lock: all remaining picks freeze at midnight Mountain tonight
+// (2026-06-29 00:00 MDT = 06:00 UTC). Games already concluded lock earlier via
+// their kickoff. Override via NEXT_PUBLIC_BRACKET_LOCK_TIME (ISO 8601 UTC).
 export const BRACKET_LOCK_ISO: string =
-  process.env.NEXT_PUBLIC_BRACKET_LOCK_TIME ?? '2026-06-28T16:00:00Z';
+  process.env.NEXT_PUBLIC_BRACKET_LOCK_TIME ?? '2026-06-29T06:00:00Z';
 
 export function isBracketLocked(): boolean {
   return Date.now() >= new Date(BRACKET_LOCK_ISO).getTime();
