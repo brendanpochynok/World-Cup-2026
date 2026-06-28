@@ -337,6 +337,42 @@ async function fetchMatchOdds(
 let oddsCache: { data: OddsResponse; at: number; hasLive: boolean } | null = null;
 let lastSnapshotAt = 0;
 
+// Best-effort odds for an admin-set knockout fixture. Knockout markets may
+// not exist on Polymarket or may be 2-way; if nothing resolves we return null
+// and the card simply shows no odds.
+async function fetchKnockoutOdds(
+  round: string, slot: number, home: string, away: string, date: string, now: number
+): Promise<MatchOddsResult | null> {
+  const hCode = TEAM_CODES[home]; const aCode = TEAM_CODES[away];
+  if (!hCode || !aCode) return null;
+  const toTry: { slug: string; hCode: string; aCode: string }[] = [];
+  for (const h of uniqueCodes(hCode, home)) {
+    for (const a of uniqueCodes(aCode, away)) {
+      for (const delta of [0, 1, -1]) {
+        const d = shiftDate(date, delta);
+        toTry.push({ slug: `fifwc-${h}-${a}-${d}`, hCode: h, aCode: a });
+        toTry.push({ slug: `fifwc-${a}-${h}-${d}`, hCode: h, aCode: a });
+      }
+    }
+  }
+  for (const { slug, hCode: h, aCode: a } of toTry) {
+    const event = await fetchEventBySlug(slug);
+    if (!event || isEventResolved(event)) continue;
+    const live = (await fetchClobOdds(event, h, a)) ?? parseEventOdds(event, h, a);
+    if (live) {
+      const kickoff = event.startTime ?? null;
+      const started = kickoff ? now >= new Date(kickoff).getTime() : false;
+      return {
+        matchId: `${round}-${slot}`,
+        odds: { ...live, source: 'polymarket', phase: started ? 'live' : 'prematch' },
+        kickoff,
+        prematch: false,
+      };
+    }
+  }
+  return null;
+}
+
 export async function GET() {
   const now = Date.now();
 
@@ -344,9 +380,10 @@ export async function GET() {
     return NextResponse.json(oddsCache.data);
   }
 
-  const [dbResults, dbSnapshots] = await Promise.all([
+  const [dbResults, dbSnapshots, koFixtures] = await Promise.all([
     prisma.matchResult.findMany(),
     prisma.oddsSnapshot.findMany(),
+    prisma.knockoutMatch.findMany({ where: { home: { not: null }, away: { not: null }, kickoff: { not: null } } }),
   ]);
   const finishedIds = new Set(
     dbResults.filter((r) => r.status === 'finished').map((r) => r.matchId)
@@ -393,6 +430,18 @@ export async function GET() {
   // Freshen the snapshot map with this request's pre-kickoff prices
   for (const s of toSnapshot) {
     snapshotMap.set(s.matchId, { home: s.home, draw: s.draw, away: s.away });
+  }
+
+  // Best-effort knockout odds, keyed by "R32-0" etc.
+  const koResults = await Promise.all(
+    koFixtures.map((k) =>
+      fetchKnockoutOdds(k.round, k.slot, k.home!, k.away!, k.kickoff!.toISOString().slice(0, 10), now)
+    )
+  );
+  for (const r of koResults) {
+    if (!r) continue;
+    odds[r.matchId] = r.odds;
+    if (r.kickoff) kickoffTimes[r.matchId] = r.kickoff;
   }
 
   const hasLive = Object.values(odds).some((o) => o.phase === 'live');

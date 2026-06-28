@@ -52,7 +52,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
   const [countdown, setCountdown] = useState<string | null>(null);
   const [showPickers, setShowPickers] = useState(false);
   const [pickers, setPickers] = useState<MatchPickers | null>(null);
-  const { home, away, homeScore, awayScore, status, clock, group, matchNumber, venue, city, kickoffIso } = match;
+  const { home, away, homeScore, awayScore, status, clock, group, matchNumber, venue, city, kickoffIso, stageLabel } = match;
   const isLive      = status === 'live';
   const isFinished  = status === 'finished';
   const isScheduled = status === 'scheduled';
@@ -96,7 +96,7 @@ export default function LiveScoreCard({ match, odds, currentPick, distribution, 
       {/* Top row: group + status */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[11px] text-gray-400 font-bold">
-          Group {group} · Match {matchNumber}
+          {stageLabel ?? `Group ${group} · Match ${matchNumber}`}
         </span>
         {isLive && (
           <span className="flex items-center gap-1.5 text-[11px] bg-wc-red-50 text-wc-red-500 border border-wc-red-200 px-2 py-0.5 rounded-full font-bold flex-shrink-0">

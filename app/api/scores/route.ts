@@ -28,6 +28,7 @@ export interface MatchData {
   clock: string;
   venue: string;
   city: string;
+  stageLabel?: string; // set for knockout games (e.g. "Round of 32") instead of group/match
 }
 
 // ── Caches ────────────────────────────────────────────────────────────────────
@@ -139,19 +140,20 @@ export async function GET(request: Request) {
     });
   }
 
+  const cached = liveCache?.data as { matches?: MatchData[]; knockout?: MatchData[] } | undefined;
   const hasCachedLive =
-    liveCache &&
-    Array.isArray((liveCache.data as { matches?: MatchData[] })?.matches) &&
-    (liveCache.data as { matches: MatchData[] }).matches.some((m) => m.status === 'live');
+    !!cached &&
+    [...(cached.matches ?? []), ...(cached.knockout ?? [])].some((m) => m.status === 'live');
   const ttl = hasCachedLive ? 30_000 : 60_000;
 
   if (liveCache && now - liveCache.at < ttl) {
     return NextResponse.json(liveCache.data);
   }
 
-  const [dbResults, espnLiveMap] = await Promise.all([
+  const [dbResults, espnLiveMap, koFixtures] = await Promise.all([
     prisma.matchResult.findMany(),
     fetchESPNLive(),
+    prisma.knockoutMatch.findMany({ where: { home: { not: null }, away: { not: null } } }),
   ]);
 
   const dbMap = new Map(dbResults.map((r) => [r.matchId, r]));
@@ -229,7 +231,32 @@ export async function GET(request: Request) {
     );
   }
 
-  const responseData = { matches, serverDate: todayISO, fetchedAt: new Date().toISOString() };
+  // Knockout fixtures (admin-set) with live ESPN scores — display only,
+  // results are recorded separately via the admin Bracket tab.
+  const ROUND_NAMES: Record<string, string> = {
+    R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter-Final', SF: 'Semi-Final', Final: 'Final',
+  };
+  const knockout: MatchData[] = koFixtures.map((k) => {
+    const kickoffIso = k.kickoff ? k.kickoff.toISOString() : null;
+    const espn = findESPN(espnLiveMap, k.home!, k.away!);
+    const pastFT = kickoffIso ? now >= new Date(kickoffIso).getTime() + ASSUME_FINISHED_MS : false;
+    const status: 'scheduled' | 'live' | 'finished' =
+      espn ? (espn.status === 'finished' || pastFT ? 'finished' : 'live') : 'scheduled';
+    return {
+      matchId: `${k.round}-${k.slot}`,
+      group: k.round, matchNumber: k.slot + 1,
+      date: kickoffIso ? kickoffIso.slice(0, 10) : '',
+      kickoffIso,
+      home: k.home!, away: k.away!,
+      homeScore: espn ? espn.homeScore : null,
+      awayScore: espn ? espn.awayScore : null,
+      status, clock: espn && status === 'live' ? espn.clock : '',
+      venue: '', city: '',
+      stageLabel: ROUND_NAMES[k.round] ?? k.round,
+    };
+  });
+
+  const responseData = { matches, knockout, serverDate: todayISO, fetchedAt: new Date().toISOString() };
   liveCache = { data: responseData, at: now };
   return NextResponse.json(responseData);
 }

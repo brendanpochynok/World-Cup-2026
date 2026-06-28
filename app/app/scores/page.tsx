@@ -71,6 +71,7 @@ function DateGroup({ date, matches, matchPicks, distribution, oddsMap, onPickCha
 
 export default function ScoresPage() {
   const [matches, setMatches] = useState<MatchData[]>([]);
+  const [knockout, setKnockout] = useState<MatchData[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState('');
@@ -102,6 +103,7 @@ export default function ScoresPage() {
         setError(data.error);
       } else {
         setMatches(data.matches ?? []);
+        setKnockout(data.knockout ?? []);
         setLastUpdated(new Date());
         setError('');
       }
@@ -360,6 +362,34 @@ export default function ScoresPage() {
               )}
             </section>
           )}
+
+          {/* ─── Knockout Stage ─── */}
+          {knockout.length > 0 && (() => {
+            const vis = q
+              ? knockout.filter((m) => m.home.toLowerCase().includes(q) || m.away.toLowerCase().includes(q))
+              : knockout;
+            if (vis.length === 0) return null;
+            const ROUND_ORDER = ['R32', 'R16', 'QF', 'SF', 'Final'];
+            const byRound = ROUND_ORDER
+              .map((r) => ({ r, games: vis.filter((m) => m.group === r).sort((a, b) => a.matchNumber - b.matchNumber) }))
+              .filter((x) => x.games.length > 0);
+            return (
+              <section className="space-y-5">
+                <SectionHeader label="Knockout Stage" count={vis.length} />
+                {byRound.map(({ r, games }) => (
+                  <div key={r} className="space-y-3">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">{games[0].stageLabel}</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {games.map((m) => (
+                        <LiveScoreCard key={m.matchId} match={m} odds={oddsMap[m.matchId] ?? null}
+                          currentPick={null} distribution={null} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            );
+          })()}
 
           {/* ─── Live Now ─── */}
           {liveMatches.length > 0 && (
