@@ -31,6 +31,14 @@ const TABS = [
     ),
   },
   {
+    href: '/app/brackets',
+    label: 'Brackets',
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M4 5h6v6H4zm0 8h6v6H4zM14 8h6M14 16h6M10 8h4v8h-4" />
+    ),
+  },
+  {
     href: '/app/scores',
     label: 'Scores',
     icon: (
