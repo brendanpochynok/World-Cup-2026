@@ -68,11 +68,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const resultMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
   const eliminated = Array.from(computeEliminatedTeams(koMatches, resultMap));
 
+  // R32 is a fixed matchup for everyone, so the only valid picks are its two
+  // seeded teams. Stale picks left over from before the matchups were finalised
+  // would otherwise pad the denominator and leave a slot summing below 100%.
+  const r32Valid = new Map<number, Set<string>>();
+  for (const k of koMatches) {
+    if (k.round === 'R32' && k.home && k.away) r32Valid.set(k.slot, new Set([k.home, k.away]));
+  }
+
   // Pool-wide distribution — every entry's pick per slot, counted by team.
   const distribution: Record<string, SlotDistribution> = {};
   if (locked) {
     const allPicks = await prisma.bracketPick.findMany({ select: { round: true, slot: true, team: true } });
     for (const p of allPicks) {
+      if (p.round === 'R32') {
+        const valid = r32Valid.get(p.slot);
+        if (valid && !valid.has(p.team)) continue; // drop stale / invalid pick
+      }
       const key = `${p.round}-${p.slot}`;
       const d = (distribution[key] ??= { teams: {}, total: 0 });
       d.teams[p.team] = (d.teams[p.team] ?? 0) + 1;
