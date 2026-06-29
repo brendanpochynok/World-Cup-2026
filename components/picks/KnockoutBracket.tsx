@@ -93,6 +93,32 @@ function computeSlotTeams(
   return slotTeams;
 }
 
+// Display tree built straight from the player's RAW stored picks — nothing is
+// dropped for not matching the live seeding. Used wherever a slot is locked, so
+// a player always sees exactly what they picked (never a false "Locked"), and
+// each round's matchup is the two teams they advanced. Editing still uses the
+// validated tree above so re-picks stay coherent.
+function computeRawSlotTeams(
+  rawPicks: Record<string, string>,
+  r32Teams: Record<number, [string, string]>
+): Record<string, [string, string]> {
+  const slotTeams: Record<string, [string, string]> = {};
+  for (let slot = 0; slot < 16; slot++) {
+    if (r32Teams[slot]) slotTeams[`R32-${slot}`] = r32Teams[slot];
+  }
+  for (let ri = 1; ri < ROUND_ORDER.length; ri++) {
+    const round = ROUND_ORDER[ri];
+    const prevRound = ROUND_ORDER[ri - 1];
+    const numSlots = SLOTS_PER_ROUND[round];
+    for (let slot = 0; slot < numSlots; slot++) {
+      const t1 = rawPicks[`${prevRound}-${slot * 2}`] ?? null;
+      const t2 = rawPicks[`${prevRound}-${slot * 2 + 1}`] ?? null;
+      if (t1 && t2) slotTeams[`${round}-${slot}`] = [t1, t2];
+    }
+  }
+  return slotTeams;
+}
+
 function TeamButton({ team, isSelected, onClick, disabled }: {
   team: string; isSelected: boolean; onClick: () => void; disabled: boolean;
 }) {
@@ -124,17 +150,21 @@ interface MatchSlotProps {
   round: string; slot: number;
   effectivePicks: Record<string, string>;
   slotTeams: Record<string, [string, string]>;
+  rawPicks: Record<string, string>;
+  rawSlotTeams: Record<string, [string, string]>;
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
   r32Labels: Record<number, string>;
   results: Record<string, string>;
 }
 
-function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked, r32Labels, results }: MatchSlotProps) {
+function MatchSlot({ round, slot, effectivePicks, slotTeams, rawPicks, rawSlotTeams, onChange, locked, r32Labels, results }: MatchSlotProps) {
   const key = `${round}-${slot}`;
-  const selected = effectivePicks[key] ?? null;
+  // Locked slots display the raw stored pick so a valid pick never shows as
+  // "Locked" just because the live seeding moved past it.
+  const selected = (locked ? rawPicks[key] : effectivePicks[key]) ?? null;
   const label = (round === 'R32' && r32Labels[slot]) ? r32Labels[slot] : getSlotLabel(round, slot);
-  const teams = slotTeams[key] ?? null;
+  const teams = (locked ? rawSlotTeams[key] : slotTeams[key]) ?? null;
   const selectedMeta = selected ? getTeamMeta(selected) : null;
   const winner = results[key] ?? null;
   const correct = winner && selected ? selected === winner : null; // true/false/null
@@ -188,10 +218,12 @@ function MatchSlot({ round, slot, effectivePicks, slotTeams, onChange, locked, r
 const LEFT_HALF: Record<string, number[]> = { R32: [0,1,2,3,4,5,6,7], R16: [0,1,2,3], QF: [0,1], SF: [0] };
 const RIGHT_HALF: Record<string, number[]> = { R32: [8,9,10,11,12,13,14,15], R16: [4,5,6,7], QF: [2,3], SF: [1] };
 
-function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, lockedSlots, r32Labels, results }: {
+function HalfBracket({ side, effectivePicks, slotTeams, rawPicks, rawSlotTeams, onChange, locked, lockedSlots, r32Labels, results }: {
   side: 'left' | 'right';
   effectivePicks: Record<string, string>;
   slotTeams: Record<string, [string, string]>;
+  rawPicks: Record<string, string>;
+  rawSlotTeams: Record<string, [string, string]>;
   onChange: (round: string, slot: number, team: string) => void;
   locked: boolean;
   lockedSlots: Set<string>;
@@ -216,7 +248,9 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, locked
             <div className="flex flex-col justify-around flex-1 gap-1.5" style={{ minHeight: `${slots.length * 72}px` }}>
               {slots.map((slot) => (
                 <MatchSlot key={`${round}-${slot}`} round={round} slot={slot}
-                  effectivePicks={effectivePicks} slotTeams={slotTeams} r32Labels={r32Labels} results={results}
+                  effectivePicks={effectivePicks} slotTeams={slotTeams}
+                  rawPicks={rawPicks} rawSlotTeams={rawSlotTeams}
+                  r32Labels={r32Labels} results={results}
                   onChange={onChange} locked={locked || lockedSlots.has(`${round}-${slot}`)} />
               ))}
             </div>
@@ -230,11 +264,13 @@ function HalfBracket({ side, effectivePicks, slotTeams, onChange, locked, locked
 export default function KnockoutBracket({ picks, onChange, locked, lockedSlots = new Set(), r32Labels = {}, results = {}, allTeams, r32Teams = {} }: KnockoutBracketProps) {
   const effectivePicks = computeEffectivePicks(picks, r32Teams);
   const slotTeams = computeSlotTeams(effectivePicks, r32Teams);
+  const rawSlotTeams = computeRawSlotTeams(picks, r32Teams);
   const championLocked = locked || lockedSlots.has('Final-0');
 
-  const finalist1 = effectivePicks['SF-0'] ?? null;
-  const finalist2 = effectivePicks['SF-1'] ?? null;
-  const champion  = effectivePicks['Final-0'] ?? null;
+  // When locked, surface the raw stored picks (never silently dropped).
+  const finalist1 = (championLocked ? picks['SF-0'] : effectivePicks['SF-0']) ?? null;
+  const finalist2 = (championLocked ? picks['SF-1'] : effectivePicks['SF-1']) ?? null;
+  const champion  = (championLocked ? picks['Final-0'] : effectivePicks['Final-0']) ?? null;
   const finalTeams = slotTeams['Final-0'] ?? null;
 
   const f1Meta    = finalist1 ? getTeamMeta(finalist1) : null;
@@ -246,7 +282,7 @@ export default function KnockoutBracket({ picks, onChange, locked, lockedSlots =
       <div className="min-w-[1160px] px-2 pb-4">
         <div className="flex items-start gap-2 justify-center">
 
-          <HalfBracket side="left" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} results={results} />
+          <HalfBracket side="left" effectivePicks={effectivePicks} slotTeams={slotTeams} rawPicks={picks} rawSlotTeams={rawSlotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} results={results} />
 
           {/* Center: Final */}
           <div className="flex flex-col items-center justify-center self-stretch" style={{ minWidth: '158px' }}>
@@ -350,7 +386,7 @@ export default function KnockoutBracket({ picks, onChange, locked, lockedSlots =
             </div>
           </div>
 
-          <HalfBracket side="right" effectivePicks={effectivePicks} slotTeams={slotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} results={results} />
+          <HalfBracket side="right" effectivePicks={effectivePicks} slotTeams={slotTeams} rawPicks={picks} rawSlotTeams={rawSlotTeams} onChange={onChange} locked={locked} lockedSlots={lockedSlots} r32Labels={r32Labels} results={results} />
         </div>
 
         {/* Legend */}
