@@ -5,6 +5,7 @@ import { GROUP_MATCHES, GROUPS, ALL_TEAMS, BRACKET_ROUNDS } from '@/lib/worldcup
 import { calculatePayouts } from '@/lib/payouts';
 import TrophyIcon from '@/components/TrophyIcon';
 import BracketView from '@/components/BracketView';
+import KnockoutBracket from '@/components/picks/KnockoutBracket';
 
 interface MatchResultRow {
   matchId: string;
@@ -308,6 +309,7 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
   async function loadPlayerBracket(username: string, entry: number) {
     if (!username) { setViewPicks(null); return; }
     setViewLoading(true);
+    setOverrideMode(false);
     try {
       const res = await fetch(`/api/admin/player-bracket?username=${encodeURIComponent(username)}&entry=${entry}`);
       const j = await res.json().catch(() => ({}));
@@ -316,6 +318,58 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
       setViewPicks([]);
     } finally {
       setViewLoading(false);
+    }
+  }
+
+  // ── admin bracket override (manually fix an invalid bracket) ───────────────
+  const [overrideMode, setOverrideMode] = useState(false);
+  const [overrideBusy, setOverrideBusy] = useState(false);
+
+  // Actual R32 matchups, so the override editor shows real opponents.
+  const adminR32 = (() => {
+    const out: Record<number, [string, string]> = {};
+    for (const k of knockoutMatches) {
+      if (k.round === 'R32' && k.home && k.away) out[k.slot] = [k.home, k.away];
+    }
+    return out;
+  })();
+
+  const viewPicksMap: Record<string, string> = Object.fromEntries(
+    (viewPicks ?? []).map((p) => [`${p.round}-${p.slot}`, p.team]),
+  );
+
+  async function handleOverridePick(round: string, slot: number, team: string) {
+    if (!viewUser) return;
+    // Optimistic local update so the editor stays responsive.
+    setViewPicks((prev) => {
+      const next = (prev ?? []).filter((p) => !(p.round === round && p.slot === slot));
+      next.push({ round, slot, team });
+      return next;
+    });
+    setOverrideBusy(true);
+    try {
+      await fetch('/api/admin/player-bracket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: viewUser, entry: viewEntry, round, slot, team }),
+      });
+    } catch { /* ignore */ } finally {
+      setOverrideBusy(false);
+    }
+  }
+
+  async function clearPlayerBracket() {
+    if (!viewUser) return;
+    if (!confirm(`Clear ${viewUser}'s entire bracket (entry ${viewEntry})? They can refill it once unlocked.`)) return;
+    setOverrideBusy(true);
+    try {
+      const res = await fetch(
+        `/api/admin/player-bracket?username=${encodeURIComponent(viewUser)}&entry=${viewEntry}`,
+        { method: 'DELETE' },
+      );
+      if (res.ok) setViewPicks([]);
+    } catch { /* ignore */ } finally {
+      setOverrideBusy(false);
     }
   }
 
@@ -1072,23 +1126,50 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
           </div>
 
           {viewUser && (
-            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50">
-              <span className="text-xs text-gray-600">
-                Bracket deadline: {unlockMap[viewUser]
-                  ? <span className="font-bold text-wc-green-600">unlocked for this player</span>
-                  : <span className="font-bold text-gray-700">locked at the midnight deadline</span>}
-              </span>
-              <button
-                onClick={() => toggleUnlock(viewUser)}
-                disabled={unlockBusy}
-                className={`text-xs font-bold px-3 py-1.5 rounded-lg border disabled:opacity-40 ${
-                  unlockMap[viewUser]
-                    ? 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                    : 'border-wc-green-300 text-wc-green-700 bg-wc-green-500/10 hover:bg-wc-green-500/20'
-                }`}
-              >
-                {unlockMap[viewUser] ? 'Re-lock bracket' : 'Unlock bracket'}
-              </button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50">
+                <span className="text-xs text-gray-600">
+                  Bracket deadline: {unlockMap[viewUser]
+                    ? <span className="font-bold text-wc-green-600">unlocked for this player</span>
+                    : <span className="font-bold text-gray-700">locked at the midnight deadline</span>}
+                </span>
+                <button
+                  onClick={() => toggleUnlock(viewUser)}
+                  disabled={unlockBusy}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border disabled:opacity-40 ${
+                    unlockMap[viewUser]
+                      ? 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                      : 'border-wc-green-300 text-wc-green-700 bg-wc-green-500/10 hover:bg-wc-green-500/20'
+                  }`}
+                >
+                  {unlockMap[viewUser] ? 'Re-lock bracket' : 'Unlock bracket'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50">
+                <span className="text-xs text-gray-600">
+                  Manually fix an invalid bracket, then unlock so the player can refill it.
+                  {overrideBusy && <span className="ml-2 text-gray-400">saving…</span>}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setOverrideMode((v) => !v)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                      overrideMode
+                        ? 'border-wc-blue-500 text-white bg-wc-blue-500'
+                        : 'border-wc-blue-300 text-wc-blue-600 hover:bg-wc-blue-50'
+                    }`}
+                  >
+                    {overrideMode ? 'Done editing' : 'Override bracket'}
+                  </button>
+                  <button
+                    onClick={clearPlayerBracket}
+                    disabled={overrideBusy}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg border border-red-200 text-wc-red-500 hover:bg-red-50 disabled:opacity-40"
+                  >
+                    Clear bracket
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1096,6 +1177,21 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
             <p className="text-sm text-gray-400 py-8 text-center">Loading…</p>
           ) : viewPicks === null ? (
             <p className="text-sm text-gray-400 py-8 text-center">Choose a player above.</p>
+          ) : overrideMode ? (
+            <div className="card">
+              <div className="text-xs text-gray-500 font-semibold mb-3">
+                Editing {viewUser}&rsquo;s bracket (entry {viewEntry}) — changes save instantly. An invalid pick
+                shows blank; re-pick from R32 upward to rebuild it correctly.
+              </div>
+              <KnockoutBracket
+                picks={viewPicksMap}
+                onChange={handleOverridePick}
+                locked={false}
+                results={Object.fromEntries(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]))}
+                allTeams={ALL_TEAMS}
+                r32Teams={adminR32}
+              />
+            </div>
           ) : viewPicks.length === 0 ? (
             <div className="card text-center py-8">
               <p className="font-semibold text-gray-900">No bracket picks yet</p>
