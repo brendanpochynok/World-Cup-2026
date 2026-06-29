@@ -186,25 +186,30 @@ export default function BracketBoard({
                       )}
                     </div>
                     {dist && dist.total > 0 ? (
-                      // List EVERY team the pool picked for this slot, ranked by
-                      // share, with live score / odds on whoever's actually
-                      // playing the real game here.
-                      Object.entries(dist.teams)
-                        .sort((x, y) => y[1] - x[1])
-                        .map(([team, count]) => (
-                          <TeamRow
-                            key={team}
-                            team={team}
-                            picked={picked === team}
-                            winner={winner === team}
-                            dead={deadFor(team)}
-                            scoreText={scoreFor(team)}
-                            winProb={probFor(team)}
-                            distCount={count}
-                            distTotal={dist.total}
-                            isFinal={isFinal}
-                          />
-                        ))
+                      // List every team the pool picked for this slot, ranked by
+                      // share — plus the matchup teams themselves even at 0% so a
+                      // fully-owned slot still shows the opponent. Live score /
+                      // odds attach to whoever's actually playing the real game.
+                      (() => {
+                        const counts = new Map<string, number>(Object.entries(dist.teams));
+                        for (const t of [a, b]) if (t && !counts.has(t)) counts.set(t, 0);
+                        return Array.from(counts.entries())
+                          .sort((x, y) => y[1] - x[1])
+                          .map(([team, count]) => (
+                            <TeamRow
+                              key={team}
+                              team={team}
+                              picked={picked === team}
+                              winner={winner === team}
+                              dead={deadFor(team)}
+                              scoreText={scoreFor(team)}
+                              winProb={probFor(team)}
+                              distCount={count}
+                              distTotal={dist.total}
+                              isFinal={isFinal}
+                            />
+                          ));
+                      })()
                     ) : (
                       <>
                         <TeamRow
