@@ -186,45 +186,68 @@ export default function BracketBoard({
                         </span>
                       )}
                     </div>
-                    <TeamRow
-                      team={a}
-                      picked={picked === a && !!a}
-                      winner={winner === a && !!a}
-                      dead={deadFor(a)}
-                      scoreText={scoreFor(a)}
-                      winProb={probFor(a)}
-                      distCount={dist && a ? dist.teams[a] ?? 0 : null}
-                      distTotal={dist?.total ?? 0}
-                      isFinal={isFinal}
-                    />
-                    <TeamRow
-                      team={b}
-                      picked={picked === b && !!b}
-                      winner={winner === b && !!b}
-                      dead={deadFor(b)}
-                      scoreText={scoreFor(b)}
-                      winProb={probFor(b)}
-                      distCount={dist && b ? dist.teams[b] ?? 0 : null}
-                      distTotal={dist?.total ?? 0}
-                      isFinal={isFinal}
-                    />
-                    {/* An off-matchup pick — e.g. a champion who isn't one of
-                        their finalists, or a pick whose team lost upstream — is
-                        still shown so it's never silently hidden. */}
-                    {picked && picked !== a && picked !== b && (
-                      <div className="border-t border-dashed border-gray-200">
+                    {isFinal && dist && dist.total > 0 ? (
+                      // Champion is a free pick, so list EVERY team the pool
+                      // picked to win it all, ranked by share.
+                      Object.entries(dist.teams)
+                        .sort((x, y) => y[1] - x[1])
+                        .map(([team, count]) => (
+                          <TeamRow
+                            key={team}
+                            team={team}
+                            picked={picked === team}
+                            winner={winner === team}
+                            dead={deadFor(team)}
+                            scoreText={null}
+                            winProb={null}
+                            distCount={count}
+                            distTotal={dist.total}
+                            isFinal
+                          />
+                        ))
+                    ) : (
+                      <>
                         <TeamRow
-                          team={picked}
-                          picked
-                          winner={winner === picked}
-                          dead={deadFor(picked)}
-                          scoreText={null}
-                          winProb={null}
-                          distCount={dist ? dist.teams[picked] ?? 0 : null}
+                          team={a}
+                          picked={picked === a && !!a}
+                          winner={winner === a && !!a}
+                          dead={deadFor(a)}
+                          scoreText={scoreFor(a)}
+                          winProb={probFor(a)}
+                          distCount={dist && a ? dist.teams[a] ?? 0 : null}
                           distTotal={dist?.total ?? 0}
                           isFinal={isFinal}
                         />
-                      </div>
+                        <TeamRow
+                          team={b}
+                          picked={picked === b && !!b}
+                          winner={winner === b && !!b}
+                          dead={deadFor(b)}
+                          scoreText={scoreFor(b)}
+                          winProb={probFor(b)}
+                          distCount={dist && b ? dist.teams[b] ?? 0 : null}
+                          distTotal={dist?.total ?? 0}
+                          isFinal={isFinal}
+                        />
+                        {/* An off-matchup pick — e.g. a champion who isn't one of
+                            their finalists, or a pick whose team lost upstream —
+                            is still shown so it's never silently hidden. */}
+                        {picked && picked !== a && picked !== b && (
+                          <div className="border-t border-dashed border-gray-200">
+                            <TeamRow
+                              team={picked}
+                              picked
+                              winner={winner === picked}
+                              dead={deadFor(picked)}
+                              scoreText={null}
+                              winProb={null}
+                              distCount={dist ? dist.teams[picked] ?? 0 : null}
+                              distTotal={dist?.total ?? 0}
+                              isFinal={isFinal}
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 );
