@@ -68,13 +68,62 @@ export async function syncESPNResults(): Promise<{ synced: number; unmatched: st
     cursor.setDate(cursor.getDate() + 1);
   }
 
+  // Knockout fixtures (admin-set), keyed by UTC date + teams (±1 day) so a
+  // knockout game is matched to its fixture, never to a group rematch.
+  const koFixtures = await prisma.knockoutMatch.findMany({
+    where: { home: { not: null }, away: { not: null }, kickoff: { not: null } },
+  });
+  const koByDateKey = new Map<string, { round: string; slot: number; flip: boolean }>();
+  for (const k of koFixtures) {
+    const base = new Date(k.kickoff!);
+    for (const delta of [0, -1, 1]) {
+      const d = new Date(base);
+      d.setUTCDate(d.getUTCDate() + delta);
+      const ds = toDateStr(d);
+      for (const hk of teamKeys(k.home!)) {
+        for (const ak of teamKeys(k.away!)) {
+          koByDateKey.set(`${ds}:${hk}:${ak}`, { round: k.round, slot: k.slot, flip: false });
+          koByDateKey.set(`${ds}:${ak}:${hk}`, { round: k.round, slot: k.slot, flip: true });
+        }
+      }
+    }
+  }
+
   let synced = 0;
   const unmatched: string[] = [];
 
   for (const dateStr of dates) {
     const finished = await fetchFinishedForDate(dateStr);
     for (const r of finished) {
-      const key = normalizeTeam(r.homeTeam) + ':' + normalizeTeam(r.awayTeam);
+      const hk = normalizeTeam(r.homeTeam);
+      const ak = normalizeTeam(r.awayTeam);
+
+      // Knockout first (date-keyed)
+      const ko = koByDateKey.get(`${dateStr}:${hk}:${ak}`);
+      if (ko) {
+        const hs = ko.flip ? r.awayScore : r.homeScore;
+        const as = ko.flip ? r.homeScore : r.awayScore;
+        await prisma.knockoutMatch.update({
+          where: { round_slot: { round: ko.round, slot: ko.slot } },
+          data: { homeScore: hs, awayScore: as, status: 'finished' },
+        }).catch(() => null);
+        if (hs !== as) {
+          const fx = koFixtures.find((f) => f.round === ko.round && f.slot === ko.slot);
+          const winner = hs > as ? fx?.home : fx?.away;
+          if (winner) {
+            await prisma.bracketResult.upsert({
+              where: { round_slot: { round: ko.round, slot: ko.slot } },
+              update: { team: winner },
+              create: { round: ko.round, slot: ko.slot, team: winner },
+            }).catch(() => null);
+          }
+        }
+        synced++;
+        continue;
+      }
+
+      // Group (team-keyed)
+      const key = hk + ':' + ak;
       let matchId = matchByKey.get(key);
       let homeScore = r.homeScore;
       let awayScore = r.awayScore;
