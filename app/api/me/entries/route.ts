@@ -10,6 +10,7 @@ export interface MeEntries {
   locked: boolean;
   lockIso: string;
   announcementAcked: boolean;
+  bracketUnlocked: boolean;
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -18,7 +19,7 @@ export async function GET(): Promise<NextResponse> {
 
   const row = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { entriesCount: true, announcementAckedAt: true },
+    select: { entriesCount: true, announcementAckedAt: true, bracketUnlocked: true },
   });
 
   const data: MeEntries = {
@@ -26,6 +27,7 @@ export async function GET(): Promise<NextResponse> {
     locked: isEntryChangesLocked(),
     lockIso: ENTRY_CHANGES_LOCK_ISO,
     announcementAcked: row?.announcementAckedAt != null,
+    bracketUnlocked: row?.bracketUnlocked ?? false,
   };
   return NextResponse.json(data);
 }
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const row = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { entriesCount: true, announcementAckedAt: true },
+    select: { entriesCount: true, announcementAckedAt: true, bracketUnlocked: true },
   });
 
   const data: MeEntries = {
@@ -88,6 +90,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     locked: isEntryChangesLocked(),
     lockIso: ENTRY_CHANGES_LOCK_ISO,
     announcementAcked: row?.announcementAckedAt != null,
+    bracketUnlocked: row?.bracketUnlocked ?? false,
   };
   return NextResponse.json(data);
 }

@@ -23,6 +23,7 @@ model User {
   entriesCount         Int               @default(1)
   announcementAckedAt  DateTime?
   chatLastReadId       Int               @default(0)
+  bracketUnlocked      Boolean           @default(false)
   lastSeenAt           DateTime?
   matchPicks           MatchPick[]
   bracketPicks         BracketPick[]

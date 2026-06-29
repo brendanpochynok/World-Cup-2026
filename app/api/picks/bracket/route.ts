@@ -14,6 +14,13 @@ async function lockedSlotKeys(): Promise<Set<string>> {
   return locked;
 }
 
+// The global midnight deadline, unless this user has an admin-granted unlock.
+async function bracketLockedFor(userId: number): Promise<boolean> {
+  if (!isBracketLocked()) return false;
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { bracketUnlocked: true } });
+  return !u?.bracketUnlocked;
+}
+
 const VALID_ROUNDS = new Set(['R32', 'R16', 'QF', 'SF', 'Final']);
 const ROUND_MAX_SLOTS: Record<string, number> = {
   R32: 15,
@@ -59,8 +66,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  // After the midnight deadline nothing can be cleared
-  if (isBracketLocked()) return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
+  // After the midnight deadline nothing can be cleared (unless this user is unlocked)
+  if (await bracketLockedFor(user.userId)) return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
 
   const locked = await lockedSlotKeys();
   const entryParam = request.nextUrl.searchParams.get('entry');
@@ -104,8 +111,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid slot' }, { status: 400 });
     }
 
-    // Frozen after the midnight deadline, or for a game already kicked off
-    if (isBracketLocked()) {
+    // Frozen after the midnight deadline (unless unlocked), or for a game already kicked off
+    if (await bracketLockedFor(user.userId)) {
       return NextResponse.json({ error: 'Bracket is locked' }, { status: 423 });
     }
     if ((await lockedSlotKeys()).has(`${round}-${slot}`)) {

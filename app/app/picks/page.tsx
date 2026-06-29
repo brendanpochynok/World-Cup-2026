@@ -12,8 +12,7 @@ import type { PickDistribution } from '@/app/api/picks/distribution/route';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-function BracketLockBadge() {
-  const locked = isBracketLocked();
+function BracketLockBadge({ locked }: { locked: boolean }) {
   const formatted = new Date(BRACKET_LOCK_ISO).toLocaleString('en-US', {
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
   });
@@ -51,6 +50,7 @@ export default function PicksPage() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [entriesCount, setEntriesCount] = useState(1);
+  const [bracketUnlocked, setBracketUnlocked] = useState(false);
   const [activeEntry, setActiveEntry] = useState(1);
 
   const bracketTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -59,7 +59,10 @@ export default function PicksPage() {
   useEffect(() => {
     fetch('/api/me/entries')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d?.entriesCount) setEntriesCount(d.entriesCount); })
+      .then((d) => {
+        if (d?.entriesCount) setEntriesCount(d.entriesCount);
+        if (d) setBracketUnlocked(d.bracketUnlocked === true);
+      })
       .catch(() => {});
 
     fetch('/api/knockout')
@@ -412,6 +415,9 @@ export default function PicksPage() {
     );
   }
 
+  // Global deadline lock, waived for players the admin has unlocked
+  const bracketLocked = isBracketLocked() && !bracketUnlocked;
+
   const totalMatches = GROUP_MATCHES.length;
   const pickedMatches = Object.keys(matchPicks).length;
   const bracketSlots = Object.keys(bracketPicks).length;
@@ -552,7 +558,7 @@ export default function PicksPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {!isBracketLocked() && Object.keys(bracketPicks).length > 0 && (
+            {!bracketLocked && Object.keys(bracketPicks).length > 0 && (
               <button
                 onClick={handleClearBracket}
                 disabled={saveStatus === 'saving'}
@@ -564,7 +570,7 @@ export default function PicksPage() {
                 Clear bracket
               </button>
             )}
-            <BracketLockBadge />
+            <BracketLockBadge locked={bracketLocked} />
           </div>
         </div>
 
@@ -572,7 +578,7 @@ export default function PicksPage() {
           <KnockoutBracket
             picks={bracketPicks}
             onChange={handleBracketChange}
-            locked={isBracketLocked()}
+            locked={bracketLocked}
             lockedSlots={lockedSlots}
             r32Labels={r32Labels}
             results={bracketResults}

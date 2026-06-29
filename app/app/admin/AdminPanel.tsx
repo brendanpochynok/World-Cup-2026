@@ -51,7 +51,7 @@ interface Props {
   knockoutMatches: KnockoutFixtureRow[];
   entryFee: number;
   playerCount: number;
-  users: { username: string; displayName: string | null; entriesCount: number }[];
+  users: { username: string; displayName: string | null; entriesCount: number; bracketUnlocked: boolean }[];
   players: PlayerRow[];
 }
 
@@ -283,6 +283,27 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
   const [viewEntry, setViewEntry] = useState(1);
   const [viewPicks, setViewPicks] = useState<{ round: string; slot: number; team: string }[] | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
+
+  // Per-user bracket unlock (exempts a player from the midnight deadline)
+  const [unlockMap, setUnlockMap] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(users.map((u) => [u.username, u.bracketUnlocked]))
+  );
+  const [unlockBusy, setUnlockBusy] = useState(false);
+
+  async function toggleUnlock(username: string) {
+    const next = !unlockMap[username];
+    setUnlockBusy(true);
+    try {
+      const res = await fetch('/api/admin/unlock-bracket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, unlocked: next }),
+      });
+      if (res.ok) setUnlockMap((m) => ({ ...m, [username]: next }));
+    } catch { /* ignore */ } finally {
+      setUnlockBusy(false);
+    }
+  }
 
   async function loadPlayerBracket(username: string, entry: number) {
     if (!username) { setViewPicks(null); return; }
@@ -1049,6 +1070,27 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
               );
             })()}
           </div>
+
+          {viewUser && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50">
+              <span className="text-xs text-gray-600">
+                Bracket deadline: {unlockMap[viewUser]
+                  ? <span className="font-bold text-wc-green-600">unlocked for this player</span>
+                  : <span className="font-bold text-gray-700">locked at the midnight deadline</span>}
+              </span>
+              <button
+                onClick={() => toggleUnlock(viewUser)}
+                disabled={unlockBusy}
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg border disabled:opacity-40 ${
+                  unlockMap[viewUser]
+                    ? 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                    : 'border-wc-green-300 text-wc-green-700 bg-wc-green-500/10 hover:bg-wc-green-500/20'
+                }`}
+              >
+                {unlockMap[viewUser] ? 'Re-lock bracket' : 'Unlock bracket'}
+              </button>
+            </div>
+          )}
 
           {viewLoading ? (
             <p className="text-sm text-gray-400 py-8 text-center">Loading…</p>
