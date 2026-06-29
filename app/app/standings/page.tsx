@@ -99,6 +99,7 @@ export default async function StandingsPage() {
         championPick,
         favoriteTeam: user.favoriteTeam ?? null,
         isMe: user.username === currentUser?.username,
+        bracketInvalid: user.bracketInvalid ?? false,
         trophies: user.poolWins,
       };
     }),
