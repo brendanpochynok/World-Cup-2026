@@ -30,6 +30,7 @@ export interface StandingsRow {
   championPick: string | null;
   favoriteTeam: string | null;
   isMe: boolean;
+  bracketInvalid: boolean;  // admin-flagged invalid bracket
   trophies: TrophyMeta[];
 }
 
@@ -138,6 +139,14 @@ export default function StandingsTable({ scores }: { scores: StandingsRow[] }) {
                       {u.isMe && (
                         <span className="tag bg-wc-blue-500/10 text-wc-blue-600 border border-wc-blue-200">
                           you
+                        </span>
+                      )}
+                      {u.bracketInvalid && (
+                        <span
+                          title="This player's bracket has been flagged invalid by the admin"
+                          className="tag bg-red-50 text-wc-red-600 border border-red-200"
+                        >
+                          ⚠ Invalid bracket
                         </span>
                       )}
                     </div>

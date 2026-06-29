@@ -52,7 +52,7 @@ interface Props {
   knockoutMatches: KnockoutFixtureRow[];
   entryFee: number;
   playerCount: number;
-  users: { username: string; displayName: string | null; entriesCount: number; bracketUnlocked: boolean }[];
+  users: { username: string; displayName: string | null; entriesCount: number; bracketUnlocked: boolean; bracketInvalid: boolean }[];
   players: PlayerRow[];
 }
 
@@ -290,6 +290,27 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
     Object.fromEntries(users.map((u) => [u.username, u.bracketUnlocked]))
   );
   const [unlockBusy, setUnlockBusy] = useState(false);
+
+  // Per-user "bracket invalid" flag — shows a badge by their name on standings
+  const [invalidMap, setInvalidMap] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(users.map((u) => [u.username, u.bracketInvalid])),
+  );
+  const [invalidBusy, setInvalidBusy] = useState(false);
+
+  async function toggleInvalid(username: string) {
+    const next = !invalidMap[username];
+    setInvalidBusy(true);
+    try {
+      const res = await fetch('/api/admin/bracket-invalid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, invalid: next }),
+      });
+      if (res.ok) setInvalidMap((m) => ({ ...m, [username]: next }));
+    } catch { /* ignore */ } finally {
+      setInvalidBusy(false);
+    }
+  }
 
   async function toggleUnlock(username: string) {
     const next = !unlockMap[username];
@@ -1169,6 +1190,24 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
                     Clear bracket
                   </button>
                 </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50">
+                <span className="text-xs text-gray-600">
+                  Bracket status: {invalidMap[viewUser]
+                    ? <span className="font-bold text-wc-red-600">flagged invalid (shown on standings)</span>
+                    : <span className="font-bold text-gray-700">OK</span>}
+                </span>
+                <button
+                  onClick={() => toggleInvalid(viewUser)}
+                  disabled={invalidBusy}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border disabled:opacity-40 ${
+                    invalidMap[viewUser]
+                      ? 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                      : 'border-red-300 text-wc-red-600 bg-red-50 hover:bg-red-100'
+                  }`}
+                >
+                  {invalidMap[viewUser] ? 'Clear invalid flag' : 'Mark bracket invalid'}
+                </button>
               </div>
             </div>
           )}

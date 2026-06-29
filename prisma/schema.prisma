@@ -24,6 +24,7 @@ model User {
   announcementAckedAt  DateTime?
   chatLastReadId       Int               @default(0)
   bracketUnlocked      Boolean           @default(false)
+  bracketInvalid       Boolean           @default(false)
   lastSeenAt           DateTime?
   matchPicks           MatchPick[]
   bracketPicks         BracketPick[]
