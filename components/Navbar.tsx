@@ -43,6 +43,16 @@ const navLinks = [
     ),
   },
   {
+    href: '/app/brackets',
+    label: 'Brackets',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+          d="M4 5h6v6H4zm0 8h6v6H4zM14 8h6M14 16h6M10 8h4v8h-4" />
+      </svg>
+    ),
+  },
+  {
     href: '/app/scores',
     label: 'Scores',
     icon: (
