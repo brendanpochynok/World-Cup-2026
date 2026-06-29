@@ -212,6 +212,14 @@ export default function ScoresPage() {
   const pastDates = Array.from(pastMap.keys()).sort().reverse(); // newest first
   const pastTotal = pastDates.reduce((n, d) => n + (pastMap.get(d)?.length ?? 0), 0);
 
+  // Finished knockout games live in Past Scores too (most recent first)
+  const finishedKnockout = (q
+    ? knockout.filter((m) => m.home.toLowerCase().includes(q) || m.away.toLowerCase().includes(q))
+    : knockout
+  ).filter((m) => m.status === 'finished')
+    .sort((a, b) => (b.kickoffIso ?? '').localeCompare(a.kickoffIso ?? ''));
+  const pastTotalAll = pastTotal + finishedKnockout.length;
+
   // Auto-open Past Scores when a search would reveal results there
   const effectivePastOpen = pastOpen || q.length > 0;
 
@@ -221,6 +229,7 @@ export default function ScoresPage() {
     todayMatches.length === 0 &&
     upcomingDates.length === 0 &&
     pastDates.length === 0 &&
+    knockout.length === 0 &&
     !error;
 
   return (
@@ -326,7 +335,7 @@ export default function ScoresPage() {
         <div className="space-y-10">
 
           {/* ─── Past Scores (collapsed, auto-opens when searching) ─── */}
-          {pastDates.length > 0 && (
+          {(pastDates.length > 0 || finishedKnockout.length > 0) && (
             <section>
               <button
                 onClick={() => setPastOpen((o) => !o)}
@@ -338,7 +347,7 @@ export default function ScoresPage() {
                     Past Scores
                   </span>
                   <span className="text-xs text-gray-400 font-semibold tabular-nums">
-                    {pastTotal} match{pastTotal !== 1 ? 'es' : ''}
+                    {pastTotalAll} match{pastTotalAll !== 1 ? 'es' : ''}
                   </span>
                 </div>
                 <svg
@@ -351,6 +360,17 @@ export default function ScoresPage() {
 
               {effectivePastOpen && (
                 <div className="mt-6 space-y-8">
+                  {finishedKnockout.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-gray-500">Knockout — completed</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {finishedKnockout.map((m) => (
+                          <LiveScoreCard key={m.matchId} match={m} odds={oddsMap[m.matchId] ?? null}
+                            currentPick={null} distribution={null} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {pastDates.map((date) => (
                     <DateGroup
                       key={date} date={date} matches={pastMap.get(date)!}
@@ -363,30 +383,38 @@ export default function ScoresPage() {
             </section>
           )}
 
-          {/* ─── Knockout Stage ─── */}
+          {/* ─── Knockout Stage (upcoming/live, grouped by date) ─── */}
           {knockout.length > 0 && (() => {
+            const upcoming = knockout.filter((m) => m.status !== 'finished');
             const vis = q
-              ? knockout.filter((m) => m.home.toLowerCase().includes(q) || m.away.toLowerCase().includes(q))
-              : knockout;
+              ? upcoming.filter((m) => m.home.toLowerCase().includes(q) || m.away.toLowerCase().includes(q))
+              : upcoming;
             if (vis.length === 0) return null;
-            const ROUND_ORDER = ['R32', 'R16', 'QF', 'SF', 'Final'];
-            const byRound = ROUND_ORDER
-              .map((r) => ({ r, games: vis.filter((m) => m.group === r).sort((a, b) => a.matchNumber - b.matchNumber) }))
-              .filter((x) => x.games.length > 0);
+            const byDate = new Map<string, MatchData[]>();
+            for (const m of vis) {
+              const d = localDateOf(m);
+              (byDate.get(d) ?? byDate.set(d, []).get(d)!).push(m);
+            }
+            const dates = Array.from(byDate.keys()).sort();
             return (
               <section className="space-y-5">
                 <SectionHeader label="Knockout Stage" count={vis.length} />
-                {byRound.map(({ r, games }) => (
-                  <div key={r} className="space-y-3">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">{games[0].stageLabel}</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {games.map((m) => (
-                        <LiveScoreCard key={m.matchId} match={m} odds={oddsMap[m.matchId] ?? null}
-                          currentPick={null} distribution={null} />
-                      ))}
+                {dates.map((date) => {
+                  const games = byDate.get(date)!.sort((a, b) => (a.kickoffIso ?? '').localeCompare(b.kickoffIso ?? ''));
+                  return (
+                    <div key={date} className="space-y-3">
+                      <h3 className="text-xs font-bold text-gray-500">
+                        {games[0].stageLabel} · {formatDateHeading(date)}
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {games.map((m) => (
+                          <LiveScoreCard key={m.matchId} match={m} odds={oddsMap[m.matchId] ?? null}
+                            currentPick={null} distribution={null} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </section>
             );
           })()}

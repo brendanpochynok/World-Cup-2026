@@ -149,9 +149,12 @@ model KnockoutMatch {
   id      Int       @id @default(autoincrement())
   round   String    // "R32" | "R16" | "QF" | "SF" | "Final"
   slot    Int       // slot index within the round
-  home    String?   // team name (null until set by admin)
-  away    String?
-  kickoff DateTime? // used for per-game locking and the scores display
+  home      String?   // team name (null until set by admin)
+  away      String?
+  kickoff   DateTime? // used for per-game locking and the scores display
+  homeScore Int?      // persisted live/final score for the scores display
+  awayScore Int?
+  status    String    @default("scheduled") // "scheduled" | "live" | "finished"
 
   @@unique([round, slot])
 }
