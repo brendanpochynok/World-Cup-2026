@@ -29,6 +29,7 @@ interface Props {
   picks: Record<string, string>;              // raw picks keyed "R32-0"
   r32Teams: Record<number, [string, string]>; // actual R32 matchups
   results: Record<string, string>;            // "round-slot" → actual winner
+  eliminated?: string[];                      // teams knocked out — dead picks
   liveByKey?: Record<string, MatchData>;      // actual knockout match keyed "round-slot"
   oddsByKey?: Record<string, MatchOdds>;      // odds keyed "round-slot"
   distribution?: Record<string, SlotDistribution>;
@@ -62,12 +63,12 @@ function pct(n: number, total: number): number {
 }
 
 function TeamRow({
-  team, picked, winner, decided, scoreText, winProb, distCount, distTotal, isFinal,
+  team, picked, winner, dead, scoreText, winProb, distCount, distTotal, isFinal,
 }: {
   team: string | null;
   picked: boolean;
   winner: boolean;
-  decided: boolean;
+  dead: boolean;
   scoreText: string | null;
   winProb: number | null;
   distCount: number | null;
@@ -83,8 +84,9 @@ function TeamRow({
     );
   }
   const meta = getTeamMeta(team);
-  // Once the game is decided, the non-winner is dimmed; the winner is green.
-  const eliminated = decided && !winner;
+  // A team is "dead" if it has been knocked out — either it lost this slot or it
+  // was eliminated earlier (a pick that can no longer come good).
+  const eliminated = dead && !winner;
   return (
     <div
       className={`flex items-center gap-1.5 px-2 py-1 ${
@@ -111,9 +113,10 @@ function TeamRow({
 }
 
 export default function BracketBoard({
-  picks, r32Teams, results, liveByKey = {}, oddsByKey = {}, distribution = {},
+  picks, r32Teams, results, eliminated = [], liveByKey = {}, oddsByKey = {}, distribution = {},
 }: Props) {
   const matchups = buildMatchups(picks, r32Teams);
+  const elimSet = new Set(eliminated);
 
   return (
     <div className="overflow-x-auto -mx-2 px-2 pb-2">
@@ -152,6 +155,9 @@ export default function BracketBoard({
                 };
 
                 const dist = distribution[key];
+                // Dead = knocked out: lost this slot, or eliminated earlier.
+                const deadFor = (t: string | null): boolean =>
+                  !!t && t !== winner && (decided || elimSet.has(t));
                 const liveBadge =
                   realMatch && live!.status === 'live'
                     ? live!.clock || 'LIVE'
@@ -178,7 +184,7 @@ export default function BracketBoard({
                       team={a}
                       picked={picked === a && !!a}
                       winner={winner === a && !!a}
-                      decided={decided}
+                      dead={deadFor(a)}
                       scoreText={scoreFor(a)}
                       winProb={probFor(a)}
                       distCount={dist && a ? dist.teams[a] ?? 0 : null}
@@ -189,7 +195,7 @@ export default function BracketBoard({
                       team={b}
                       picked={picked === b && !!b}
                       winner={winner === b && !!b}
-                      decided={decided}
+                      dead={deadFor(b)}
                       scoreText={scoreFor(b)}
                       winProb={probFor(b)}
                       distCount={dist && b ? dist.teams[b] ?? 0 : null}
@@ -205,7 +211,7 @@ export default function BracketBoard({
                           team={picked}
                           picked
                           winner={winner === picked}
-                          decided={decided}
+                          dead={deadFor(picked)}
                           scoreText={null}
                           winProb={null}
                           distCount={dist ? dist.teams[picked] ?? 0 : null}

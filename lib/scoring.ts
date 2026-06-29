@@ -69,24 +69,56 @@ export const ROUND_POINTS: Record<string, number> = {
   Final: SCORING.final,
 };
 
+// Teams that can no longer win any bracket slot: the losers of every finished
+// knockout match. A pick of one of these teams in a later round can never come
+// good, so it must not inflate max-possible scores.
+export function computeEliminatedTeams(
+  knockout: Array<{
+    round: string; slot: number;
+    home: string | null; away: string | null;
+    homeScore: number | null; awayScore: number | null;
+    status: string;
+  }>,
+  bracketResults: Map<string, string>,
+): Set<string> {
+  const eliminated = new Set<string>();
+  for (const k of knockout) {
+    if (k.status !== 'finished' || !k.home || !k.away) continue;
+    const winner =
+      bracketResults.get(`${k.round}-${k.slot}`) ??
+      (k.homeScore != null && k.awayScore != null
+        ? k.homeScore > k.awayScore ? k.home
+          : k.awayScore > k.homeScore ? k.away
+          : null
+        : null);
+    if (!winner) continue;
+    const loser = winner === k.home ? k.away : k.home;
+    if (loser) eliminated.add(loser);
+  }
+  return eliminated;
+}
+
 // Upper bound on a player's final score: current score plus every pick that
 // could still come good (unfinished group matches, bracket slots without a
-// recorded result).
+// recorded result). A bracket pick whose team is already eliminated is
+// excluded — picking a team to advance after it has lost can never score, and
+// that dead pick transmits across every later round it appears in.
 export function calculateMaxPossibleScore(params: {
   currentScore: number;
   matchPicks: Array<{ matchId: string }>;
-  bracketPicks: Array<{ round: string; slot: number }>;
+  bracketPicks: Array<{ round: string; slot: number; team: string }>;
   settledMatchIds: Set<string>;
   settledBracketSlots: Set<string>;
+  eliminatedTeams?: Set<string>;
 }): number {
   let max = params.currentScore;
   for (const mp of params.matchPicks) {
     if (!params.settledMatchIds.has(mp.matchId)) max += SCORING.groupCorrect;
   }
   for (const bp of params.bracketPicks) {
-    if (!params.settledBracketSlots.has(`${bp.round}-${bp.slot}`)) {
-      max += ROUND_POINTS[bp.round] ?? 0;
-    }
+    if (params.settledBracketSlots.has(`${bp.round}-${bp.slot}`)) continue;
+    if (params.eliminatedTeams?.has(bp.team)) continue;
+    max += ROUND_POINTS[bp.round] ?? 0;
   }
   return max;
 }

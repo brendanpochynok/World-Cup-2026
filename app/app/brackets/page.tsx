@@ -128,6 +128,7 @@ export default function BracketsPage() {
             picks={pickMap}
             r32Teams={data?.r32 ?? {}}
             results={data?.results ?? {}}
+            eliminated={data?.eliminated ?? []}
             liveByKey={liveByKey}
             oddsByKey={oddsByKey}
             distribution={data?.distribution ?? {}}

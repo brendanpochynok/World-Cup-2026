@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import { isBracketLocked } from '@/lib/worldcup-data';
+import { computeEliminatedTeams } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ export interface BracketsResponse {
   players: BracketPlayer[];
   r32: Record<number, [string, string]>;      // actual R32 matchups by slot
   results: Record<string, string>;            // "round-slot" → actual winner
+  eliminated: string[];                       // teams knocked out — dead picks
   // Present only once brackets lock, so pre-lock percentages can't reveal
   // individual picks in a small pool.
   distribution: Record<string, SlotDistribution>;
@@ -42,12 +44,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await getSessionUser();
   const locked = isBracketLocked();
 
-  const [users, koRows, bracketResults] = await Promise.all([
+  const [users, koMatches, bracketResults] = await Promise.all([
     prisma.user.findMany({
       select: { username: true, displayName: true, entriesCount: true, bracketPicks: { select: { id: true }, take: 1 } },
       orderBy: { username: 'asc' },
     }),
-    prisma.knockoutMatch.findMany({ where: { round: 'R32' }, select: { slot: true, home: true, away: true } }),
+    prisma.knockoutMatch.findMany(),
     prisma.bracketResult.findMany(),
   ]);
 
@@ -57,12 +59,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .map((u) => ({ username: u.username, displayName: u.displayName, entriesCount: u.entriesCount ?? 1 }));
 
   const r32: Record<number, [string, string]> = {};
-  for (const k of koRows) {
-    if (k.home && k.away) r32[k.slot] = [k.home, k.away];
+  for (const k of koMatches) {
+    if (k.round === 'R32' && k.home && k.away) r32[k.slot] = [k.home, k.away];
   }
 
   const results: Record<string, string> = {};
   for (const r of bracketResults) results[`${r.round}-${r.slot}`] = r.team;
+  const resultMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
+  const eliminated = Array.from(computeEliminatedTeams(koMatches, resultMap));
 
   // Pool-wide distribution — every entry's pick per slot, counted by team.
   const distribution: Record<string, SlotDistribution> = {};
@@ -107,6 +111,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const data: BracketsResponse = { me: session?.username ?? null, locked, players, r32, results, distribution, selected };
+  const data: BracketsResponse = { me: session?.username ?? null, locked, players, r32, results, eliminated, distribution, selected };
   return NextResponse.json(data);
 }

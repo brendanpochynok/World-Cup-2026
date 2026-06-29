@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { calculateTotalScore, calculateMaxPossibleScore } from '@/lib/scoring';
+import { calculateTotalScore, calculateMaxPossibleScore, computeEliminatedTeams } from '@/lib/scoring';
 import { updateRankSnapshots, getPreviousRanks, entryKey } from '@/lib/rank-snapshots';
 import StandingsTable from '@/components/StandingsTable';
 import type { StandingsRow } from '@/components/StandingsTable';
@@ -37,9 +37,10 @@ const bracketScoringRows = [
 export default async function StandingsPage() {
   const currentUser = await getSessionUser();
 
-  const [matchResults, bracketResults, users, poolConfig] = await Promise.all([
+  const [matchResults, bracketResults, knockoutMatches, users, poolConfig] = await Promise.all([
     prisma.matchResult.findMany(),
     prisma.bracketResult.findMany(),
+    prisma.knockoutMatch.findMany(),
     prisma.user.findMany({
       include: {
         matchPicks: true,
@@ -57,6 +58,7 @@ export default async function StandingsPage() {
   const bracketMap = new Map(bracketResults.map((r) => [`${r.round}-${r.slot}`, r.team]));
   const settledMatchIds = new Set(resultMap.keys());
   const settledBracketSlots = new Set(bracketMap.keys());
+  const eliminatedTeams = computeEliminatedTeams(knockoutMatches, bracketMap);
 
   const envAdmins = envAdminUsernames();
 
@@ -87,6 +89,7 @@ export default async function StandingsPage() {
           bracketPicks,
           settledMatchIds,
           settledBracketSlots,
+          eliminatedTeams,
         }),
         movement: null,
         prize: null,
