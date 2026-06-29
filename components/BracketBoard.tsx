@@ -149,9 +149,12 @@ export default function BracketBoard({
                   const isHome = live!.home === team;
                   return String(isHome ? live!.homeScore : live!.awayScore);
                 };
+                // Knockout games can't draw — split the draw probability evenly
+                // so the two teams' win odds sum to 100%.
                 const probFor = (team: string | null): number | null => {
                   if (!realMatch || !odds || !team) return null;
-                  return live!.home === team ? odds.home : odds.away;
+                  const base = live!.home === team ? odds.home : odds.away;
+                  return base + odds.draw / 2;
                 };
 
                 const dist = distribution[key];
