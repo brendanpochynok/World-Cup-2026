@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncESPNResults } from '@/lib/sync-espn';
 
+export const dynamic = 'force-dynamic';
+
 // Called by Vercel Cron — protected by Authorization header Vercel sends automatically
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;

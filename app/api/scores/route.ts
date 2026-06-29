@@ -4,6 +4,8 @@ import { POLYMARKET_TEAM_CODES } from '@/lib/polymarket-codes';
 import { prisma } from '@/lib/prisma';
 import { normalizeTeam, teamKeys } from '@/lib/espn-teams';
 
+export const dynamic = 'force-dynamic';
+
 const ESPN_BASE =
   'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
 const ESPN_HEADERS = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };

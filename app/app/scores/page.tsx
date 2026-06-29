@@ -151,10 +151,10 @@ export default function ScoresPage() {
 
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    const hasLive = matches.some((m) => m.status === 'live');
+    const hasLive = matches.some((m) => m.status === 'live') || knockout.some((m) => m.status === 'live');
     intervalRef.current = setInterval(fetchScores, hasLive ? 30_000 : 60_000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [fetchScores, matches]);
+  }, [fetchScores, matches, knockout]);
 
   // Per-card odds: the card knows match status before the odds server's
   // finished signals catch up, so finished matches always show the stored
