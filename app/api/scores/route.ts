@@ -240,18 +240,41 @@ export async function GET(request: Request) {
     R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter-Final', SF: 'Semi-Final', Final: 'Final',
   };
   const koResultsToPersist: { round: string; slot: number; team: string }[] = [];
+  const koScoresToPersist: { round: string; slot: number; homeScore: number; awayScore: number; status: string }[] = [];
   const knockout: MatchData[] = koFixtures.map((k) => {
     const kickoffIso = k.kickoff ? k.kickoff.toISOString() : null;
     const espn = findESPN(espnLiveMap, k.home!, k.away!);
     const pastFT = kickoffIso ? now >= new Date(kickoffIso).getTime() + ASSUME_FINISHED_MS : false;
-    const status: 'scheduled' | 'live' | 'finished' =
-      espn ? (espn.status === 'finished' || pastFT ? 'finished' : 'live') : 'scheduled';
 
-    if (status === 'finished' && espn && espn.homeScore !== espn.awayScore) {
-      const winner = espn.homeScore > espn.awayScore ? k.home! : k.away!;
-      if (bracketResultMap.get(`${k.round}-${k.slot}`) !== winner) {
-        koResultsToPersist.push({ round: k.round, slot: k.slot, team: winner });
+    // Prefer live ESPN; otherwise fall back to the persisted score/status so a
+    // finished game keeps showing its result after ESPN drops it.
+    let status: 'scheduled' | 'live' | 'finished';
+    let homeScore: number | null;
+    let awayScore: number | null;
+    let clock = '';
+    if (espn) {
+      status = espn.status === 'finished' || pastFT ? 'finished' : 'live';
+      homeScore = espn.homeScore;
+      awayScore = espn.awayScore;
+      clock = status === 'live' ? espn.clock : '';
+      // Persist when finished (or score changed) so it survives ESPN dropping it
+      if (status === 'finished' && (k.status !== 'finished' || k.homeScore !== homeScore || k.awayScore !== awayScore)) {
+        koScoresToPersist.push({ round: k.round, slot: k.slot, homeScore, awayScore, status });
       }
+      if (status === 'finished' && homeScore !== awayScore) {
+        const winner = homeScore > awayScore ? k.home! : k.away!;
+        if (bracketResultMap.get(`${k.round}-${k.slot}`) !== winner) {
+          koResultsToPersist.push({ round: k.round, slot: k.slot, team: winner });
+        }
+      }
+    } else if (k.status === 'finished') {
+      status = 'finished';
+      homeScore = k.homeScore;
+      awayScore = k.awayScore;
+    } else {
+      status = 'scheduled';
+      homeScore = null;
+      awayScore = null;
     }
 
     return {
@@ -260,24 +283,29 @@ export async function GET(request: Request) {
       date: kickoffIso ? kickoffIso.slice(0, 10) : '',
       kickoffIso,
       home: k.home!, away: k.away!,
-      homeScore: espn ? espn.homeScore : null,
-      awayScore: espn ? espn.awayScore : null,
-      status, clock: espn && status === 'live' ? espn.clock : '',
+      homeScore, awayScore,
+      status, clock,
       venue: '', city: '',
       stageLabel: ROUND_NAMES[k.round] ?? k.round,
     };
   });
 
-  if (koResultsToPersist.length > 0) {
-    await Promise.all(
-      koResultsToPersist.map((r) =>
+  if (koResultsToPersist.length > 0 || koScoresToPersist.length > 0) {
+    await Promise.all([
+      ...koResultsToPersist.map((r) =>
         prisma.bracketResult.upsert({
           where: { round_slot: { round: r.round, slot: r.slot } },
           update: { team: r.team },
           create: r,
         }).catch(() => null),
       ),
-    );
+      ...koScoresToPersist.map((s) =>
+        prisma.knockoutMatch.update({
+          where: { round_slot: { round: s.round, slot: s.slot } },
+          data: { homeScore: s.homeScore, awayScore: s.awayScore, status: s.status },
+        }).catch(() => null),
+      ),
+    ]);
   }
 
   const responseData = { matches, knockout, serverDate: todayISO, fetchedAt: new Date().toISOString() };
