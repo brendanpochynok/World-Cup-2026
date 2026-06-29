@@ -14,8 +14,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   try {
-    const { round, slot, home, away, kickoff } = (await req.json()) as {
+    const { round, slot, home, away, kickoff, homeScore, awayScore } = (await req.json()) as {
       round: string; slot: number; home?: string | null; away?: string | null; kickoff?: string | null;
+      homeScore?: number | null; awayScore?: number | null;
     };
 
     if (!round || !VALID_ROUNDS.has(round))
@@ -33,16 +34,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Invalid kickoff time' }, { status: 400 });
     }
 
-    const data = {
-      home: home || null,
-      away: away || null,
-      kickoff: kickoffDate,
-    };
+    // Scores are optional. When both are given, mark the game finished and
+    // record the winner so picks score and the card shows the result.
+    const hasScore = typeof homeScore === 'number' && typeof awayScore === 'number';
+    const data: {
+      home: string | null; away: string | null; kickoff: Date | null;
+      homeScore?: number; awayScore?: number; status?: string;
+    } = { home: home || null, away: away || null, kickoff: kickoffDate };
+    if (hasScore) {
+      data.homeScore = homeScore!;
+      data.awayScore = awayScore!;
+      data.status = 'finished';
+    }
+
     const result = await prisma.knockoutMatch.upsert({
       where: { round_slot: { round, slot } },
       update: data,
       create: { round, slot, ...data },
     });
+
+    // Record the winner (clear results only; draws/penalties handled in Bracket tab)
+    if (hasScore && homeScore! !== awayScore! && result.home && result.away) {
+      const winner = homeScore! > awayScore! ? result.home : result.away;
+      await prisma.bracketResult.upsert({
+        where: { round_slot: { round, slot } },
+        update: { team: winner },
+        create: { round, slot, team: winner },
+      }).catch(() => null);
+    }
+
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     console.error('Knockout fixture error:', err);

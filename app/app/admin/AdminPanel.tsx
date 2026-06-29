@@ -41,6 +41,8 @@ interface KnockoutFixtureRow {
   home: string | null;
   away: string | null;
   kickoff: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
 }
 
 interface Props {
@@ -173,11 +175,16 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
   const [tab, setTab] = useState<Tab>('results');
 
   // ── knockout R32 fixtures state ───────────────────────────────────────────
-  const [koRows, setKoRows] = useState<Record<number, { home: string; away: string; kickoff: string }>>(() => {
-    const init: Record<number, { home: string; away: string; kickoff: string }> = {};
+  type KoRow = { home: string; away: string; kickoff: string; homeScore: string; awayScore: string };
+  const [koRows, setKoRows] = useState<Record<number, KoRow>>(() => {
+    const init: Record<number, KoRow> = {};
     for (let slot = 0; slot < 16; slot++) {
       const m = knockoutMatches.find((k) => k.round === 'R32' && k.slot === slot);
-      init[slot] = { home: m?.home ?? '', away: m?.away ?? '', kickoff: isoToLocalInput(m?.kickoff ?? null) };
+      init[slot] = {
+        home: m?.home ?? '', away: m?.away ?? '', kickoff: isoToLocalInput(m?.kickoff ?? null),
+        homeScore: m?.homeScore != null ? String(m.homeScore) : '',
+        awayScore: m?.awayScore != null ? String(m.awayScore) : '',
+      };
     }
     return init;
   });
@@ -213,13 +220,27 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
     }
   }
 
-  function setKoField(slot: number, patch: Partial<{ home: string; away: string; kickoff: string }>) {
+  function setKoField(slot: number, patch: Partial<KoRow>) {
     setKoRows((prev) => ({ ...prev, [slot]: { ...prev[slot], ...patch } }));
   }
 
+  function koBody(slot: number) {
+    const row = koRows[slot];
+    const hs = row.homeScore.trim() === '' ? null : parseInt(row.homeScore, 10);
+    const as = row.awayScore.trim() === '' ? null : parseInt(row.awayScore, 10);
+    return {
+      round: 'R32', slot,
+      home: row.home || null,
+      away: row.away || null,
+      kickoff: row.kickoff ? new Date(row.kickoff).toISOString() : null,
+      homeScore: hs != null && !isNaN(hs) ? hs : null,
+      awayScore: as != null && !isNaN(as) ? as : null,
+    };
+  }
+
   function loadSuggestedR32() {
-    const init: Record<number, { home: string; away: string; kickoff: string }> = {};
-    SUGGESTED_R32.forEach((f, slot) => { init[slot] = { ...f }; });
+    const init: Record<number, KoRow> = {};
+    SUGGESTED_R32.forEach((f, slot) => { init[slot] = { ...f, homeScore: '', awayScore: '' }; });
     setKoRows(init);
     setKoMsg(null);
   }
@@ -233,11 +254,7 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
       await fetch('/api/admin/knockout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          round: 'R32', slot: r.slot,
-          home: r.home || null, away: r.away || null,
-          kickoff: r.kickoff ? new Date(r.kickoff).toISOString() : null,
-        }),
+        body: JSON.stringify(koBody(r.slot)),
       }).catch(() => null);
       setSavingAll({ done: i + 1, total: rows.length });
     }
@@ -245,19 +262,13 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
   }
 
   async function saveKo(slot: number) {
-    const row = koRows[slot];
     setKoSaving(slot);
     setKoMsg(null);
     try {
       const res = await fetch('/api/admin/knockout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          round: 'R32', slot,
-          home: row.home || null,
-          away: row.away || null,
-          kickoff: row.kickoff ? new Date(row.kickoff).toISOString() : null,
-        }),
+        body: JSON.stringify(koBody(slot)),
       });
       setKoMsg({ slot, ok: res.ok });
     } catch {
@@ -684,8 +695,9 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
           <div>
             <h2 className="font-bold text-gray-900">Round of 32 fixtures</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Set the two teams and kickoff for each R32 matchup. These seed everyone&rsquo;s bracket and lock each
-              pick at its kickoff time. A kickoff in the past locks that game immediately.
+              Set the two teams and kickoff for each R32 matchup. Enter a final score to mark a game finished —
+              that shows the result on the scores page and records the winner (use this if a game finished before
+              ESPN was tracked). Leave scores blank for unplayed games.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -738,6 +750,23 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
                     onChange={(e) => setKoField(slot, { kickoff: e.target.value })}
                     className="text-sm px-2 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:border-wc-blue-300"
                   />
+                  <div className="flex items-center gap-1" title="Final score (leave blank if not played)">
+                    <input
+                      type="number" min={0} inputMode="numeric"
+                      value={row.homeScore}
+                      onChange={(e) => setKoField(slot, { homeScore: e.target.value })}
+                      placeholder="–"
+                      className="w-12 text-sm text-center px-1 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:border-wc-blue-300"
+                    />
+                    <span className="text-gray-300 text-xs">-</span>
+                    <input
+                      type="number" min={0} inputMode="numeric"
+                      value={row.awayScore}
+                      onChange={(e) => setKoField(slot, { awayScore: e.target.value })}
+                      placeholder="–"
+                      className="w-12 text-sm text-center px-1 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:border-wc-blue-300"
+                    />
+                  </div>
                   <button
                     onClick={() => saveKo(slot)}
                     disabled={koSaving === slot}

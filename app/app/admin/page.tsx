@@ -44,6 +44,8 @@ export default async function AdminPage() {
         home: k.home,
         away: k.away,
         kickoff: k.kickoff ? k.kickoff.toISOString() : null,
+        homeScore: k.homeScore,
+        awayScore: k.awayScore,
       }))}
       entryFee={poolConfig?.entryFeePerPlayer ?? 0}
       playerCount={playerCount}
