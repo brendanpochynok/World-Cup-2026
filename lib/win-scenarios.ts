@@ -1,0 +1,311 @@
+// Combinatorial "who can still win the pool" engine.
+//
+// Given the current bracket state (real R32 seeding, recorded results) and every
+// entry's picks, it walks the space of all possible ways the remaining knockout
+// games could play out and works out, for each entry, in what fraction of those
+// futures they finish first (alone or tied). Small remaining brackets are solved
+// exactly by enumerating every completion; large ones fall back to Monte-Carlo
+// sampling. Every game is treated as a 50/50 coin flip, so the percentages are a
+// pure count of *scenarios*, not odds-weighted probabilities.
+
+import { ROUND_POINTS } from './scoring';
+
+const ROUND_ORDER = ['R32', 'R16', 'QF', 'SF', 'Final'] as const;
+const SLOTS_PER_ROUND: Record<string, number> = { R32: 16, R16: 8, QF: 4, SF: 2, Final: 1 };
+const CHAMPION_KEY = 'Final-0';
+
+// Enumerate exactly while the number of genuinely-undecided games keeps the
+// completion count at or under this; otherwise sample.
+const EXACT_MAX_LEAVES = 1 << 20; // ~1.05M
+const MONTE_CARLO_SAMPLES = 500_000;
+
+export interface ScenarioEntryInput {
+  key: string;                 // stable id, e.g. "poch#1"
+  username: string;
+  displayName: string | null;
+  entry: number;
+  entriesCount: number;
+  fixedScore: number;          // realised score: settled matches + decided bracket slots
+  maxScore: number;            // upper bound used to prune hopeless entries
+  picks: Record<string, string>; // slotKey "R16-3" -> picked team (undecided slots only)
+}
+
+export interface TreeInput {
+  r32: Record<number, [string, string]>; // real R32 seeding by slot
+  decided: Record<string, string>;       // slotKey -> recorded winner
+}
+
+export interface ContenderScenario {
+  key: string;
+  username: string;
+  displayName: string | null;
+  entry: number;
+  entriesCount: number;
+  fixedScore: number;
+  maxScore: number;
+  winPct: number;       // % of scenarios finishing first (alone or tied)
+  soleWinPct: number;   // % of scenarios finishing first alone
+  status: 'clinched' | 'contender';
+  aliveChampions: string[]; // tournament champions under which this entry can still win
+}
+
+export interface ChampionScenario {
+  champion: string;     // the team that lifts the trophy (Final winner)
+  pct: number;          // share of scenarios with this champion
+  winners: { key: string; displayName: string; winPct: number }[]; // pool winners given this champion
+}
+
+export interface ScenariosResult {
+  method: 'exact' | 'monte-carlo';
+  scenarios: number;        // exact completion count or sample count
+  branchingGames: number;   // undecided games that actually flip a coin
+  totalEntries: number;
+  eliminatedCount: number;
+  contenders: ContenderScenario[];
+  byChampion: ChampionScenario[];
+}
+
+interface SlotNode {
+  round: string;
+  slot: number;
+  key: string;
+  decidedTeam: string | null; // recorded winner, if any
+  feedA: string | null;       // prev-round slot key feeding side A (null for R32)
+  feedB: string | null;
+  points: number;
+}
+
+// Topologically-ordered slots: R32 first (so a slot's feeders are always
+// resolved before it), then R16 … Final.
+function buildSlotOrder(tree: TreeInput): SlotNode[] {
+  const nodes: SlotNode[] = [];
+  for (let ri = 0; ri < ROUND_ORDER.length; ri++) {
+    const round = ROUND_ORDER[ri];
+    const prev = ri > 0 ? ROUND_ORDER[ri - 1] : null;
+    for (let slot = 0; slot < SLOTS_PER_ROUND[round]; slot++) {
+      nodes.push({
+        round,
+        slot,
+        key: `${round}-${slot}`,
+        decidedTeam: tree.decided[`${round}-${slot}`] ?? null,
+        feedA: prev ? `${prev}-${slot * 2}` : null,
+        feedB: prev ? `${prev}-${slot * 2 + 1}` : null,
+        points: ROUND_POINTS[round] ?? 0,
+      });
+    }
+  }
+  return nodes;
+}
+
+// The two teams that can win a slot given the winners chosen so far. R32 reads
+// the real seeding; later rounds read whoever advanced from the two feeders.
+function participantsOf(
+  node: SlotNode,
+  tree: TreeInput,
+  winners: Map<string, string | null>,
+): string[] {
+  let a: string | null;
+  let b: string | null;
+  if (node.round === 'R32') {
+    const seed = tree.r32[node.slot];
+    a = seed?.[0] ?? null;
+    b = seed?.[1] ?? null;
+  } else {
+    a = node.feedA ? winners.get(node.feedA) ?? null : null;
+    b = node.feedB ? winners.get(node.feedB) ?? null : null;
+  }
+  const out: string[] = [];
+  if (a) out.push(a);
+  if (b && b !== a) out.push(b);
+  return out;
+}
+
+export function computeWinScenarios(
+  tree: TreeInput,
+  entries: ScenarioEntryInput[],
+): ScenariosResult {
+  const totalEntries = entries.length;
+
+  // An entry can only ever finish first if its ceiling reaches the highest
+  // *guaranteed* score in the pool — anyone below that is mathematically out.
+  const floor = entries.reduce((m, e) => Math.max(m, e.fixedScore), 0);
+  const contenders = entries.filter((e) => e.maxScore >= floor);
+  const eliminatedCount = totalEntries - contenders.length;
+
+  const nodes = buildSlotOrder(tree);
+
+  // Per slot, which contenders picked which team — so assigning a winner is an
+  // O(pickers) score update rather than a scan of every entry.
+  const pickIndex = new Map<string, Map<string, number[]>>();
+  for (const node of nodes) {
+    const byTeam = new Map<string, number[]>();
+    for (let i = 0; i < contenders.length; i++) {
+      const team = contenders[i].picks[node.key];
+      if (!team) continue;
+      (byTeam.get(team) ?? byTeam.set(team, []).get(team)!).push(i);
+    }
+    if (byTeam.size > 0) pickIndex.set(node.key, byTeam);
+  }
+
+  // How many slots actually flip a coin (undecided AND two live candidates)?
+  // Drives the exact-vs-sample decision and is reported to the admin.
+  const winnersProbe = new Map<string, string | null>();
+  let branchingGames = 0;
+  for (const node of nodes) {
+    const parts = participantsOf(node, tree, winnersProbe);
+    if (node.decidedTeam) {
+      winnersProbe.set(node.key, node.decidedTeam);
+    } else if (parts.length >= 2) {
+      branchingGames++;
+      winnersProbe.set(node.key, parts[0]); // arbitrary for the probe walk
+    } else {
+      winnersProbe.set(node.key, parts[0] ?? null);
+    }
+  }
+
+  const useExact = branchingGames <= 30 && Math.pow(2, branchingGames) <= EXACT_MAX_LEAVES;
+
+  const C = contenders.length;
+  const score = new Array<number>(C);
+  for (let i = 0; i < C; i++) score[i] = contenders[i].fixedScore;
+
+  // Tallies.
+  let scenarios = 0;
+  const winCount = new Array<number>(C).fill(0);
+  const soleWinCount = new Array<number>(C).fill(0);
+  const championTotals = new Map<string, number>();
+  const championWins = new Map<string, number[]>(); // champion -> per-contender win count
+
+  const recordLeaf = (winners: Map<string, string | null>) => {
+    scenarios++;
+    let best = -Infinity;
+    for (let i = 0; i < C; i++) if (score[i] > best) best = score[i];
+    let leaders = 0;
+    for (let i = 0; i < C; i++) if (score[i] === best) leaders++;
+    const champion = winners.get(CHAMPION_KEY) ?? null;
+    let champArr: number[] | undefined;
+    if (champion) {
+      championTotals.set(champion, (championTotals.get(champion) ?? 0) + 1);
+      champArr = championWins.get(champion);
+      if (!champArr) { champArr = new Array<number>(C).fill(0); championWins.set(champion, champArr); }
+    }
+    for (let i = 0; i < C; i++) {
+      if (score[i] !== best) continue;
+      winCount[i]++;
+      if (leaders === 1) soleWinCount[i]++;
+      if (champArr) champArr[i]++;
+    }
+  };
+
+  // Apply / undo a slot's contribution to running contender scores.
+  const apply = (key: string, team: string | null, sign: number) => {
+    if (!team) return;
+    const byTeam = pickIndex.get(key);
+    const idxs = byTeam?.get(team);
+    if (!idxs) return;
+    const pts = nodesByKey.get(key)!.points;
+    for (const i of idxs) score[i] += sign * pts;
+  };
+
+  const nodesByKey = new Map(nodes.map((n) => [n.key, n]));
+
+  if (useExact) {
+    const winners = new Map<string, string | null>();
+    const dfs = (idx: number) => {
+      if (idx === nodes.length) { recordLeaf(winners); return; }
+      const node = nodes[idx];
+      if (node.decidedTeam) {
+        winners.set(node.key, node.decidedTeam);
+        dfs(idx + 1);
+        winners.delete(node.key);
+        return;
+      }
+      const parts = participantsOf(node, tree, winners);
+      if (parts.length === 0) {
+        winners.set(node.key, null);
+        dfs(idx + 1);
+        winners.delete(node.key);
+        return;
+      }
+      for (const team of parts) {
+        winners.set(node.key, team);
+        apply(node.key, team, +1);
+        dfs(idx + 1);
+        apply(node.key, team, -1);
+      }
+      winners.delete(node.key);
+    };
+    dfs(0);
+  } else {
+    const winners = new Map<string, string | null>();
+    for (let s = 0; s < MONTE_CARLO_SAMPLES; s++) {
+      const applied: Array<[string, string]> = [];
+      for (const node of nodes) {
+        let team: string | null;
+        if (node.decidedTeam) {
+          team = node.decidedTeam;
+        } else {
+          const parts = participantsOf(node, tree, winners);
+          team = parts.length === 0 ? null : parts[(Math.random() * parts.length) | 0];
+        }
+        winners.set(node.key, team);
+        if (team) { apply(node.key, team, +1); applied.push([node.key, team]); }
+      }
+      recordLeaf(winners);
+      for (const [key, team] of applied) apply(key, team, -1);
+      winners.clear();
+    }
+  }
+
+  const pctOf = (n: number) => (scenarios > 0 ? (n / scenarios) * 100 : 0);
+
+  const out: ContenderScenario[] = contenders.map((e, i) => {
+    const aliveChampions: string[] = [];
+    for (const [champ, arr] of Array.from(championWins)) if (arr[i] > 0) aliveChampions.push(champ);
+    aliveChampions.sort(
+      (a, b) => (championWins.get(b)![i]) - (championWins.get(a)![i]),
+    );
+    return {
+      key: e.key,
+      username: e.username,
+      displayName: e.displayName,
+      entry: e.entry,
+      entriesCount: e.entriesCount,
+      fixedScore: e.fixedScore,
+      maxScore: e.maxScore,
+      winPct: pctOf(winCount[i]),
+      soleWinPct: pctOf(soleWinCount[i]),
+      status: winCount[i] === scenarios && scenarios > 0 ? 'clinched' : 'contender',
+      aliveChampions,
+    };
+  });
+  out.sort((a, b) => b.winPct - a.winPct || b.fixedScore - a.fixedScore || a.username.localeCompare(b.username));
+
+  const labelOf = (e: { displayName: string | null; username: string; entriesCount: number; entry: number }) =>
+    (e.displayName || e.username) + (e.entriesCount > 1 ? ` (#${e.entry})` : '');
+
+  const byChampion: ChampionScenario[] = Array.from(championTotals.entries())
+    .map(([champion, total]) => {
+      const arr = championWins.get(champion)!;
+      const winners = contenders
+        .map((e, i) => ({
+          key: e.key,
+          displayName: labelOf(e),
+          winPct: total > 0 ? (arr[i] / total) * 100 : 0,
+        }))
+        .filter((w) => w.winPct > 0)
+        .sort((a, b) => b.winPct - a.winPct);
+      return { champion, pct: pctOf(total), winners };
+    })
+    .sort((a, b) => b.pct - a.pct);
+
+  return {
+    method: useExact ? 'exact' : 'monte-carlo',
+    scenarios,
+    branchingGames,
+    totalEntries,
+    eliminatedCount,
+    contenders: out,
+    byChampion,
+  };
+}
