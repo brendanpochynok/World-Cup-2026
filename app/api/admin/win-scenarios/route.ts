@@ -8,6 +8,7 @@ import {
 } from '@/lib/scoring';
 import {
   computeWinScenarios,
+  findUnpricedGames,
   ScenarioOddsError,
   type ScenarioEntryInput,
   type TreeInput,
@@ -164,7 +165,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   // In odds mode, refuse to coin-flip: if any game can't be priced, error out
   // (rather than silently mixing in 50/50 guesses) so the admin can fix the slug
-  // or fall back to the combinatorics view deliberately.
+  // / team alias, or fall back to the combinatorics view deliberately. Report
+  // every gap at once so name mismatches don't surface one round-trip at a time.
+  if (useOdds && edgeProb) {
+    const gaps = findUnpricedGames(tree, edgeProb);
+    if (gaps.length > 0) {
+      const teams = Array.from(new Set(gaps.flatMap((g) => g.missing))).sort();
+      const found = Object.entries(futuresResolved).map(([k, v]) => `${k}=${v}`).join(', ') || 'none';
+      return NextResponse.json({
+        error:
+          `Live odds incomplete — no Polymarket price for ${teams.length} team` +
+          `${teams.length !== 1 ? 's' : ''}: ${teams.join(', ')}. ` +
+          `These are usually name mismatches between our data and Polymarket. ` +
+          `Resolved futures markets: ${found}. Add an alias, or use the 50/50 view.`,
+      });
+    }
+  }
+
   let result: ScenariosResult;
   try {
     result = computeWinScenarios(tree, entries, { edgeProb, strict: useOdds });
