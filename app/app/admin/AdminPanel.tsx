@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { GROUP_MATCHES, GROUPS, ALL_TEAMS, BRACKET_ROUNDS } from '@/lib/worldcup-data';
+import type { WinScenariosResponse } from '@/app/api/admin/win-scenarios/route';
 import { calculatePayouts } from '@/lib/payouts';
 import TrophyIcon from '@/components/TrophyIcon';
 import BracketView from '@/components/BracketView';
@@ -56,7 +57,7 @@ interface Props {
   players: PlayerRow[];
 }
 
-type Tab = 'results' | 'bracket' | 'knockout' | 'brackets' | 'pool' | 'trophies' | 'activity';
+type Tab = 'results' | 'bracket' | 'knockout' | 'brackets' | 'pool' | 'trophies' | 'activity' | 'scenarios';
 
 // R32 slot labels mirror the bracket order so the admin knows which matchup
 // each row feeds.
@@ -649,6 +650,7 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
     { id: 'pool', label: 'Pool Config' },
     { id: 'trophies', label: 'Trophies', onClick: handleTrophyTab },
     { id: 'activity', label: 'Activity' },
+    { id: 'scenarios', label: 'Win Scenarios' },
   ];
 
   return (
@@ -1396,6 +1398,231 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
           </div>
         </div>
       )}
+
+      {/* ── Tab: Win Scenarios ── */}
+      {tab === 'scenarios' && <ScenariosTab />}
+    </div>
+  );
+}
+
+// ── Win Scenarios sub-component ───────────────────────────────────────────────
+
+function fmtPct(n: number): string {
+  if (n <= 0) return '0%';
+  if (n >= 100) return '100%';
+  if (n < 1) return '<1%';
+  if (n > 99) return '>99%';
+  if (n < 10) return `${n.toFixed(1)}%`;
+  return `${Math.round(n)}%`;
+}
+
+function buildScenarioSummary(d: Extract<WinScenariosResponse, { contenders: unknown }>): string {
+  const lines: string[] = [];
+  lines.push('🏆 POOL WIN SCENARIOS');
+  lines.push(
+    `${d.branchingGames} game${d.branchingGames !== 1 ? 's' : ''} left · ` +
+      (d.method === 'exact'
+        ? `${d.scenarios.toLocaleString()} possible outcomes (exact)`
+        : `${d.scenarios.toLocaleString()} simulated outcomes`),
+  );
+  lines.push(`${d.eliminatedCount} of ${d.totalEntries} entries can no longer win.`);
+  lines.push('');
+  lines.push('Chances to win (every game a coin flip):');
+  for (const c of d.contenders) {
+    const label = (c.displayName || c.username) + (c.entriesCount > 1 ? ` #${c.entry}` : '');
+    const tag = c.status === 'clinched' ? ' 🔒 CLINCHED' : '';
+    lines.push(`• ${label}: ${fmtPct(c.winPct)}${tag} (${c.fixedScore} pts now, ${c.maxScore} max)`);
+  }
+  if (d.byChampion.length > 0) {
+    lines.push('');
+    lines.push('If the World Cup is won by…');
+    for (const ch of d.byChampion) {
+      const who = ch.winners.map((w) => `${w.displayName} ${fmtPct(w.winPct)}`).join(', ');
+      lines.push(`• ${ch.champion} (${fmtPct(ch.pct)} of outcomes) → ${who || 'nobody decided'}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function ScenariosTab() {
+  const [data, setData] = useState<WinScenariosResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/win-scenarios');
+      const json: WinScenariosResponse = await res.json();
+      if ('error' in json) setError(json.error);
+      else setData(json);
+    } catch {
+      setError('Failed to compute scenarios.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function copySummary() {
+    if (!data || 'error' in data) return;
+    try {
+      await navigator.clipboard.writeText(buildScenarioSummary(data));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard may be blocked — no-op */
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="card space-y-2">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Who can still win the pool</h3>
+            <p className="text-gray-500 text-sm mt-0.5">
+              Every remaining knockout game is treated as a 50/50 coin flip. The percentages count the
+              share of all possible outcomes each entry finishes first (alone or tied) — not betting odds.
+              Admin-only.
+            </p>
+          </div>
+          <button onClick={load} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0" disabled={loading}>
+            {loading ? 'Computing…' : 'Recompute'}
+          </button>
+        </div>
+      </div>
+
+      {loading && !data ? (
+        <div className="card text-center text-gray-400 text-sm py-10">Crunching the combinatorics…</div>
+      ) : error ? (
+        <div className="card text-center text-wc-red-500 text-sm py-10">{error}</div>
+      ) : data && !('error' in data) ? (
+        <>
+          <div className="card space-y-3">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+              <span className="text-gray-700">
+                <span className="font-bold tabular-nums">{data.branchingGames}</span> game
+                {data.branchingGames !== 1 ? 's' : ''} undecided
+              </span>
+              <span className="text-gray-700">
+                {data.method === 'exact' ? (
+                  <>
+                    <span className="font-bold tabular-nums">{data.scenarios.toLocaleString()}</span> exact
+                    outcomes
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold tabular-nums">{data.scenarios.toLocaleString()}</span> simulated
+                    outcomes
+                  </>
+                )}
+              </span>
+              <span className="text-gray-700">
+                <span className="font-bold tabular-nums">{data.eliminatedCount}</span> of{' '}
+                <span className="tabular-nums">{data.totalEntries}</span> entries eliminated
+              </span>
+              <button onClick={copySummary} className="btn-secondary text-xs px-3 py-1.5 ml-auto">
+                {copied ? 'Copied!' : 'Copy summary for chat'}
+              </button>
+            </div>
+            {data.method === 'monte-carlo' && (
+              <p className="text-[11px] text-gray-400">
+                Too many outcomes to enumerate exactly, so these are sampled — percentages are
+                approximate (±~0.2%).
+              </p>
+            )}
+            {data.pendingGroupGames > 0 && (
+              <p className="text-[11px] text-amber-600">
+                Note: {data.pendingGroupGames} group-stage pick{data.pendingGroupGames !== 1 ? 's are' : ' is'}{' '}
+                still pending and counted at their current value — only knockout games are varied here.
+              </p>
+            )}
+          </div>
+
+          {/* Contenders */}
+          <div className="card p-0 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-100">
+              <h4 className="font-bold text-gray-900 text-sm">Chances to win</h4>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {data.contenders.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-8">No entries in contention.</p>
+              ) : (
+                data.contenders.map((c, i) => (
+                  <div key={c.key} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="text-gray-400 font-bold tabular-nums w-5 text-right text-sm">{i + 1}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900 text-sm truncate">
+                        {c.displayName || c.username}
+                        {c.entriesCount > 1 && <span className="text-gray-400 font-normal"> · Entry {c.entry}</span>}
+                        {c.status === 'clinched' && (
+                          <span className="ml-2 text-[10px] font-bold text-wc-green-700 bg-wc-green-50 px-1.5 py-0.5 rounded">
+                            🔒 CLINCHED
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-gray-400 tabular-nums">
+                        {c.fixedScore} pts now · {c.maxScore} max
+                        {c.aliveChampions.length > 0 && c.aliveChampions.length <= 4 && (
+                          <span className="text-gray-400"> · needs: {c.aliveChampions.join(' / ')}</span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className={`font-bold tabular-nums text-sm ${c.winPct >= 50 ? 'text-wc-green-700' : c.winPct > 0 ? 'text-gray-900' : 'text-gray-300'}`}>
+                        {fmtPct(c.winPct)}
+                      </p>
+                      {c.soleWinPct < c.winPct && (
+                        <p className="text-[10px] text-gray-400 tabular-nums" title="Wins outright (not tied)">
+                          {fmtPct(c.soleWinPct)} solo
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* By champion */}
+          {data.byChampion.length > 0 && (
+            <div className="card p-0 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-gray-100">
+                <h4 className="font-bold text-gray-900 text-sm">If the World Cup is won by…</h4>
+                <p className="text-[11px] text-gray-400 mt-0.5">Pool winner(s) for each possible champion.</p>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {data.byChampion.map((ch) => (
+                  <div key={ch.champion} className="flex items-start gap-3 px-4 py-2.5">
+                    <div className="w-28 flex-shrink-0">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{ch.champion}</p>
+                      <p className="text-[11px] text-gray-400 tabular-nums">{fmtPct(ch.pct)} of outcomes</p>
+                    </div>
+                    <div className="min-w-0 flex-1 flex flex-wrap gap-x-3 gap-y-1">
+                      {ch.winners.length === 0 ? (
+                        <span className="text-gray-300 text-sm">—</span>
+                      ) : (
+                        ch.winners.map((w) => (
+                          <span key={w.key} className="text-sm text-gray-700">
+                            {w.displayName}{' '}
+                            <span className="text-gray-400 tabular-nums">{fmtPct(w.winPct)}</span>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }
