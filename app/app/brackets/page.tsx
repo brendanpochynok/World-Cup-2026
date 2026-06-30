@@ -3,9 +3,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import BracketBoard from '@/components/BracketBoard';
 import { isBracketLocked } from '@/lib/worldcup-data';
+import Link from 'next/link';
+import { getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
 import type { BracketsResponse } from '@/app/api/brackets/route';
+import type { PickersResponse } from '@/app/api/brackets/pickers/route';
 import type { MatchData } from '@/app/api/scores/route';
 import type { MatchOdds } from '@/app/api/odds/route';
+
+const ROUND_LABELS: Record<string, string> = {
+  R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarterfinals', SF: 'Semifinals', Final: 'Champion',
+};
 
 export default function BracketsPage() {
   const [data, setData] = useState<BracketsResponse | null>(null);
@@ -15,6 +22,25 @@ export default function BracketsPage() {
   const [oddsByKey, setOddsByKey] = useState<Record<string, MatchOdds>>({});
   const [loading, setLoading] = useState(true);
   const hasLiveRef = useRef(false);
+
+  // "Who picked this" popup
+  const [pickers, setPickers] = useState<PickersResponse | null>(null);
+  const [pickersLoading, setPickersLoading] = useState(false);
+
+  const showPickers = useCallback(async (round: string, slot: number, team: string) => {
+    setPickers({ round, slot, team, pickers: [] });
+    setPickersLoading(true);
+    try {
+      const qs = new URLSearchParams({ round, slot: String(slot), team });
+      const res = await fetch(`/api/brackets/pickers?${qs.toString()}`);
+      const json: PickersResponse = await res.json();
+      setPickers(json);
+    } catch {
+      setPickers({ round, slot, team, pickers: [] });
+    } finally {
+      setPickersLoading(false);
+    }
+  }, []);
 
   // Bracket roster + the selected bracket (defaults to the signed-in player).
   const fetchBracket = useCallback(async (user: string | null, e: number) => {
@@ -124,6 +150,9 @@ export default function BracketsPage() {
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 shadow-sm">
+          {locked && (
+            <p className="text-[11px] text-gray-400 mb-2 px-1">Tip: tap any team to see who picked it.</p>
+          )}
           <BracketBoard
             picks={pickMap}
             r32Teams={data?.r32 ?? {}}
@@ -132,7 +161,66 @@ export default function BracketsPage() {
             liveByKey={liveByKey}
             oddsByKey={oddsByKey}
             distribution={data?.distribution ?? {}}
+            onPick={locked ? showPickers : undefined}
           />
+        </div>
+      )}
+
+      {/* Who-picked-this modal */}
+      {pickers && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
+          onClick={() => setPickers(null)}
+        >
+          <div
+            className="bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[75vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2.5 p-4 border-b border-gray-100">
+              <img
+                src={getFlagUrl(getTeamMeta(pickers.team).flag)}
+                alt={pickers.team}
+                className="w-7 h-5 object-cover rounded-sm flex-shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-gray-900 text-sm truncate">{pickers.team}</p>
+                <p className="text-gray-400 text-[11px]">
+                  {ROUND_LABELS[pickers.round] ?? pickers.round}
+                  {pickers.round !== 'Final' ? ` · #${pickers.slot + 1}` : ''}
+                  {' · '}{pickers.pickers.length} pick{pickers.pickers.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <button
+                onClick={() => setPickers(null)}
+                className="text-gray-400 hover:text-gray-700 text-xl leading-none px-1"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="overflow-y-auto p-2">
+              {pickersLoading ? (
+                <p className="text-center text-gray-400 text-sm py-6">Loading…</p>
+              ) : pickers.pickers.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-6">No one picked this.</p>
+              ) : (
+                pickers.pickers.map((p) => (
+                  <Link
+                    key={`${p.username}-${p.entry}`}
+                    href={`/app/players/${encodeURIComponent(p.username)}`}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-gray-50"
+                  >
+                    <span className="text-sm font-semibold text-gray-800 truncate">
+                      {p.displayName || p.username}
+                    </span>
+                    {p.entriesCount > 1 && (
+                      <span className="text-[11px] text-gray-400 flex-shrink-0">Entry {p.entry}</span>
+                    )}
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

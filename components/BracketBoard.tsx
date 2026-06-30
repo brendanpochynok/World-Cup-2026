@@ -33,6 +33,7 @@ interface Props {
   liveByKey?: Record<string, MatchData>;      // actual knockout match keyed "round-slot"
   oddsByKey?: Record<string, MatchOdds>;      // odds keyed "round-slot"
   distribution?: Record<string, SlotDistribution>;
+  onPick?: (round: string, slot: number, team: string) => void; // click → who picked this
 }
 
 // Matchup at each slot built straight from the player's raw picks: R32 from the
@@ -63,7 +64,7 @@ function pct(n: number, total: number): number {
 }
 
 function TeamRow({
-  team, picked, winner, dead, scoreText, winProb, distCount, distTotal, isFinal,
+  team, picked, winner, dead, scoreText, winProb, distCount, distTotal, isFinal, onClick,
 }: {
   team: string | null;
   picked: boolean;
@@ -74,6 +75,7 @@ function TeamRow({
   distCount: number | null;
   distTotal: number;
   isFinal: boolean;
+  onClick?: () => void;
 }) {
   if (!team) {
     return (
@@ -87,9 +89,14 @@ function TeamRow({
   // A team is "dead" if it has been knocked out — either it lost this slot or it
   // was eliminated earlier (a pick that can no longer come good).
   const eliminated = dead && !winner;
+  // Clicking a row reveals who picked that team — only when there are picks.
+  const clickable = !!onClick && (distCount ?? 0) > 0;
   return (
     <div
-      className={`flex items-center gap-1.5 px-2 py-1 ${
+      onClick={clickable ? onClick : undefined}
+      role={clickable ? 'button' : undefined}
+      title={clickable ? `See who picked ${team}` : undefined}
+      className={`flex items-center gap-1.5 px-2 py-1 ${clickable ? 'cursor-pointer hover:bg-gray-100' : ''} ${
         picked ? 'bg-wc-blue-50' : ''
       } ${winner ? 'text-wc-green-700' : eliminated ? 'text-gray-400' : 'text-gray-800'}`}
     >
@@ -116,7 +123,7 @@ function TeamRow({
 }
 
 export default function BracketBoard({
-  picks, r32Teams, results, eliminated = [], liveByKey = {}, oddsByKey = {}, distribution = {},
+  picks, r32Teams, results, eliminated = [], liveByKey = {}, oddsByKey = {}, distribution = {}, onPick,
 }: Props) {
   const matchups = buildMatchups(picks, r32Teams);
   const elimSet = new Set(eliminated);
@@ -207,6 +214,7 @@ export default function BracketBoard({
                               distCount={count}
                               distTotal={dist.total}
                               isFinal={isFinal}
+                              onClick={onPick ? () => onPick(round, slot, team) : undefined}
                             />
                           ));
                       })()
@@ -222,6 +230,7 @@ export default function BracketBoard({
                           distCount={dist && a ? dist.teams[a] ?? 0 : null}
                           distTotal={dist?.total ?? 0}
                           isFinal={isFinal}
+                          onClick={onPick && a ? () => onPick(round, slot, a) : undefined}
                         />
                         <TeamRow
                           team={b}
@@ -233,6 +242,7 @@ export default function BracketBoard({
                           distCount={dist && b ? dist.teams[b] ?? 0 : null}
                           distTotal={dist?.total ?? 0}
                           isFinal={isFinal}
+                          onClick={onPick && b ? () => onPick(round, slot, b) : undefined}
                         />
                         {/* An off-matchup pick — e.g. a champion who isn't one of
                             their finalists, or a pick whose team lost upstream —
@@ -249,6 +259,7 @@ export default function BracketBoard({
                               distCount={dist ? dist.teams[picked] ?? 0 : null}
                               distTotal={dist?.total ?? 0}
                               isFinal={isFinal}
+                              onClick={onPick ? () => onPick(round, slot, picked) : undefined}
                             />
                           </div>
                         )}
