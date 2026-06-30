@@ -12,7 +12,7 @@
 // parent EVENT slug per stage, which is env-overridable so production can correct
 // it without a code change.
 
-import { POLYMARKET_TEAM_CODES, POLYMARKET_TEAM_ALT_CODES } from './polymarket-codes';
+import { ALL_TEAMS } from './worldcup-data';
 
 export type FutureStage = 'reachR16' | 'reachQF' | 'reachSF' | 'reachFinal' | 'champion';
 
@@ -39,40 +39,93 @@ const FETCH_HEADERS = {
 
 interface PolyMarket {
   slug: string;
-  outcomePrices: string; // JSON array like '["0.12","0.88"]' — [0] is "Yes"
-  closed: boolean;
+  outcomePrices: string;   // JSON array like '["0.04","0.96"]' — [0] is "Yes"
+  question?: string;       // "Will Egypt reach the Semifinals at the 2026 FIFA World Cup?"
+  groupItemTitle?: string; // usually just the team, e.g. "Egypt"
+  closed?: boolean;
 }
 interface PolyEvent {
   slug: string;
   markets: PolyMarket[];
 }
 
-// Candidate parent-event slugs per stage. Env vars win; the rest are best-guess
-// fallbacks following the existing `fifwc-` convention. Each var may hold a
-// comma-separated list of slugs to try in order.
+// Candidate parent-event slugs per stage. Polymarket groups all teams under one
+// event per stage, slug `world-cup-nation-to-reach-<stage>` (confirmed for the
+// semifinals market). Env vars win and may hold a comma-separated list.
 function slugCandidates(stage: FutureStage): string[] {
   const env = (v: string | undefined) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : []);
   const map: Record<FutureStage, { env?: string; defaults: string[] }> = {
-    reachR16: { env: process.env.POLYMARKET_REACH_R16_SLUG, defaults: ['fifwc-reach-round-of-16', 'fifwc-advance-to-round-of-16'] },
-    reachQF: { env: process.env.POLYMARKET_REACH_QF_SLUG, defaults: ['fifwc-reach-quarterfinals', 'fifwc-reach-quarter-finals'] },
-    reachSF: { env: process.env.POLYMARKET_REACH_SF_SLUG, defaults: ['fifwc-reach-semifinals', 'fifwc-reach-semi-finals'] },
-    reachFinal: { env: process.env.POLYMARKET_REACH_FINAL_SLUG, defaults: ['fifwc-reach-final', 'fifwc-reach-the-final'] },
-    champion: { env: process.env.POLYMARKET_WINNER_SLUG, defaults: ['fifwc-winner', 'world-cup-2026-winner', 'fifa-world-cup-2026-winner'] },
+    reachR16: {
+      env: process.env.POLYMARKET_REACH_R16_SLUG,
+      defaults: ['world-cup-nation-to-reach-round-of-16', 'world-cup-nation-to-reach-last-16'],
+    },
+    reachQF: {
+      env: process.env.POLYMARKET_REACH_QF_SLUG,
+      defaults: ['world-cup-nation-to-reach-quarterfinals', 'world-cup-nation-to-reach-quarter-finals'],
+    },
+    reachSF: {
+      env: process.env.POLYMARKET_REACH_SF_SLUG,
+      defaults: ['world-cup-nation-to-reach-semifinals', 'world-cup-nation-to-reach-semi-finals'],
+    },
+    reachFinal: {
+      env: process.env.POLYMARKET_REACH_FINAL_SLUG,
+      defaults: ['world-cup-nation-to-reach-final', 'world-cup-nation-to-reach-the-final'],
+    },
+    champion: {
+      env: process.env.POLYMARKET_WINNER_SLUG,
+      defaults: ['world-cup-winner', 'fifa-world-cup-2026-winner', 'world-cup-2026-winner'],
+    },
   };
   const entry = map[stage];
   return [...env(entry.env), ...entry.defaults];
 }
 
-// team code (incl. alternates) -> canonical team name
-function buildCodeToTeam(): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const [team, code] of Object.entries(POLYMARKET_TEAM_CODES)) m.set(code.toLowerCase(), team);
-  for (const [team, alts] of Object.entries(POLYMARKET_TEAM_ALT_CODES)) {
-    for (const code of alts) if (!m.has(code.toLowerCase())) m.set(code.toLowerCase(), team);
-  }
-  return m;
+// Strip accents/punctuation and lowercase so "Türkiye" / "Côte d'Ivoire" match.
+function norm(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
-const CODE_TO_TEAM = buildCodeToTeam();
+
+// Polymarket's question text may use a common name that differs from ours.
+const TEAM_ALIASES: Record<string, string[]> = {
+  'United States': ['usa', 'united states', 'us'],
+  'South Korea': ['south korea', 'korea republic', 'korea'],
+  'Czechia': ['czechia', 'czech republic'],
+  'Turkey': ['turkey', 'turkiye'],
+  "Cote d'Ivoire": ['ivory coast', 'cote divoire', 'cote d ivoire'],
+  'Bosnia and Herzegovina': ['bosnia and herzegovina', 'bosnia'],
+  'Curacao': ['curacao'],
+};
+
+// All (normalized alias -> team) pairs, longest alias first so a longer name
+// wins over a shorter one it contains.
+const ALIAS_INDEX: { alias: string; team: string }[] = (() => {
+  const out: { alias: string; team: string }[] = [];
+  for (const team of ALL_TEAMS) {
+    const aliases = TEAM_ALIASES[team] ?? [team];
+    for (const a of aliases) out.push({ alias: norm(a), team });
+  }
+  return out.sort((x, y) => y.alias.length - x.alias.length);
+})();
+
+// Identify which team a per-team child market is about, from its title/question.
+// Exported for tests.
+export function teamOfMarket(market: PolyMarket): string | null {
+  const title = market.groupItemTitle ? norm(market.groupItemTitle) : '';
+  if (title) {
+    const exact = ALIAS_INDEX.find((e) => e.alias === title);
+    if (exact) return exact.team;
+  }
+  const hay = ' ' + norm(`${market.groupItemTitle ?? ''} ${market.question ?? ''} ${market.slug}`) + ' ';
+  for (const { alias, team } of ALIAS_INDEX) {
+    if (hay.includes(' ' + alias + ' ')) return team;
+  }
+  return null;
+}
 
 async function fetchEvent(slug: string): Promise<PolyEvent | null> {
   try {
@@ -102,14 +155,8 @@ function parseTeamMarket(event: PolyEvent): Record<string, number> {
     }
     const yes = prices[0];
     if (isNaN(yes) || yes < 0 || yes > 1) continue;
-    const slug = market.slug.toLowerCase();
-    // Find the team whose code this child slug ends with (longest match wins, so
-    // a short code can't shadow a longer one).
-    let best: { team: string; len: number } | null = null;
-    for (const [code, team] of Array.from(CODE_TO_TEAM)) {
-      if (slug.endsWith('-' + code) && (!best || code.length > best.len)) best = { team, len: code.length };
-    }
-    if (best) out[best.team] = yes;
+    const team = teamOfMarket(market);
+    if (team) out[team] = yes;
   }
   return out;
 }
