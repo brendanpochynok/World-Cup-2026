@@ -99,6 +99,8 @@ const TEAM_ALIASES: Record<string, string[]> = {
   "Cote d'Ivoire": ['ivory coast', 'cote divoire', 'cote d ivoire'],
   'Bosnia and Herzegovina': ['bosnia and herzegovina', 'bosnia'],
   'Curacao': ['curacao'],
+  'Cabo Verde': ['cape verde', 'cabo verde'],
+  'DR Congo': ['democratic republic of congo', 'dr congo', 'congo dr', 'drc', 'congo'],
 };
 
 // All (normalized alias -> team) pairs, longest alias first so a longer name

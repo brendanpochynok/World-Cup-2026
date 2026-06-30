@@ -116,6 +116,55 @@ function buildSlotOrder(tree: TreeInput): SlotNode[] {
   return nodes;
 }
 
+// Every team that could still appear in each slot, given the seeding, recorded
+// results, and the bracket tree. A decided slot resolves to its winner; an
+// undecided slot's reachable set is the union of its two feeders' reachable sets
+// (R32 reads the seeding pair). Returns slotKey -> set of possible teams.
+export function reachableTeams(tree: TreeInput): Map<string, Set<string>> {
+  const reach = new Map<string, Set<string>>();
+  const nodes = buildSlotOrder(tree); // topological: feeders before the slot
+  for (const node of nodes) {
+    if (node.decidedTeam) {
+      reach.set(node.key, new Set([node.decidedTeam]));
+      continue;
+    }
+    const set = new Set<string>();
+    if (node.round === 'R32') {
+      const seed = tree.r32[node.slot];
+      if (seed?.[0]) set.add(seed[0]);
+      if (seed?.[1]) set.add(seed[1]);
+    } else {
+      for (const feed of [node.feedA, node.feedB]) {
+        if (feed) for (const t of Array.from(reach.get(feed) ?? [])) set.add(t);
+      }
+    }
+    reach.set(node.key, set);
+  }
+  return reach;
+}
+
+// Undecided games where some possible participant has no odds in edgeProb.
+// Lets the caller report every gap up front instead of one error per request.
+export function findUnpricedGames(
+  tree: TreeInput,
+  edgeProb: Record<string, Record<string, number>>,
+): { round: string; slot: number; missing: string[] }[] {
+  const reach = reachableTeams(tree);
+  const out: { round: string; slot: number; missing: string[] }[] = [];
+  for (const round of ROUND_ORDER) {
+    for (let slot = 0; slot < SLOTS_PER_ROUND[round]; slot++) {
+      const key = `${round}-${slot}`;
+      if (tree.decided[key]) continue;              // already resolved
+      const teams = Array.from(reach.get(key) ?? []);
+      if (teams.length < 2) continue;               // not a real game (yet)
+      const priced = edgeProb[key] ?? {};
+      const missing = teams.filter((t) => typeof priced[t] !== 'number');
+      if (missing.length > 0) out.push({ round, slot, missing });
+    }
+  }
+  return out;
+}
+
 // The two teams that can win a slot given the winners chosen so far. R32 reads
 // the real seeding; later rounds read whoever advanced from the two feeders.
 function participantsOf(
