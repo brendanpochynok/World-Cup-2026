@@ -427,3 +427,258 @@ export function computeWinScenarios(
     byChampion,
   };
 }
+
+// ── Scenario walkthrough ──────────────────────────────────────────────────────
+// Steps a single entry through the games that actually decide their fate: at
+// each step it surfaces the most decisive remaining game and, for each way it
+// could go, the entry's resulting win chance — so the admin can click down a
+// path ("England win it all → you're in; then who wins the other semi?").
+
+export interface WalkBranch {
+  team: string;
+  winPct: number;            // selected entry's win chance if this team wins the slot
+  share: number;             // % of the current sub-space where this team wins it
+  terminal: 'win' | 'lose' | null; // resolves the entry's fate outright?
+}
+
+export interface WalkResult {
+  winPct: number;            // selected entry's win chance on the current path
+  status: 'clinched' | 'dead' | 'pivotal' | 'tossup';
+  scenarios: number;
+  method: 'exact' | 'monte-carlo';
+  pivotal?: { round: string; slot: number; key: string; branches: WalkBranch[] };
+}
+
+// Force a team to win a slot by forcing every game on its path up to that slot —
+// a team can only win round R if it won every earlier round, so this keeps the
+// constraint self-consistent (and lets sampling avoid rejection).
+export function expandForcedChain(tree: TreeInput, key: string, team: string): Record<string, string> {
+  const dash = key.lastIndexOf('-');
+  const targetRound = key.slice(0, dash);
+  const targetSlot = parseInt(key.slice(dash + 1), 10);
+  let r32slot = -1;
+  for (const s of Object.keys(tree.r32)) {
+    const [a, b] = tree.r32[Number(s)];
+    if (a === team || b === team) { r32slot = Number(s); break; }
+  }
+  if (r32slot < 0) return { [key]: team }; // unknown seeding — force just the slot
+  const out: Record<string, string> = {};
+  let slot = r32slot;
+  for (const round of ROUND_ORDER) {
+    out[`${round}-${slot}`] = team;
+    if (round === targetRound) {
+      if (slot !== targetSlot) return { [key]: team }; // inconsistent pick — fall back
+      break;
+    }
+    slot = Math.floor(slot / 2);
+  }
+  return out;
+}
+
+export function walkScenario(
+  tree: TreeInput,
+  entries: ScenarioEntryInput[],
+  opts: { selectedKey: string; forced?: Record<string, string>; edgeProb?: Record<string, Record<string, number>> },
+): WalkResult {
+  const forced = opts.forced ?? {};
+  const edgeProb = opts.edgeProb;
+  const floor = entries.reduce((m, e) => Math.max(m, e.fixedScore), 0);
+  const contenders = entries.filter((e) => e.maxScore >= floor);
+  const sel = contenders.findIndex((c) => c.key === opts.selectedKey);
+  if (sel < 0) return { winPct: 0, status: 'dead', scenarios: 0, method: 'exact' };
+
+  const nodes = buildSlotOrder(tree);
+  const nodesByKey = new Map(nodes.map((n) => [n.key, n]));
+  const C = contenders.length;
+
+  const pickIndex = new Map<string, Map<string, number[]>>();
+  for (const node of nodes) {
+    const byTeam = new Map<string, number[]>();
+    for (let i = 0; i < C; i++) {
+      const team = contenders[i].picks[node.key];
+      if (!team) continue;
+      (byTeam.get(team) ?? byTeam.set(team, []).get(team)!).push(i);
+    }
+    if (byTeam.size > 0) pickIndex.set(node.key, byTeam);
+  }
+
+  const probsFor = (key: string, parts: string[]): number[] => {
+    if (parts.length <= 1) return parts.map(() => 1);
+    const ep = edgeProb?.[key];
+    if (ep) {
+      const vals = parts.map((t) => (typeof ep[t] === 'number' ? Math.max(0, ep[t]) : NaN));
+      if (vals.every((v) => !isNaN(v))) {
+        const sum = vals.reduce((a, b) => a + b, 0);
+        if (sum > 0) return vals.map((v) => v / sum);
+      }
+    }
+    return parts.map(() => 1 / parts.length);
+  };
+
+  // Free games = undecided and not pinned by the current path; these are what we
+  // bucket on to find the next decisive game.
+  const freeKeys = nodes.filter((n) => !n.decidedTeam && !(n.key in forced)).map((n) => n.key);
+  const probe = new Map<string, string | null>();
+  let freeBranch = 0;
+  for (const node of nodes) {
+    const parts = participantsOf(node, tree, probe);
+    if (node.decidedTeam) probe.set(node.key, node.decidedTeam);
+    else if (node.key in forced) probe.set(node.key, forced[node.key]);
+    else { if (parts.length >= 2) freeBranch++; probe.set(node.key, parts[0] ?? null); }
+  }
+  const useExact = freeBranch <= 30 && Math.pow(2, freeBranch) <= EXACT_MAX_LEAVES;
+
+  const score = new Array<number>(C);
+  for (let i = 0; i < C; i++) score[i] = contenders[i].fixedScore;
+  const apply = (key: string, team: string | null, sign: number) => {
+    if (!team) return;
+    const idxs = pickIndex.get(key)?.get(team);
+    if (!idxs) return;
+    const pts = nodesByKey.get(key)!.points;
+    for (const i of idxs) score[i] += sign * pts;
+  };
+
+  let total = 0;
+  let selWins = 0;
+  const bucket = new Map<string, Map<string, { total: number; wins: number }>>();
+
+  const recordLeaf = (winners: Map<string, string | null>, weight: number) => {
+    total += weight;
+    let best = -Infinity;
+    for (let i = 0; i < C; i++) if (score[i] > best) best = score[i];
+    const won = score[sel] === best;
+    if (won) selWins += weight;
+    for (const key of freeKeys) {
+      const t = winners.get(key);
+      if (!t) continue;
+      let m = bucket.get(key);
+      if (!m) { m = new Map(); bucket.set(key, m); }
+      let c = m.get(t);
+      if (!c) { c = { total: 0, wins: 0 }; m.set(t, c); }
+      c.total += weight;
+      if (won) c.wins += weight;
+    }
+  };
+
+  if (useExact) {
+    const winners = new Map<string, string | null>();
+    const dfs = (idx: number, weight: number) => {
+      if (idx === nodes.length) { recordLeaf(winners, weight); return; }
+      const node = nodes[idx];
+      const pin = node.decidedTeam ?? (node.key in forced ? forced[node.key] : null);
+      if (pin) {
+        const parts = participantsOf(node, tree, winners);
+        // A forced winner that can't actually reach this slot kills the branch.
+        if (node.key in forced && !node.decidedTeam && parts.length > 0 && !parts.includes(pin)) return;
+        winners.set(node.key, pin);
+        apply(node.key, pin, +1);
+        dfs(idx + 1, weight);
+        apply(node.key, pin, -1);
+        winners.delete(node.key);
+        return;
+      }
+      const parts = participantsOf(node, tree, winners);
+      if (parts.length === 0) {
+        winners.set(node.key, null);
+        dfs(idx + 1, weight);
+        winners.delete(node.key);
+        return;
+      }
+      const probs = probsFor(node.key, parts);
+      for (let j = 0; j < parts.length; j++) {
+        winners.set(node.key, parts[j]);
+        apply(node.key, parts[j], +1);
+        dfs(idx + 1, weight * probs[j]);
+        apply(node.key, parts[j], -1);
+      }
+      winners.delete(node.key);
+    };
+    dfs(0, 1);
+  } else {
+    const winners = new Map<string, string | null>();
+    for (let s = 0; s < MONTE_CARLO_SAMPLES; s++) {
+      const applied: Array<[string, string]> = [];
+      let valid = true;
+      for (const node of nodes) {
+        let team: string | null;
+        const pin = node.decidedTeam ?? (node.key in forced ? forced[node.key] : null);
+        if (pin) {
+          const parts = participantsOf(node, tree, winners);
+          if (node.key in forced && !node.decidedTeam && parts.length > 0 && !parts.includes(pin)) { valid = false; break; }
+          team = pin;
+        } else {
+          const parts = participantsOf(node, tree, winners);
+          if (parts.length === 0) team = null;
+          else {
+            const probs = probsFor(node.key, parts);
+            let r = Math.random();
+            let j = 0;
+            while (j < probs.length - 1 && r >= probs[j]) { r -= probs[j]; j++; }
+            team = parts[j];
+          }
+        }
+        winners.set(node.key, team);
+        if (team) { apply(node.key, team, +1); applied.push([node.key, team]); }
+      }
+      if (valid) recordLeaf(winners, 1);
+      for (const [key, team] of applied) apply(key, team, -1);
+      winners.clear();
+    }
+  }
+
+  const method = useExact ? 'exact' : 'monte-carlo';
+  if (total <= 0) return { winPct: 0, status: 'dead', scenarios: 0, method };
+  const winPct = (selWins / total) * 100;
+  const EPS = 1e-6;
+  if (selWins <= EPS) return { winPct: 0, status: 'dead', scenarios: total | 0, method };
+  if (selWins >= total - EPS) return { winPct: 100, status: 'clinched', scenarios: total | 0, method };
+
+  // Pick the free game whose outcomes most spread the entry's win chance.
+  let bestKey: string | null = null;
+  let bestSpread = -1;
+  for (const [key, m] of Array.from(bucket)) {
+    const teams = Array.from(m.entries()).filter(([, c]) => c.total >= 0.02 * total);
+    if (teams.length < 2) continue;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const [, c] of teams) {
+      const r = c.wins / c.total;
+      if (r < lo) lo = r;
+      if (r > hi) hi = r;
+    }
+    const spread = hi - lo;
+    const pts = nodesByKey.get(key)!.points;
+    // Prefer the biggest swing; on ties prefer the higher-value (later) round.
+    if (spread > bestSpread + 1e-9 || (Math.abs(spread - bestSpread) <= 1e-9 && bestKey && pts > nodesByKey.get(bestKey)!.points)) {
+      bestSpread = spread;
+      bestKey = key;
+    }
+  }
+
+  if (!bestKey || bestSpread < 0.005) {
+    return { winPct, status: 'tossup', scenarios: total | 0, method };
+  }
+
+  const node = nodesByKey.get(bestKey)!;
+  const m = bucket.get(bestKey)!;
+  const branches: WalkBranch[] = Array.from(m.entries())
+    .filter(([, c]) => c.total >= 0.02 * total)
+    .map(([team, c]) => {
+      const wp = (c.wins / c.total) * 100;
+      return {
+        team,
+        winPct: wp,
+        share: (c.total / total) * 100,
+        terminal: wp >= 100 - 1e-6 ? 'win' : wp <= 1e-6 ? 'lose' : null,
+      } as WalkBranch;
+    })
+    .sort((a, b) => b.winPct - a.winPct);
+
+  return {
+    winPct,
+    status: 'pivotal',
+    scenarios: total | 0,
+    method,
+    pivotal: { round: node.round, slot: node.slot, key: bestKey, branches },
+  };
+}

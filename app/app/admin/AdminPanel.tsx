@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
-import { GROUP_MATCHES, GROUPS, ALL_TEAMS, BRACKET_ROUNDS } from '@/lib/worldcup-data';
+import { useState, useTransition, useEffect, useCallback } from 'react';
+import { GROUP_MATCHES, GROUPS, ALL_TEAMS, BRACKET_ROUNDS, getTeamMeta, getFlagUrl } from '@/lib/worldcup-data';
 import type { WinScenariosResponse } from '@/app/api/admin/win-scenarios/route';
+import type { WalkResponse } from '@/app/api/admin/win-scenarios/walk/route';
 import { calculatePayouts } from '@/lib/payouts';
 import TrophyIcon from '@/components/TrophyIcon';
 import BracketView from '@/components/BracketView';
@@ -1453,6 +1454,7 @@ function ScenariosTab() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [weighted, setWeighted] = useState(false); // false = 50/50, true = live odds
+  const [walk, setWalk] = useState<{ key: string; label: string } | null>(null);
 
   async function load(useWeighted: boolean) {
     setLoading(true);
@@ -1584,13 +1586,21 @@ function ScenariosTab() {
           <div className="card p-0 overflow-hidden">
             <div className="px-4 py-2.5 border-b border-gray-100">
               <h4 className="font-bold text-gray-900 text-sm">Chances to win</h4>
+              <p className="text-[11px] text-gray-400 mt-0.5">Tap an entry to walk through the games that decide their fate.</p>
             </div>
             <div className="divide-y divide-gray-50">
               {data.contenders.length === 0 ? (
                 <p className="text-center text-gray-400 text-sm py-8">No entries in contention.</p>
               ) : (
-                data.contenders.map((c, i) => (
-                  <div key={c.key} className="flex items-center gap-3 px-4 py-2.5">
+                data.contenders.map((c, i) => {
+                  const label = (c.displayName || c.username) + (c.entriesCount > 1 ? ` · Entry ${c.entry}` : '');
+                  return (
+                  <button
+                    key={c.key}
+                    onClick={() => setWalk({ key: c.key, label })}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors"
+                    title="Walk through this entry's path to winning"
+                  >
                     <span className="text-gray-400 font-bold tabular-nums w-5 text-right text-sm">{i + 1}</span>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-gray-900 text-sm truncate">
@@ -1619,8 +1629,10 @@ function ScenariosTab() {
                         </p>
                       )}
                     </div>
-                  </div>
-                ))
+                    <span className="text-gray-300 text-lg flex-shrink-0">›</span>
+                  </button>
+                  );
+                })
               )}
             </div>
           </div>
@@ -1658,6 +1670,164 @@ function ScenariosTab() {
           )}
         </>
       ) : null}
+
+      {walk && (
+        <ScenarioWalk selectedKey={walk.key} label={walk.label} weighted={weighted} onClose={() => setWalk(null)} />
+      )}
+    </div>
+  );
+}
+
+// ── Scenario walkthrough modal ────────────────────────────────────────────────
+
+const WALK_ROUND_LABEL: Record<string, string> = {
+  R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', Final: 'the Final',
+};
+function walkQuestion(round: string, slot: number): string {
+  if (round === 'Final') return 'Who wins the World Cup? 🏆';
+  return `Who wins ${WALK_ROUND_LABEL[round] ?? round} #${slot + 1}?`;
+}
+
+function ScenarioWalk({
+  selectedKey, label, weighted, onClose,
+}: {
+  selectedKey: string;
+  label: string;
+  weighted: boolean;
+  onClose: () => void;
+}) {
+  // Each path entry pins one game's winner and carries a human label for the trail.
+  const [path, setPath] = useState<{ key: string; team: string; question: string }[]>([]);
+  const [step, setStep] = useState<WalkResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStep = useCallback(async (p: { key: string; team: string }[]) => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/win-scenarios/walk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedKey, weighted, path: p.map((x) => ({ key: x.key, team: x.team })) }),
+      });
+      setStep(await res.json());
+    } catch {
+      setStep({ error: 'Failed to compute.' } as WalkResponse);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedKey, weighted]);
+
+  useEffect(() => {
+    fetchStep(path);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path]);
+
+  function choose(team: string) {
+    if (!step || 'error' in step || !step.pivotal) return;
+    const q = walkQuestion(step.pivotal.round, step.pivotal.slot);
+    setPath((p) => [...p, { key: step.pivotal!.key, team, question: q }]);
+  }
+  function backTo(index: number) {
+    setPath((p) => p.slice(0, index));
+  }
+
+  const ok = step && !('error' in step);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
+      <div
+        className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 p-4 border-b border-gray-100">
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-gray-900 text-sm truncate">{label}</p>
+            <p className="text-[11px] text-gray-400">
+              Path to winning {weighted ? '· live odds' : '· 50/50'}
+              {ok && typeof step.winPct === 'number' ? ` · ${fmtPct(step.winPct)} on this path` : ''}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none px-1" aria-label="Close">×</button>
+        </div>
+
+        <div className="overflow-y-auto p-4 space-y-3">
+          {/* Trail of choices so far */}
+          {path.length > 0 && (
+            <div className="space-y-1">
+              {path.map((p, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => backTo(idx)}
+                  className="w-full flex items-center gap-2 text-left text-[11px] text-gray-500 hover:text-gray-800"
+                  title="Undo back to here"
+                >
+                  <span className="text-gray-300">{idx + 1}.</span>
+                  <span className="truncate">{p.question.replace(/ 🏆/, '')} → <span className="font-semibold">{p.team}</span></span>
+                  <span className="ml-auto text-gray-300">↶</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {loading ? (
+            <p className="text-center text-gray-400 text-sm py-8">Working out the scenarios…</p>
+          ) : !ok ? (
+            <p className="text-center text-wc-red-500 text-sm py-8">{(step as { error: string }).error}</p>
+          ) : step.status === 'clinched' ? (
+            <div className="text-center py-6">
+              <p className="text-3xl mb-1">✅</p>
+              <p className="font-bold text-wc-green-700">Wins the pool on this path.</p>
+              <p className="text-gray-400 text-xs mt-1">Every remaining outcome from here keeps them first.</p>
+            </div>
+          ) : step.status === 'dead' ? (
+            <div className="text-center py-6">
+              <p className="text-3xl mb-1">❌</p>
+              <p className="font-bold text-gray-700">Can’t win on this path.</p>
+              <p className="text-gray-400 text-xs mt-1">No outcome from here puts them first. Undo a step to explore another branch.</p>
+            </div>
+          ) : step.status === 'tossup' ? (
+            <div className="text-center py-6">
+              <p className="font-bold text-gray-800">{fmtPct(step.winPct)} from here</p>
+              <p className="text-gray-400 text-xs mt-1">It comes down to several games at once — no single one decides it.</p>
+            </div>
+          ) : step.pivotal ? (
+            <div className="space-y-2">
+              <p className="font-bold text-gray-900 text-sm">{walkQuestion(step.pivotal.round, step.pivotal.slot)}</p>
+              <div className="space-y-1.5">
+                {step.pivotal.branches.map((b) => {
+                  const meta = getTeamMeta(b.team);
+                  const tone =
+                    b.terminal === 'win' ? 'border-wc-green-200 bg-wc-green-50'
+                    : b.terminal === 'lose' ? 'border-gray-200 bg-gray-50 opacity-70'
+                    : 'border-gray-200 hover:border-wc-blue-300';
+                  return (
+                    <button
+                      key={b.team}
+                      onClick={() => choose(b.team)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-colors ${tone}`}
+                    >
+                      <img src={getFlagUrl(meta.flag)} alt={b.team} className="w-6 h-4 object-cover rounded-sm flex-shrink-0" />
+                      <span className="font-semibold text-gray-800 text-sm truncate">{b.team}</span>
+                      <span className="text-[10px] text-gray-400 tabular-nums flex-shrink-0">{fmtPct(b.share)} likely</span>
+                      <span className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+                        <span className={`text-sm font-bold tabular-nums ${
+                          b.terminal === 'win' ? 'text-wc-green-700' : b.terminal === 'lose' ? 'text-gray-300' : 'text-gray-900'
+                        }`}>
+                          {b.terminal === 'win' ? '✅ win' : b.terminal === 'lose' ? '❌ out' : `${fmtPct(b.winPct)}`}
+                        </span>
+                        {b.terminal === null && <span className="text-gray-300">›</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-gray-400 pt-1">
+                “% likely” is how often this game goes that way{weighted ? ' (per live odds)' : ''}; the bold number is {label.split(' · ')[0]}’s win chance if it does.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
