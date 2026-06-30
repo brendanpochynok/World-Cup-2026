@@ -1425,9 +1425,12 @@ function buildScenarioSummary(d: Extract<WinScenariosResponse, { contenders: unk
         ? `${d.scenarios.toLocaleString()} possible outcomes (exact)`
         : `${d.scenarios.toLocaleString()} simulated outcomes`),
   );
+  if (d.weighted) {
+    lines.push(`Weighted by live odds (${d.oddsGames}/${d.branchingGames} games priced).`);
+  }
   lines.push(`${d.eliminatedCount} of ${d.totalEntries} entries can no longer win.`);
   lines.push('');
-  lines.push('Chances to win (every game a coin flip):');
+  lines.push(d.weighted ? 'Chances to win (odds-weighted):' : 'Chances to win (every game a coin flip):');
   for (const c of d.contenders) {
     const label = (c.displayName || c.username) + (c.entriesCount > 1 ? ` #${c.entry}` : '');
     const tag = c.status === 'clinched' ? ' 🔒 CLINCHED' : '';
@@ -1449,12 +1452,13 @@ function ScenariosTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [weighted, setWeighted] = useState(false); // false = 50/50, true = live odds
 
-  async function load() {
+  async function load(useWeighted: boolean) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/win-scenarios');
+      const res = await fetch(`/api/admin/win-scenarios${useWeighted ? '?weighted=1' : ''}`);
       const json: WinScenariosResponse = await res.json();
       if ('error' in json) setError(json.error);
       else setData(json);
@@ -1466,8 +1470,9 @@ function ScenariosTab() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    load(weighted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weighted]);
 
   async function copySummary() {
     if (!data || 'error' in data) return;
@@ -1487,14 +1492,34 @@ function ScenariosTab() {
           <div>
             <h3 className="text-lg font-bold text-gray-900">Who can still win the pool</h3>
             <p className="text-gray-500 text-sm mt-0.5">
-              Every remaining knockout game is treated as a 50/50 coin flip. The percentages count the
-              share of all possible outcomes each entry finishes first (alone or tied) — not betting odds.
+              {weighted
+                ? 'Each remaining knockout game is weighted by live Polymarket odds, so these are realistic chances of finishing first.'
+                : 'Every remaining knockout game is treated as a 50/50 coin flip — the percentages count the share of all possible outcomes each entry finishes first.'}{' '}
               Admin-only.
             </p>
           </div>
-          <button onClick={load} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0" disabled={loading}>
+          <button onClick={() => load(weighted)} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0" disabled={loading}>
             {loading ? 'Computing…' : 'Recompute'}
           </button>
+        </div>
+
+        {/* Even vs odds-weighted toggle */}
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-xs font-semibold">
+          {([
+            { v: false, label: '50/50 (combinatorics)' },
+            { v: true, label: 'Live odds' },
+          ] as const).map((opt) => (
+            <button
+              key={String(opt.v)}
+              onClick={() => setWeighted(opt.v)}
+              disabled={loading}
+              className={`px-3 py-1.5 transition-colors ${
+                weighted === opt.v ? 'bg-wc-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -1531,6 +1556,21 @@ function ScenariosTab() {
                 {copied ? 'Copied!' : 'Copy summary for chat'}
               </button>
             </div>
+            {data.weighted && (
+              <p className="text-[11px] text-wc-blue-600">
+                Live Polymarket odds applied to {data.oddsGames} of {data.branchingGames} undecided game
+                {data.branchingGames !== 1 ? 's' : ''}
+                {data.oddsGames < data.branchingGames
+                  ? ' — any game with no market (head-to-head or futures) stays an even split.'
+                  : '.'}
+                {(() => {
+                  const found = Object.keys(data.futuresResolved ?? {});
+                  return found.length > 0
+                    ? ` Futures markets found: ${found.join(', ')}.`
+                    : ' No futures markets resolved — set the slug env vars to enable deep-round weighting.';
+                })()}
+              </p>
+            )}
             {data.method === 'monte-carlo' && (
               <p className="text-[11px] text-gray-400">
                 Too many outcomes to enumerate exactly, so these are sampled — percentages are

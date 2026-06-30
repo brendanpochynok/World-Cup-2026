@@ -12,11 +12,19 @@ import {
   type TreeInput,
   type ScenariosResult,
 } from '@/lib/win-scenarios';
+import { GET as fetchOddsRoute } from '@/app/api/odds/route';
+import type { MatchOdds } from '@/app/api/odds/route';
+import { fetchFuturesOdds, advanceProbByRound, type FutureStage } from '@/lib/polymarket-futures';
 
 export const dynamic = 'force-dynamic';
 
+const SLOTS_PER_ROUND: Record<string, number> = { R32: 16, R16: 8, QF: 4, SF: 2, Final: 1 };
+
 export type WinScenariosResponse =
-  | (ScenariosResult & { pendingGroupGames: number })
+  | (ScenariosResult & {
+      pendingGroupGames: number;
+      futuresResolved: Partial<Record<FutureStage, string>>;
+    })
   | { error: string };
 
 // Admin-only: works out, across every way the remaining knockout games could
@@ -57,6 +65,56 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     if (k.round === 'R32' && k.home && k.away) tree.r32[k.slot] = [k.home, k.away];
   }
   for (const r of bracketResults) tree.decided[`${r.round}-${r.slot}`] = r.team;
+
+  // Optional Polymarket weighting. Two market types feed it:
+  //   1. Futures ("reach stage" + outright winner) give every team's chance of
+  //      advancing each round, so even deep games we have no head-to-head line
+  //      for are weighted rather than coin-flipped.
+  //   2. Head-to-head game markets (the next round, teams already known) are
+  //      more precise, so they override the futures-derived numbers per slot.
+  const useOdds = req.nextUrl.searchParams.get('weighted') === '1';
+  let edgeProb: Record<string, Record<string, number>> | undefined;
+  let futuresResolved: Partial<Record<FutureStage, string>> = {};
+  if (useOdds) {
+    edgeProb = {};
+    const now = Date.now();
+
+    // 1. Futures: a per-team one-round advance probability for every round.
+    try {
+      const futures = await fetchFuturesOdds(now);
+      futuresResolved = futures.resolvedSlugs;
+      const advance = advanceProbByRound(futures);
+      for (const round of Object.keys(SLOTS_PER_ROUND)) {
+        const perTeam = advance[round];
+        if (!perTeam) continue;
+        for (let slot = 0; slot < SLOTS_PER_ROUND[round]; slot++) {
+          edgeProb[`${round}-${slot}`] = { ...perTeam };
+        }
+      }
+    } catch {
+      /* futures unavailable — head-to-head + even split still apply */
+    }
+
+    // 2. Head-to-head per-game markets override futures for known matchups.
+    // Knockout games can't draw, so fold the draw evenly into each side.
+    try {
+      const oddsJson = (await (await fetchOddsRoute()).json()) as { odds?: Record<string, MatchOdds> };
+      const oddsByKey = oddsJson.odds ?? {};
+      for (const k of knockoutMatches) {
+        if (!k.home || !k.away) continue;
+        const o = oddsByKey[`${k.round}-${k.slot}`];
+        if (!o) continue;
+        edgeProb[`${k.round}-${k.slot}`] = {
+          [k.home]: o.home + o.draw / 2,
+          [k.away]: o.away + o.draw / 2,
+        };
+      }
+    } catch {
+      /* head-to-head unavailable — futures + even split still apply */
+    }
+
+    if (Object.keys(edgeProb).length === 0) edgeProb = undefined;
+  }
 
   // One scenario-entry per paid entry, with a picks map that holds only the
   // still-undecided bracket slots (decided slots are already in fixedScore).
@@ -103,7 +161,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const result = computeWinScenarios(tree, entries);
-  const body: WinScenariosResponse = { ...result, pendingGroupGames };
+  const result = computeWinScenarios(tree, entries, { edgeProb });
+  const body: WinScenariosResponse = { ...result, pendingGroupGames, futuresResolved };
   return NextResponse.json(body);
 }

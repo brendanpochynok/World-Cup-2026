@@ -57,12 +57,20 @@ export interface ChampionScenario {
 
 export interface ScenariosResult {
   method: 'exact' | 'monte-carlo';
+  weighted: boolean;        // true → games weighted by live odds, false → 50/50
   scenarios: number;        // exact completion count or sample count
   branchingGames: number;   // undecided games that actually flip a coin
+  oddsGames: number;        // branching games that had live odds applied
   totalEntries: number;
   eliminatedCount: number;
   contenders: ContenderScenario[];
   byChampion: ChampionScenario[];
+}
+
+export interface ScenariosOptions {
+  // slotKey -> team -> win probability (0–1). Used to weight that game instead
+  // of a coin flip. Missing slots/teams fall back to an even split.
+  edgeProb?: Record<string, Record<string, number>>;
 }
 
 interface SlotNode {
@@ -123,8 +131,11 @@ function participantsOf(
 export function computeWinScenarios(
   tree: TreeInput,
   entries: ScenarioEntryInput[],
+  opts: ScenariosOptions = {},
 ): ScenariosResult {
   const totalEntries = entries.length;
+  const edgeProb = opts.edgeProb;
+  const weighted = !!edgeProb;
 
   // An entry can only ever finish first if its ceiling reaches the highest
   // *guaranteed* score in the pool — anyone below that is mathematically out.
@@ -133,6 +144,29 @@ export function computeWinScenarios(
   const eliminatedCount = totalEntries - contenders.length;
 
   const nodes = buildSlotOrder(tree);
+
+  // Win probabilities for a slot's participants, aligned to `parts`. Falls back
+  // to an even split when no odds are supplied for that game.
+  const probsFor = (key: string, parts: string[]): number[] => {
+    if (parts.length <= 1) return parts.map(() => 1);
+    const ep = edgeProb?.[key];
+    if (ep) {
+      const vals = parts.map((t) => (typeof ep[t] === 'number' ? Math.max(0, ep[t]) : NaN));
+      if (vals.some((v) => !isNaN(v))) {
+        // Two-team slot with one side missing: derive it as the complement.
+        if (vals.length === 2) {
+          if (isNaN(vals[0]) && !isNaN(vals[1])) vals[0] = Math.max(0, 1 - vals[1]);
+          if (isNaN(vals[1]) && !isNaN(vals[0])) vals[1] = Math.max(0, 1 - vals[0]);
+        }
+        const clean = vals.map((v) => (isNaN(v) ? 0 : v));
+        const sum = clean.reduce((a, b) => a + b, 0);
+        if (sum > 0) return clean.map((v) => v / sum);
+      }
+    }
+    return parts.map(() => 1 / parts.length);
+  };
+  const hasOdds = (key: string, parts: string[]): boolean =>
+    weighted && parts.length >= 2 && !!edgeProb?.[key] && parts.some((t) => typeof edgeProb![key][t] === 'number');
 
   // Per slot, which contenders picked which team — so assigning a winner is an
   // O(pickers) score update rather than a scan of every entry.
@@ -148,15 +182,18 @@ export function computeWinScenarios(
   }
 
   // How many slots actually flip a coin (undecided AND two live candidates)?
-  // Drives the exact-vs-sample decision and is reported to the admin.
+  // Drives the exact-vs-sample decision and is reported to the admin. Also count
+  // how many of those games have live odds we can weight by.
   const winnersProbe = new Map<string, string | null>();
   let branchingGames = 0;
+  let oddsGames = 0;
   for (const node of nodes) {
     const parts = participantsOf(node, tree, winnersProbe);
     if (node.decidedTeam) {
       winnersProbe.set(node.key, node.decidedTeam);
     } else if (parts.length >= 2) {
       branchingGames++;
+      if (hasOdds(node.key, parts)) oddsGames++;
       winnersProbe.set(node.key, parts[0]); // arbitrary for the probe walk
     } else {
       winnersProbe.set(node.key, parts[0] ?? null);
@@ -169,15 +206,19 @@ export function computeWinScenarios(
   const score = new Array<number>(C);
   for (let i = 0; i < C; i++) score[i] = contenders[i].fixedScore;
 
-  // Tallies.
-  let scenarios = 0;
+  // Tallies. Each completion contributes its probability `weight` (1 for an
+  // even-odds completion or a single Monte-Carlo sample), so weighted and
+  // unweighted runs share the same code.
+  let scenarios = 0;     // integer count of completions / samples
+  let totalWeight = 0;   // summed weight (≈1 for weighted exact, = scenarios otherwise)
   const winCount = new Array<number>(C).fill(0);
   const soleWinCount = new Array<number>(C).fill(0);
   const championTotals = new Map<string, number>();
-  const championWins = new Map<string, number[]>(); // champion -> per-contender win count
+  const championWins = new Map<string, number[]>(); // champion -> per-contender win weight
 
-  const recordLeaf = (winners: Map<string, string | null>) => {
+  const recordLeaf = (winners: Map<string, string | null>, weight: number) => {
     scenarios++;
+    totalWeight += weight;
     let best = -Infinity;
     for (let i = 0; i < C; i++) if (score[i] > best) best = score[i];
     let leaders = 0;
@@ -185,15 +226,15 @@ export function computeWinScenarios(
     const champion = winners.get(CHAMPION_KEY) ?? null;
     let champArr: number[] | undefined;
     if (champion) {
-      championTotals.set(champion, (championTotals.get(champion) ?? 0) + 1);
+      championTotals.set(champion, (championTotals.get(champion) ?? 0) + weight);
       champArr = championWins.get(champion);
       if (!champArr) { champArr = new Array<number>(C).fill(0); championWins.set(champion, champArr); }
     }
     for (let i = 0; i < C; i++) {
       if (score[i] !== best) continue;
-      winCount[i]++;
-      if (leaders === 1) soleWinCount[i]++;
-      if (champArr) champArr[i]++;
+      winCount[i] += weight;
+      if (leaders === 1) soleWinCount[i] += weight;
+      if (champArr) champArr[i] += weight;
     }
   };
 
@@ -211,31 +252,34 @@ export function computeWinScenarios(
 
   if (useExact) {
     const winners = new Map<string, string | null>();
-    const dfs = (idx: number) => {
-      if (idx === nodes.length) { recordLeaf(winners); return; }
+    // Each completion's weight is the product of the chosen game probabilities.
+    const dfs = (idx: number, weight: number) => {
+      if (idx === nodes.length) { recordLeaf(winners, weight); return; }
       const node = nodes[idx];
       if (node.decidedTeam) {
         winners.set(node.key, node.decidedTeam);
-        dfs(idx + 1);
+        dfs(idx + 1, weight);
         winners.delete(node.key);
         return;
       }
       const parts = participantsOf(node, tree, winners);
       if (parts.length === 0) {
         winners.set(node.key, null);
-        dfs(idx + 1);
+        dfs(idx + 1, weight);
         winners.delete(node.key);
         return;
       }
-      for (const team of parts) {
+      const probs = probsFor(node.key, parts);
+      for (let j = 0; j < parts.length; j++) {
+        const team = parts[j];
         winners.set(node.key, team);
         apply(node.key, team, +1);
-        dfs(idx + 1);
+        dfs(idx + 1, weight * probs[j]);
         apply(node.key, team, -1);
       }
       winners.delete(node.key);
     };
-    dfs(0);
+    dfs(0, 1);
   } else {
     const winners = new Map<string, string | null>();
     for (let s = 0; s < MONTE_CARLO_SAMPLES; s++) {
@@ -246,18 +290,28 @@ export function computeWinScenarios(
           team = node.decidedTeam;
         } else {
           const parts = participantsOf(node, tree, winners);
-          team = parts.length === 0 ? null : parts[(Math.random() * parts.length) | 0];
+          if (parts.length === 0) {
+            team = null;
+          } else {
+            // Sample a winner weighted by the game's odds (even split otherwise).
+            const probs = probsFor(node.key, parts);
+            let r = Math.random();
+            let j = 0;
+            while (j < probs.length - 1 && r >= probs[j]) { r -= probs[j]; j++; }
+            team = parts[j];
+          }
         }
         winners.set(node.key, team);
         if (team) { apply(node.key, team, +1); applied.push([node.key, team]); }
       }
-      recordLeaf(winners);
+      recordLeaf(winners, 1);
       for (const [key, team] of applied) apply(key, team, -1);
       winners.clear();
     }
   }
 
-  const pctOf = (n: number) => (scenarios > 0 ? (n / scenarios) * 100 : 0);
+  const pctOf = (n: number) => (totalWeight > 0 ? (n / totalWeight) * 100 : 0);
+  const CLINCH_EPS = 1e-9;
 
   const out: ContenderScenario[] = contenders.map((e, i) => {
     const aliveChampions: string[] = [];
@@ -275,7 +329,7 @@ export function computeWinScenarios(
       maxScore: e.maxScore,
       winPct: pctOf(winCount[i]),
       soleWinPct: pctOf(soleWinCount[i]),
-      status: winCount[i] === scenarios && scenarios > 0 ? 'clinched' : 'contender',
+      status: totalWeight > 0 && winCount[i] >= totalWeight - CLINCH_EPS ? 'clinched' : 'contender',
       aliveChampions,
     };
   });
@@ -301,8 +355,10 @@ export function computeWinScenarios(
 
   return {
     method: useExact ? 'exact' : 'monte-carlo',
+    weighted,
     scenarios,
     branchingGames,
+    oddsGames,
     totalEntries,
     eliminatedCount,
     contenders: out,
