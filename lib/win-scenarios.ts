@@ -47,6 +47,7 @@ export interface ContenderScenario {
   soleWinPct: number;   // % of scenarios finishing first alone
   status: 'clinched' | 'contender';
   aliveChampions: string[]; // tournament champions under which this entry can still win
+  expectedPayout: number;   // probability-weighted $ across all scenarios (1st + 2nd money)
 }
 
 export interface ChampionScenario {
@@ -65,6 +66,15 @@ export interface ScenariosResult {
   eliminatedCount: number;
   contenders: ContenderScenario[];
   byChampion: ChampionScenario[];
+  pot: number;              // total prize pool ($); 0 if no entry fee configured
+  // Every entry with a positive expected payout, ranked — includes entries that
+  // can't win 1st but can still cash 2nd.
+  expectedWinnings: { key: string; displayName: string; ev: number; winPct: number }[];
+}
+
+export interface PayoutSchedule {
+  first: number;  // $ to 1st place
+  second: number; // $ to 2nd place
 }
 
 export interface ScenariosOptions {
@@ -74,6 +84,8 @@ export interface ScenariosOptions {
   // When true, refuse to coin-flip: if any game can't be priced from edgeProb,
   // throw ScenarioOddsError instead of falling back to an even split.
   strict?: boolean;
+  // Prize split — enables probability-weighted expected-payout ($) per entry.
+  payout?: PayoutSchedule;
 }
 
 // Thrown in strict mode when a game has no live odds for its participants.
@@ -197,12 +209,17 @@ export function computeWinScenarios(
   const edgeProb = opts.edgeProb;
   const weighted = !!edgeProb;
   const strict = !!opts.strict;
+  const payout = opts.payout ?? { first: 0, second: 0 };
+  const pot = payout.first + payout.second;
 
-  // An entry can only ever finish first if its ceiling reaches the highest
-  // *guaranteed* score in the pool — anyone below that is mathematically out.
+  // Score EVERY entry: 2nd-place money means even entries that can't finish
+  // first still have an expected payout, so we can't prune them out here.
+  const items = entries;
+  // An entry can only finish first if its ceiling reaches the highest
+  // *guaranteed* score — that flag drives the contenders list and elimination
+  // count, but everyone is still scored for payouts.
   const floor = entries.reduce((m, e) => Math.max(m, e.fixedScore), 0);
-  const contenders = entries.filter((e) => e.maxScore >= floor);
-  const eliminatedCount = totalEntries - contenders.length;
+  const eliminatedCount = items.filter((e) => e.maxScore < floor).length;
 
   const nodes = buildSlotOrder(tree);
 
@@ -230,13 +247,13 @@ export function computeWinScenarios(
   const hasOdds = (key: string, parts: string[]): boolean =>
     weighted && parts.length >= 2 && !!edgeProb?.[key] && parts.some((t) => typeof edgeProb![key][t] === 'number');
 
-  // Per slot, which contenders picked which team — so assigning a winner is an
+  // Per slot, which entries picked which team — so assigning a winner is an
   // O(pickers) score update rather than a scan of every entry.
   const pickIndex = new Map<string, Map<string, number[]>>();
   for (const node of nodes) {
     const byTeam = new Map<string, number[]>();
-    for (let i = 0; i < contenders.length; i++) {
-      const team = contenders[i].picks[node.key];
+    for (let i = 0; i < items.length; i++) {
+      const team = items[i].picks[node.key];
       if (!team) continue;
       (byTeam.get(team) ?? byTeam.set(team, []).get(team)!).push(i);
     }
@@ -264,9 +281,9 @@ export function computeWinScenarios(
 
   const useExact = branchingGames <= 30 && Math.pow(2, branchingGames) <= EXACT_MAX_LEAVES;
 
-  const C = contenders.length;
+  const C = items.length;
   const score = new Array<number>(C);
-  for (let i = 0; i < C; i++) score[i] = contenders[i].fixedScore;
+  for (let i = 0; i < C; i++) score[i] = items[i].fixedScore;
 
   // Tallies. Each completion contributes its probability `weight` (1 for an
   // even-odds completion or a single Monte-Carlo sample), so weighted and
@@ -275,16 +292,33 @@ export function computeWinScenarios(
   let totalWeight = 0;   // summed weight (≈1 for weighted exact, = scenarios otherwise)
   const winCount = new Array<number>(C).fill(0);
   const soleWinCount = new Array<number>(C).fill(0);
+  const evPayout = new Array<number>(C).fill(0); // weighted $ across scenarios
   const championTotals = new Map<string, number>();
-  const championWins = new Map<string, number[]>(); // champion -> per-contender win weight
+  const championWins = new Map<string, number[]>(); // champion -> per-entry win weight
 
   const recordLeaf = (winners: Map<string, string | null>, weight: number) => {
     scenarios++;
     totalWeight += weight;
-    let best = -Infinity;
-    for (let i = 0; i < C; i++) if (score[i] > best) best = score[i];
-    let leaders = 0;
-    for (let i = 0; i < C; i++) if (score[i] === best) leaders++;
+    // Top score and runner-up score (+ how many are tied at each) drive both the
+    // win tally and the 1st/2nd payout split.
+    let max1 = -Infinity;
+    let max2 = -Infinity;
+    for (let i = 0; i < C; i++) {
+      const v = score[i];
+      if (v > max1) { max2 = max1; max1 = v; }
+      else if (v < max1 && v > max2) { max2 = v; }
+    }
+    let cnt1 = 0;
+    let cnt2 = 0;
+    for (let i = 0; i < C; i++) {
+      if (score[i] === max1) cnt1++;
+      else if (score[i] === max2) cnt2++;
+    }
+    // Tie-splitting: a top group of 2+ occupies both money spots, so it splits
+    // the whole pot; a lone leader takes 1st and the runner-up group splits 2nd.
+    const share1 = cnt1 >= 2 ? pot / cnt1 : payout.first;
+    const share2 = cnt1 === 1 && cnt2 > 0 ? payout.second / cnt2 : 0;
+
     const champion = winners.get(CHAMPION_KEY) ?? null;
     let champArr: number[] | undefined;
     if (champion) {
@@ -293,10 +327,14 @@ export function computeWinScenarios(
       if (!champArr) { champArr = new Array<number>(C).fill(0); championWins.set(champion, champArr); }
     }
     for (let i = 0; i < C; i++) {
-      if (score[i] !== best) continue;
-      winCount[i] += weight;
-      if (leaders === 1) soleWinCount[i] += weight;
-      if (champArr) champArr[i] += weight;
+      if (score[i] === max1) {
+        winCount[i] += weight;
+        if (cnt1 === 1) soleWinCount[i] += weight;
+        if (champArr) champArr[i] += weight;
+        evPayout[i] += weight * share1;
+      } else if (share2 > 0 && score[i] === max2) {
+        evPayout[i] += weight * share2;
+      }
     }
   };
 
@@ -375,35 +413,43 @@ export function computeWinScenarios(
   const pctOf = (n: number) => (totalWeight > 0 ? (n / totalWeight) * 100 : 0);
   const CLINCH_EPS = 1e-9;
 
-  const out: ContenderScenario[] = contenders.map((e, i) => {
-    const aliveChampions: string[] = [];
-    for (const [champ, arr] of Array.from(championWins)) if (arr[i] > 0) aliveChampions.push(champ);
-    aliveChampions.sort(
-      (a, b) => (championWins.get(b)![i]) - (championWins.get(a)![i]),
-    );
-    return {
-      key: e.key,
-      username: e.username,
-      displayName: e.displayName,
-      entry: e.entry,
-      entriesCount: e.entriesCount,
-      fixedScore: e.fixedScore,
-      maxScore: e.maxScore,
-      winPct: pctOf(winCount[i]),
-      soleWinPct: pctOf(soleWinCount[i]),
-      status: totalWeight > 0 && winCount[i] >= totalWeight - CLINCH_EPS ? 'clinched' : 'contender',
-      aliveChampions,
-    };
-  });
-  out.sort((a, b) => b.winPct - a.winPct || b.fixedScore - a.fixedScore || a.username.localeCompare(b.username));
-
+  const evOf = (i: number) => (totalWeight > 0 ? evPayout[i] / totalWeight : 0);
   const labelOf = (e: { displayName: string | null; username: string; entriesCount: number; entry: number }) =>
     (e.displayName || e.username) + (e.entriesCount > 1 ? ` (#${e.entry})` : '');
+
+  const out: ContenderScenario[] = items
+    .map((e, i) => {
+      const aliveChampions: string[] = [];
+      for (const [champ, arr] of Array.from(championWins)) if (arr[i] > 0) aliveChampions.push(champ);
+      aliveChampions.sort((a, b) => (championWins.get(b)![i]) - (championWins.get(a)![i]));
+      return {
+        key: e.key,
+        username: e.username,
+        displayName: e.displayName,
+        entry: e.entry,
+        entriesCount: e.entriesCount,
+        fixedScore: e.fixedScore,
+        maxScore: e.maxScore,
+        winPct: pctOf(winCount[i]),
+        soleWinPct: pctOf(soleWinCount[i]),
+        status: (totalWeight > 0 && winCount[i] >= totalWeight - CLINCH_EPS ? 'clinched' : 'contender') as 'clinched' | 'contender',
+        aliveChampions,
+        expectedPayout: evOf(i),
+      };
+    })
+    .filter((s) => s.maxScore >= floor); // contenders list = entries that can still finish first
+  out.sort((a, b) => b.winPct - a.winPct || b.fixedScore - a.fixedScore || a.username.localeCompare(b.username));
+
+  // Everyone with money on the table, including entries that can only cash 2nd.
+  const expectedWinnings = items
+    .map((e, i) => ({ key: e.key, displayName: labelOf(e), ev: evOf(i), winPct: pctOf(winCount[i]) }))
+    .filter((w) => w.ev > 0.005)
+    .sort((a, b) => b.ev - a.ev);
 
   const byChampion: ChampionScenario[] = Array.from(championTotals.entries())
     .map(([champion, total]) => {
       const arr = championWins.get(champion)!;
-      const winners = contenders
+      const winners = items
         .map((e, i) => ({
           key: e.key,
           displayName: labelOf(e),
@@ -425,6 +471,8 @@ export function computeWinScenarios(
     eliminatedCount,
     contenders: out,
     byChampion,
+    pot,
+    expectedWinnings,
   };
 }
 
@@ -438,11 +486,13 @@ export interface WalkBranch {
   team: string;
   winPct: number;            // selected entry's win chance if this team wins the slot
   share: number;             // % of the current sub-space where this team wins it
+  expectedPayout: number;    // selected entry's expected $ if this team wins the slot
   terminal: 'win' | 'lose' | null; // resolves the entry's fate outright?
 }
 
 export interface WalkResult {
   winPct: number;            // selected entry's win chance on the current path
+  expectedPayout: number;    // selected entry's expected $ on the current path
   status: 'clinched' | 'dead' | 'pivotal' | 'tossup';
   scenarios: number;
   method: 'exact' | 'monte-carlo';
@@ -478,24 +528,27 @@ export function expandForcedChain(tree: TreeInput, key: string, team: string): R
 export function walkScenario(
   tree: TreeInput,
   entries: ScenarioEntryInput[],
-  opts: { selectedKey: string; forced?: Record<string, string>; edgeProb?: Record<string, Record<string, number>> },
+  opts: { selectedKey: string; forced?: Record<string, string>; edgeProb?: Record<string, Record<string, number>>; payout?: PayoutSchedule },
 ): WalkResult {
   const forced = opts.forced ?? {};
   const edgeProb = opts.edgeProb;
-  const floor = entries.reduce((m, e) => Math.max(m, e.fixedScore), 0);
-  const contenders = entries.filter((e) => e.maxScore >= floor);
-  const sel = contenders.findIndex((c) => c.key === opts.selectedKey);
-  if (sel < 0) return { winPct: 0, status: 'dead', scenarios: 0, method: 'exact' };
+  const payout = opts.payout ?? { first: 0, second: 0 };
+  const pot = payout.first + payout.second;
+  // Score every entry (2nd-place money needs the full field), and resolve the
+  // selected entry against that full list.
+  const items = entries;
+  const sel = items.findIndex((c) => c.key === opts.selectedKey);
+  if (sel < 0) return { winPct: 0, expectedPayout: 0, status: 'dead', scenarios: 0, method: 'exact' };
 
   const nodes = buildSlotOrder(tree);
   const nodesByKey = new Map(nodes.map((n) => [n.key, n]));
-  const C = contenders.length;
+  const C = items.length;
 
   const pickIndex = new Map<string, Map<string, number[]>>();
   for (const node of nodes) {
     const byTeam = new Map<string, number[]>();
     for (let i = 0; i < C; i++) {
-      const team = contenders[i].picks[node.key];
+      const team = items[i].picks[node.key];
       if (!team) continue;
       (byTeam.get(team) ?? byTeam.set(team, []).get(team)!).push(i);
     }
@@ -529,7 +582,7 @@ export function walkScenario(
   const useExact = freeBranch <= 30 && Math.pow(2, freeBranch) <= EXACT_MAX_LEAVES;
 
   const score = new Array<number>(C);
-  for (let i = 0; i < C; i++) score[i] = contenders[i].fixedScore;
+  for (let i = 0; i < C; i++) score[i] = items[i].fixedScore;
   const apply = (key: string, team: string | null, sign: number) => {
     if (!team) return;
     const idxs = pickIndex.get(key)?.get(team);
@@ -540,23 +593,41 @@ export function walkScenario(
 
   let total = 0;
   let selWins = 0;
-  const bucket = new Map<string, Map<string, { total: number; wins: number }>>();
+  let selEv = 0;
+  const bucket = new Map<string, Map<string, { total: number; wins: number; ev: number }>>();
 
   const recordLeaf = (winners: Map<string, string | null>, weight: number) => {
     total += weight;
-    let best = -Infinity;
-    for (let i = 0; i < C; i++) if (score[i] > best) best = score[i];
-    const won = score[sel] === best;
+    // Selected entry's finish this completion → win flag + payout.
+    let max1 = -Infinity;
+    let max2 = -Infinity;
+    for (let i = 0; i < C; i++) {
+      const v = score[i];
+      if (v > max1) { max2 = max1; max1 = v; }
+      else if (v < max1 && v > max2) { max2 = v; }
+    }
+    let cnt1 = 0;
+    let cnt2 = 0;
+    for (let i = 0; i < C; i++) {
+      if (score[i] === max1) cnt1++;
+      else if (score[i] === max2) cnt2++;
+    }
+    const won = score[sel] === max1;
+    let selPay = 0;
+    if (won) selPay = cnt1 >= 2 ? pot / cnt1 : payout.first;
+    else if (cnt1 === 1 && score[sel] === max2 && cnt2 > 0) selPay = payout.second / cnt2;
     if (won) selWins += weight;
+    selEv += weight * selPay;
     for (const key of freeKeys) {
       const t = winners.get(key);
       if (!t) continue;
       let m = bucket.get(key);
       if (!m) { m = new Map(); bucket.set(key, m); }
       let c = m.get(t);
-      if (!c) { c = { total: 0, wins: 0 }; m.set(t, c); }
+      if (!c) { c = { total: 0, wins: 0, ev: 0 }; m.set(t, c); }
       c.total += weight;
       if (won) c.wins += weight;
+      c.ev += weight * selPay;
     }
   };
 
@@ -627,11 +698,12 @@ export function walkScenario(
   }
 
   const method = useExact ? 'exact' : 'monte-carlo';
-  if (total <= 0) return { winPct: 0, status: 'dead', scenarios: 0, method };
+  if (total <= 0) return { winPct: 0, expectedPayout: 0, status: 'dead', scenarios: 0, method };
   const winPct = (selWins / total) * 100;
+  const expectedPayout = selEv / total;
   const EPS = 1e-6;
-  if (selWins <= EPS) return { winPct: 0, status: 'dead', scenarios: total | 0, method };
-  if (selWins >= total - EPS) return { winPct: 100, status: 'clinched', scenarios: total | 0, method };
+  if (selWins <= EPS) return { winPct: 0, expectedPayout, status: 'dead', scenarios: total | 0, method };
+  if (selWins >= total - EPS) return { winPct: 100, expectedPayout, status: 'clinched', scenarios: total | 0, method };
 
   // Pick the free game whose outcomes most spread the entry's win chance.
   let bestKey: string | null = null;
@@ -656,7 +728,7 @@ export function walkScenario(
   }
 
   if (!bestKey || bestSpread < 0.005) {
-    return { winPct, status: 'tossup', scenarios: total | 0, method };
+    return { winPct, expectedPayout, status: 'tossup', scenarios: total | 0, method };
   }
 
   const node = nodesByKey.get(bestKey)!;
@@ -669,6 +741,7 @@ export function walkScenario(
         team,
         winPct: wp,
         share: (c.total / total) * 100,
+        expectedPayout: c.ev / c.total,
         terminal: wp >= 100 - 1e-6 ? 'win' : wp <= 1e-6 ? 'lose' : null,
       } as WalkBranch;
     })
@@ -676,6 +749,7 @@ export function walkScenario(
 
   return {
     winPct,
+    expectedPayout,
     status: 'pivotal',
     scenarios: total | 0,
     method,

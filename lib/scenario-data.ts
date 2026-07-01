@@ -9,7 +9,8 @@ import {
   calculateMaxPossibleScore,
   computeEliminatedTeams,
 } from '@/lib/scoring';
-import type { ScenarioEntryInput, TreeInput } from '@/lib/win-scenarios';
+import { calculatePayouts } from '@/lib/payouts';
+import type { ScenarioEntryInput, TreeInput, PayoutSchedule } from '@/lib/win-scenarios';
 import type { KnockoutFixture } from '@/lib/scenario-odds';
 
 export interface ScenarioInputs {
@@ -17,10 +18,11 @@ export interface ScenarioInputs {
   entries: ScenarioEntryInput[];
   knockout: KnockoutFixture[];
   pendingGroupGames: number;
+  payout: PayoutSchedule; // prize split from the live pot
 }
 
 export async function loadScenarioInputs(): Promise<ScenarioInputs> {
-  const [matchResults, bracketResults, knockoutMatches, users] = await Promise.all([
+  const [matchResults, bracketResults, knockoutMatches, users, poolConfig] = await Promise.all([
     prisma.matchResult.findMany(),
     prisma.bracketResult.findMany(),
     prisma.knockoutMatch.findMany(),
@@ -35,7 +37,15 @@ export async function loadScenarioInputs(): Promise<ScenarioInputs> {
       },
       orderBy: { username: 'asc' },
     }),
+    prisma.poolConfig.findUnique({ where: { id: 1 } }),
   ]);
+
+  // Pot mirrors the standings: entry fee × every paid entry (invalid brackets
+  // still paid in, even though they can't take a payout slot).
+  const entryFee = poolConfig?.entryFeePerPlayer ?? 0;
+  const totalPaidEntries = users.reduce((n, u) => n + (u.entriesCount ?? 1), 0);
+  const [first, second] = calculatePayouts(entryFee * totalPaidEntries);
+  const payout: PayoutSchedule = { first, second };
 
   const resultMap = new Map(
     matchResults.filter((r) => r.status === 'finished' && r.result).map((r) => [r.matchId, r.result!]),
@@ -101,5 +111,5 @@ export async function loadScenarioInputs(): Promise<ScenarioInputs> {
     away: k.away,
   }));
 
-  return { tree, entries, knockout, pendingGroupGames };
+  return { tree, entries, knockout, pendingGroupGames, payout };
 }
