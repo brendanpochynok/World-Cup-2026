@@ -18,7 +18,7 @@ export default async function ScenariosPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl pb-24 sm:pb-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Win Scenarios</h1>
         <p className="text-gray-500 text-sm mt-1.5">
