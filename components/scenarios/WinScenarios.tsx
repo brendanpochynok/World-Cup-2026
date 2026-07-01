@@ -345,6 +345,7 @@ function ScenarioWalk({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
       <div
         className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[88vh] flex flex-col"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with a live win-chance bar */}
@@ -413,41 +414,50 @@ function ScenarioWalk({
             <Terminal icon="🎲" tone="text-gray-800" title={`${fmtPct(step.winPct)} from here`}
               sub="It comes down to several games at once — no single one decides it." />
           ) : step.pivotal ? (
-            <div className="space-y-2">
-              <p className="font-bold text-gray-900 text-sm">{walkQuestion(step.pivotal.round, step.pivotal.slot)}</p>
+            <div className="space-y-2.5">
+              <div>
+                <p className="font-bold text-gray-900 text-base">{walkQuestion(step.pivotal.round, step.pivotal.slot)}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  The game that most affects {name} from here — tap a winner to see what it does.
+                </p>
+              </div>
               <div className="space-y-1.5">
                 {step.pivotal.branches.map((b) => {
                   const meta = getTeamMeta(b.team);
                   const tone =
-                    b.terminal === 'win' ? 'border-wc-green-200 bg-wc-green-50'
-                    : b.terminal === 'lose' ? 'border-gray-200 bg-gray-50 opacity-70'
-                    : 'border-gray-200 hover:border-wc-blue-300 hover:bg-wc-blue-50/30';
+                    b.terminal === 'win' ? 'border-wc-green-300 bg-wc-green-50'
+                    : b.terminal === 'lose' ? 'border-gray-200 bg-gray-50'
+                    : 'border-gray-200 hover:border-wc-blue-400 hover:bg-wc-blue-50/40';
                   return (
                     <button
                       key={b.team}
                       onClick={() => choose(b.team, step.pivotal!.round, step.pivotal!.slot)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all active:scale-[0.98] ${tone}`}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all active:scale-[0.98] ${tone}`}
                     >
-                      <img src={getFlagUrl(meta.flag)} alt={b.team} className="w-6 h-4 object-cover rounded-sm flex-shrink-0" />
-                      <span className="font-semibold text-gray-800 text-sm truncate">{b.team}</span>
-                      <span className="text-[10px] text-gray-400 tabular-nums flex-shrink-0">{fmtPct(b.share)} likely</span>
-                      <span className="ml-auto flex items-center gap-2 flex-shrink-0">
-                        <span className="text-right">
-                          <span className={`block text-sm font-bold tabular-nums ${b.terminal === 'win' ? 'text-wc-green-700' : b.terminal === 'lose' ? 'text-gray-300' : 'text-gray-900'}`}>
-                            {b.terminal === 'win' ? '✅ win' : b.terminal === 'lose' ? '❌ out' : fmtPct(b.winPct)}
+                      <img src={getFlagUrl(meta.flag)} alt="" className="w-7 h-5 object-cover rounded-sm flex-shrink-0" />
+                      <span className="min-w-0 flex-1 text-left">
+                        <span className="block font-semibold text-gray-900 text-sm truncate">{b.team} win</span>
+                        <span className="block text-[10px] text-gray-400 tabular-nums">{fmtPct(b.share)} chance this happens</span>
+                      </span>
+                      <span className="flex items-center gap-1.5 flex-shrink-0">
+                        {b.terminal === 'win' ? (
+                          <span className="text-sm font-bold text-wc-green-700">✓ {name.split(' ')[0]} wins</span>
+                        ) : b.terminal === 'lose' ? (
+                          <span className="text-sm font-bold text-gray-400">✗ out</span>
+                        ) : (
+                          <span className="text-right">
+                            <span className="block text-base font-black tabular-nums text-gray-900 leading-none">{fmtPct(b.winPct)}</span>
+                            <span className="block text-[9px] text-gray-400 uppercase tracking-wide">then</span>
                           </span>
-                          {b.expectedPayout > 0 && (
-                            <span className="block text-[10px] text-wc-gold-600 tabular-nums">{fmtMoney(b.expectedPayout)} exp.</span>
-                          )}
-                        </span>
-                        {b.terminal === null && <span className="text-gray-300">›</span>}
+                        )}
+                        {b.terminal === null && <span className="text-gray-300 text-lg">›</span>}
                       </span>
                     </button>
                   );
                 })}
               </div>
-              <p className="text-[10px] text-gray-400 pt-1">
-                “likely” is how often the game goes that way (live odds); the bold figure is {name}’s win chance if it does.
+              <p className="text-[10px] text-gray-400">
+                Big number = {name}’s win chance if that result happens. Keep tapping to drill down to a yes/no.
               </p>
             </div>
           ) : null}
@@ -467,8 +477,10 @@ function Terminal({ icon, tone, title, sub }: { icon: string; tone: string; titl
   );
 }
 
-// "If England win the Champion and Brazil win the Semifinal #1, poch wins."
+// "If England lift the trophy and Brazil win Semifinal #1, poch wins."
 function sentence(name: string, path: { team: string; label: string }[], verb: 'wins' | 'out'): string {
-  const clauses = path.map((p) => `${p.team} win ${p.label}`).join(', and ');
-  return verb === 'wins' ? `If ${clauses}, ${name} wins.` : `Even if ${clauses}, ${name} misses out.`;
+  const clauses = path
+    .map((p) => (p.label === 'Champion' ? `${p.team} lift the trophy` : `${p.team} win ${p.label}`))
+    .join(', and ');
+  return verb === 'wins' ? `If ${clauses}, ${name} wins the pool.` : `Even if ${clauses}, ${name} still misses out.`;
 }

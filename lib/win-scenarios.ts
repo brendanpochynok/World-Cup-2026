@@ -705,9 +705,8 @@ export function walkScenario(
   if (selWins <= EPS) return { winPct: 0, expectedPayout, status: 'dead', scenarios: total | 0, method };
   if (selWins >= total - EPS) return { winPct: 100, expectedPayout, status: 'clinched', scenarios: total | 0, method };
 
-  // Pick the free game whose outcomes most spread the entry's win chance.
-  let bestKey: string | null = null;
-  let bestSpread = -1;
+  // How much each free game swings the entry's win chance.
+  const games: { key: string; spread: number; pts: number }[] = [];
   for (const [key, m] of Array.from(bucket)) {
     const teams = Array.from(m.entries()).filter(([, c]) => c.total >= 0.02 * total);
     if (teams.length < 2) continue;
@@ -718,18 +717,22 @@ export function walkScenario(
       if (r < lo) lo = r;
       if (r > hi) hi = r;
     }
-    const spread = hi - lo;
-    const pts = nodesByKey.get(key)!.points;
-    // Prefer the biggest swing; on ties prefer the higher-value (later) round.
-    if (spread > bestSpread + 1e-9 || (Math.abs(spread - bestSpread) <= 1e-9 && bestKey && pts > nodesByKey.get(bestKey)!.points)) {
-      bestSpread = spread;
-      bestKey = key;
-    }
+    games.push({ key, spread: hi - lo, pts: nodesByKey.get(key)!.points });
   }
 
-  if (!bestKey || bestSpread < 0.005) {
+  const maxSpread = games.reduce((m, g) => Math.max(m, g.spread), 0);
+  if (maxSpread < 0.005) {
     return { winPct, expectedPayout, status: 'tossup', scenarios: total | 0, method };
   }
+  // Ask about the biggest, latest-round game that *meaningfully* matters first —
+  // people reason about the final before an early-round game — rather than a
+  // technically-max-swing game buried in the bracket. Among games that swing the
+  // odds at least half as much as the most decisive one, take the latest round.
+  // (Half of the max always keeps the most decisive game itself in the pool.)
+  const threshold = maxSpread * 0.5;
+  const bestKey = games
+    .filter((g) => g.spread >= threshold)
+    .sort((a, b) => b.pts - a.pts || b.spread - a.spread)[0].key;
 
   const node = nodesByKey.get(bestKey)!;
   const m = bucket.get(bestKey)!;

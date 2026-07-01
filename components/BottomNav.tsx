@@ -13,6 +13,14 @@ const CHAT_TAB = {
   ),
 };
 
+const SCENARIOS_TAB = {
+  href: '/app/scenarios',
+  label: 'Paths',
+  icon: (
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+  ),
+};
+
 const TABS = [
   {
     href: '/app/dashboard',
@@ -60,13 +68,13 @@ export default function BottomNav({ loggedIn = false }: { loggedIn?: boolean }) 
   const pathname = usePathname();
   const unread = useChatUnread(loggedIn);
 
-  const tabs = loggedIn ? [...TABS, CHAT_TAB] : TABS;
+  const tabs = loggedIn ? [...TABS, SCENARIOS_TAB, CHAT_TAB] : TABS;
 
   return (
     <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-200"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Main navigation">
-      <div className={loggedIn ? 'grid grid-cols-5' : 'grid grid-cols-4'}>
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map(({ href, label, icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
           const isChat = href === '/app/chat';
@@ -75,7 +83,7 @@ export default function BottomNav({ loggedIn = false }: { loggedIn?: boolean }) 
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
-              className={`flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-wc-blue-500 focus-visible:ring-inset ${
+              className={`flex flex-col items-center gap-0.5 py-2.5 px-0.5 text-[9px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-wc-blue-500 focus-visible:ring-inset ${
                 active ? 'text-wc-blue-600' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
@@ -90,7 +98,7 @@ export default function BottomNav({ loggedIn = false }: { loggedIn?: boolean }) 
                   </span>
                 )}
               </span>
-              {label}
+              <span className="w-full truncate text-center leading-none">{label}</span>
             </Link>
           );
         })}
