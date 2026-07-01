@@ -160,3 +160,13 @@ model KnockoutMatch {
 
   @@unique([round, slot])
 }
+
+// Frozen win-scenario percentages captured each time a knockout game resolves,
+// so the scenarios page can show how each entry's odds moved since the last
+// result. Keyed by the number of decided knockout slots at capture time.
+model ScenarioSnapshot {
+  id        Int      @id @default(autoincrement())
+  signature Int      @unique // count of decided knockout slots when captured
+  payload   String   @db.Text // JSON: { [entryKey]: { win: number, ev: number } }
+  createdAt DateTime @default(now())
+}

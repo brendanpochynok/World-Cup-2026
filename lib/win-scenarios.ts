@@ -155,6 +155,42 @@ export function reachableTeams(tree: TreeInput): Map<string, Set<string>> {
   return reach;
 }
 
+// Sanity-check that recorded results are consistent with the bracket tree: an
+// R32 winner must be one of that slot's seeded teams, and a later-round winner
+// must have advanced from one of the two feeding slots. Any warning here means
+// the KnockoutMatch/BracketResult data is misconfigured — not the simulation.
+export function validateBracketConsistency(tree: TreeInput): string[] {
+  const warnings: string[] = [];
+  const seeded = new Set<string>();
+  for (const pair of Object.values(tree.r32)) {
+    if (pair?.[0]) seeded.add(pair[0]);
+    if (pair?.[1]) seeded.add(pair[1]);
+  }
+  for (let ri = 0; ri < ROUND_ORDER.length; ri++) {
+    const round = ROUND_ORDER[ri];
+    for (let slot = 0; slot < SLOTS_PER_ROUND[round]; slot++) {
+      const w = tree.decided[`${round}-${slot}`];
+      if (!w) continue;
+      if (round === 'R32') {
+        const pair = tree.r32[slot];
+        if (pair?.[0] && pair?.[1] && w !== pair[0] && w !== pair[1]) {
+          warnings.push(`${round}-${slot}: winner ${w} is not in the matchup ${pair[0]} v ${pair[1]}`);
+        }
+      } else {
+        const prev = ROUND_ORDER[ri - 1];
+        const a = tree.decided[`${prev}-${slot * 2}`];
+        const b = tree.decided[`${prev}-${slot * 2 + 1}`];
+        if (a && b && w !== a && w !== b) {
+          warnings.push(`${round}-${slot}: winner ${w} did not advance from ${a} or ${b}`);
+        } else if (!a && !b && !seeded.has(w)) {
+          warnings.push(`${round}-${slot}: winner ${w} is not a team in the tournament`);
+        }
+      }
+    }
+  }
+  return warnings;
+}
+
 // Undecided games where some possible participant has no odds in edgeProb.
 // Lets the caller report every gap up front instead of one error per request.
 export function findUnpricedGames(

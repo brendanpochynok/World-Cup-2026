@@ -21,6 +21,26 @@ export function fmtMoney(n: number): string {
   return '$' + n.toLocaleString(undefined, { maximumFractionDigits: n < 100 ? 2 : 0 });
 }
 
+// Signed percentage-point / dollar delta, e.g. "+5.2" or "−3".
+function fmtDelta(n: number, money = false): string {
+  const mag = Math.abs(n);
+  const body = money ? fmtMoney(mag) : mag < 10 ? mag.toFixed(1) : String(Math.round(mag));
+  return `${n >= 0 ? '+' : '−'}${body}`;
+}
+
+function DeltaChip({ n, money = false, title }: { n: number | null; money?: boolean; title?: string }) {
+  if (n == null || Math.abs(n) < (money ? 0.5 : 0.1)) return null;
+  const up = n > 0;
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-0.5 text-[10px] font-bold tabular-nums ${up ? 'text-wc-green-600' : 'text-wc-red-500'}`}
+    >
+      {up ? '▲' : '▼'} {fmtDelta(n, money)}
+    </span>
+  );
+}
+
 type OkData = Extract<WinScenariosResponse, { contenders: unknown }>;
 
 function buildSummary(d: OkData): string {
@@ -132,6 +152,18 @@ export default function WinScenarios({
                 {copied ? 'Copied!' : 'Copy summary'}
               </button>
             </div>
+            {data.hasBaseline && data.lastGame && (
+              <p className="text-[11px] text-gray-500">
+                <span className="text-wc-green-600 font-bold">▲</span>
+                <span className="text-wc-red-500 font-bold">▼</span> show the swing since{' '}
+                <span className="font-semibold text-gray-700">{data.lastGame.winner} beat {data.lastGame.loser}</span>.
+              </p>
+            )}
+            {data.bracketWarnings.length > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-700">
+                ⚠ Bracket data looks inconsistent: {data.bracketWarnings.join('; ')}.
+              </div>
+            )}
             {data.method === 'monte-carlo' && (
               <p className="text-[11px] text-gray-400">Sampled across {data.scenarios.toLocaleString()} outcomes — percentages are approximate (±~0.2%).</p>
             )}
@@ -190,14 +222,20 @@ export default function WinScenarios({
                         <p className={`font-bold tabular-nums text-sm ${c.winPct >= 50 ? 'text-wc-green-700' : c.winPct > 0 ? 'text-gray-900' : 'text-gray-300'}`}>
                           {fmtPct(c.winPct)}
                         </p>
-                        {c.soleWinPct < c.winPct && (
+                        {c.winDelta != null && Math.abs(c.winDelta) >= 0.1 ? (
+                          <DeltaChip n={c.winDelta} title="Change since the last game" />
+                        ) : c.soleWinPct < c.winPct ? (
                           <p className="text-[10px] text-gray-400 tabular-nums" title="Wins outright (not tied)">{fmtPct(c.soleWinPct)} solo</p>
-                        )}
+                        ) : null}
                       </div>
                       {data.pot > 0 && (
                         <div className="text-right flex-shrink-0 w-16" title="Expected payout across all scenarios">
                           <p className="font-bold tabular-nums text-sm text-wc-gold-600">{fmtMoney(c.expectedPayout)}</p>
-                          <p className="text-[9px] text-gray-400 uppercase tracking-wide">exp. $</p>
+                          {c.evDelta != null && Math.abs(c.evDelta) >= 0.5 ? (
+                            <DeltaChip n={c.evDelta} money title="Change in expected payout since the last game" />
+                          ) : (
+                            <p className="text-[9px] text-gray-400 uppercase tracking-wide">exp. $</p>
+                          )}
                         </div>
                       )}
                       <span className="text-gray-300 text-lg flex-shrink-0 transition-transform group-hover:translate-x-0.5">›</span>

@@ -8,22 +8,62 @@ import {
   walkScenario,
   expandForcedChain,
   findUnpricedGames,
+  validateBracketConsistency,
   ScenarioOddsError,
   type ScenariosResult,
+  type ContenderScenario,
   type WalkResult,
 } from '@/lib/win-scenarios';
 import { buildScenarioOdds } from '@/lib/scenario-odds';
 import { loadScenarioInputs } from '@/lib/scenario-data';
+import { prisma } from '@/lib/prisma';
 import type { FutureStage } from '@/lib/polymarket-futures';
 
+// Contender plus how their odds moved since the last knockout game finished.
+export type ContenderWithDelta = ContenderScenario & {
+  winDelta: number | null; // percentage-point change in win% (null if no baseline)
+  evDelta: number | null;  // dollar change in expected payout
+};
+
 export type WinScenariosResponse =
-  | (ScenariosResult & {
+  | (Omit<ScenariosResult, 'contenders'> & {
+      contenders: ContenderWithDelta[];
       pendingGroupGames: number;
       futuresResolved: Partial<Record<FutureStage, string>>;
+      lastGame: { winner: string; loser: string; round: string } | null;
+      hasBaseline: boolean; // is there a prior snapshot to diff against?
+      bracketWarnings: string[];
     })
   | { error: string };
 
 export type WalkResponse = (WalkResult & { selectedKey: string }) | { error: string };
+
+type SnapEntry = { win: number; ev: number };
+
+// Freeze the current win%/EV for this results-state (first write wins) and read
+// back the previous state's snapshot to diff against.
+async function snapshotAndDiff(
+  signature: number,
+  contenders: ContenderScenario[],
+): Promise<{ prev: Record<string, SnapEntry>; hasBaseline: boolean }> {
+  const current: Record<string, SnapEntry> = {};
+  for (const c of contenders) current[c.key] = { win: c.winPct, ev: c.expectedPayout };
+
+  // Persist this signature's baseline once (no-op if it already exists).
+  await prisma.scenarioSnapshot
+    .upsert({ where: { signature }, update: {}, create: { signature, payload: JSON.stringify(current) } })
+    .catch(() => null);
+
+  const prevRow = await prisma.scenarioSnapshot
+    .findFirst({ where: { signature: { lt: signature } }, orderBy: { signature: 'desc' } })
+    .catch(() => null);
+
+  let prev: Record<string, SnapEntry> = {};
+  if (prevRow) {
+    try { prev = JSON.parse(prevRow.payload) as Record<string, SnapEntry>; } catch { prev = {}; }
+  }
+  return { prev, hasBaseline: !!prevRow };
+}
 
 function futuresList(resolved: Partial<Record<FutureStage, string>>): string {
   return Object.entries(resolved).map(([k, v]) => `${k}=${v}`).join(', ') || 'none';
@@ -31,7 +71,7 @@ function futuresList(resolved: Partial<Record<FutureStage, string>>): string {
 
 // Full pool-win breakdown: win %, expected payout, per-champion, etc.
 export async function runWinScenarios(): Promise<WinScenariosResponse> {
-  const { tree, entries, knockout, pendingGroupGames, payout } = await loadScenarioInputs();
+  const { tree, entries, knockout, pendingGroupGames, payout, decidedCount, lastGame } = await loadScenarioInputs();
 
   const built = await buildScenarioOdds(knockout, Date.now());
   const futuresResolved = built.futuresResolved;
@@ -52,15 +92,36 @@ export async function runWinScenarios(): Promise<WinScenariosResponse> {
     };
   }
 
+  let result: ScenariosResult;
   try {
-    const result = computeWinScenarios(tree, entries, { edgeProb, strict: true, payout });
-    return { ...result, pendingGroupGames, futuresResolved };
+    result = computeWinScenarios(tree, entries, { edgeProb, strict: true, payout });
   } catch (e) {
     if (e instanceof ScenarioOddsError) {
       return { error: `Live odds incomplete — ${e.message}. (Futures: ${futuresList(futuresResolved)}.)` };
     }
     throw e;
   }
+
+  // Movement since the previous knockout result.
+  const { prev, hasBaseline } = await snapshotAndDiff(decidedCount, result.contenders);
+  const contenders: ContenderWithDelta[] = result.contenders.map((c) => {
+    const p = prev[c.key];
+    return {
+      ...c,
+      winDelta: p ? c.winPct - p.win : null,
+      evDelta: p ? c.expectedPayout - p.ev : null,
+    };
+  });
+
+  return {
+    ...result,
+    contenders,
+    pendingGroupGames,
+    futuresResolved,
+    lastGame,
+    hasBaseline,
+    bracketWarnings: validateBracketConsistency(tree),
+  };
 }
 
 // One entry's walkthrough given a path of already-chosen game winners.

@@ -19,6 +19,8 @@ export interface ScenarioInputs {
   knockout: KnockoutFixture[];
   pendingGroupGames: number;
   payout: PayoutSchedule; // prize split from the live pot
+  decidedCount: number;   // number of resolved knockout slots (snapshot signature)
+  lastGame: { winner: string; loser: string; round: string } | null; // most recent finished KO game
 }
 
 export async function loadScenarioInputs(): Promise<ScenarioInputs> {
@@ -60,6 +62,22 @@ export async function loadScenarioInputs(): Promise<ScenarioInputs> {
     if (k.round === 'R32' && k.home && k.away) tree.r32[k.slot] = [k.home, k.away];
   }
   for (const r of bracketResults) tree.decided[`${r.round}-${r.slot}`] = r.team;
+  const decidedCount = Object.keys(tree.decided).length;
+
+  // The most recent finished knockout game (by kickoff) — labels the movement.
+  let lastGame: ScenarioInputs['lastGame'] = null;
+  const finished = knockoutMatches
+    .filter((k) => k.status === 'finished' && k.home && k.away && k.kickoff)
+    .sort((a, b) => b.kickoff!.getTime() - a.kickoff!.getTime());
+  if (finished.length > 0) {
+    const g = finished[0];
+    const winner =
+      bracketMap.get(`${g.round}-${g.slot}`) ??
+      (g.homeScore != null && g.awayScore != null
+        ? g.homeScore > g.awayScore ? g.home : g.awayScore > g.homeScore ? g.away : null
+        : null);
+    if (winner) lastGame = { winner, loser: winner === g.home ? g.away! : g.home!, round: g.round };
+  }
 
   let pendingGroupGames = 0;
   const entries: ScenarioEntryInput[] = [];
@@ -111,5 +129,5 @@ export async function loadScenarioInputs(): Promise<ScenarioInputs> {
     away: k.away,
   }));
 
-  return { tree, entries, knockout, pendingGroupGames, payout };
+  return { tree, entries, knockout, pendingGroupGames, payout, decidedCount, lastGame };
 }
