@@ -29,7 +29,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   if (!body?.selectedKey) return NextResponse.json({ error: 'Missing selectedKey' }, { status: 400 });
 
-  const { tree, entries, knockout } = await loadScenarioInputs();
+  const { tree, entries, knockout, payout } = await loadScenarioInputs();
 
   let edgeProb: Record<string, Record<string, number>> | undefined;
   if (body.weighted) {
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     Object.assign(forced, expandForcedChain(tree, step.key, step.team));
   }
 
-  const result = walkScenario(tree, entries, { selectedKey: body.selectedKey, forced, edgeProb });
+  const result = walkScenario(tree, entries, { selectedKey: body.selectedKey, forced, edgeProb, payout });
   const data: WalkResponse = { ...result, selectedKey: body.selectedKey };
   return NextResponse.json(data);
 }

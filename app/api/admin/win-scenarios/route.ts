@@ -27,7 +27,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { tree, entries, knockout, pendingGroupGames } = await loadScenarioInputs();
+  const { tree, entries, knockout, pendingGroupGames, payout } = await loadScenarioInputs();
 
   // Optional Polymarket weighting. Two market types feed it:
   //   1. Futures ("reach stage" + outright winner) give every team's chance of
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   let result: ScenariosResult;
   try {
-    result = computeWinScenarios(tree, entries, { edgeProb, strict: useOdds });
+    result = computeWinScenarios(tree, entries, { edgeProb, strict: useOdds, payout });
   } catch (e) {
     if (e instanceof ScenarioOddsError) {
       const found = Object.entries(futuresResolved).map(([k, v]) => `${k}=${v}`).join(', ') || 'none';

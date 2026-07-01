@@ -1417,6 +1417,10 @@ function fmtPct(n: number): string {
   return `${Math.round(n)}%`;
 }
 
+function fmtMoney(n: number): string {
+  return '$' + n.toLocaleString(undefined, { maximumFractionDigits: n < 100 ? 2 : 0 });
+}
+
 function buildScenarioSummary(d: Extract<WinScenariosResponse, { contenders: unknown }>): string {
   const lines: string[] = [];
   lines.push('🏆 POOL WIN SCENARIOS');
@@ -1430,12 +1434,19 @@ function buildScenarioSummary(d: Extract<WinScenariosResponse, { contenders: unk
     lines.push(`Weighted by live odds (${d.oddsGames}/${d.branchingGames} games priced).`);
   }
   lines.push(`${d.eliminatedCount} of ${d.totalEntries} entries can no longer win.`);
+  if (d.pot > 0) lines.push(`Prize pool ${fmtMoney(d.pot)}.`);
   lines.push('');
   lines.push(d.weighted ? 'Chances to win (odds-weighted):' : 'Chances to win (every game a coin flip):');
   for (const c of d.contenders) {
     const label = (c.displayName || c.username) + (c.entriesCount > 1 ? ` #${c.entry}` : '');
     const tag = c.status === 'clinched' ? ' 🔒 CLINCHED' : '';
-    lines.push(`• ${label}: ${fmtPct(c.winPct)}${tag} (${c.fixedScore} pts now, ${c.maxScore} max)`);
+    const ev = d.pot > 0 ? ` · EV ${fmtMoney(c.expectedPayout)}` : '';
+    lines.push(`• ${label}: ${fmtPct(c.winPct)}${tag}${ev} (${c.fixedScore} pts now, ${c.maxScore} max)`);
+  }
+  if (d.pot > 0 && d.expectedWinnings.length > 0) {
+    lines.push('');
+    lines.push('Expected payout:');
+    for (const w of d.expectedWinnings) lines.push(`• ${w.displayName}: ${fmtMoney(w.ev)}`);
   }
   if (d.byChampion.length > 0) {
     lines.push('');
@@ -1554,6 +1565,9 @@ function ScenariosTab() {
                 <span className="font-bold tabular-nums">{data.eliminatedCount}</span> of{' '}
                 <span className="tabular-nums">{data.totalEntries}</span> entries eliminated
               </span>
+              {data.pot > 0 && (
+                <span className="text-wc-gold-600 font-bold">{fmtMoney(data.pot)} prize pool</span>
+              )}
               <button onClick={copySummary} className="btn-secondary text-xs px-3 py-1.5 ml-auto">
                 {copied ? 'Copied!' : 'Copy summary for chat'}
               </button>
@@ -1629,6 +1643,12 @@ function ScenariosTab() {
                         </p>
                       )}
                     </div>
+                    {data.pot > 0 && (
+                      <div className="text-right flex-shrink-0 w-16" title="Expected payout across all scenarios">
+                        <p className="font-bold tabular-nums text-sm text-wc-gold-600">{fmtMoney(c.expectedPayout)}</p>
+                        <p className="text-[9px] text-gray-400 uppercase tracking-wide">exp. $</p>
+                      </div>
+                    )}
                     <span className="text-gray-300 text-lg flex-shrink-0">›</span>
                   </button>
                   );
@@ -1636,6 +1656,32 @@ function ScenariosTab() {
               )}
             </div>
           </div>
+
+          {/* Expected payout */}
+          {data.pot > 0 && data.expectedWinnings.length > 0 && (
+            <div className="card p-0 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-gray-100">
+                <h4 className="font-bold text-gray-900 text-sm">Expected payout</h4>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Probability-weighted winnings across every scenario (1st &amp; 2nd money). Sums to the {fmtMoney(data.pot)} pool.
+                </p>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {data.expectedWinnings.map((w, i) => (
+                  <div key={w.key} className="flex items-center gap-3 px-4 py-2">
+                    <span className="text-gray-400 font-bold tabular-nums w-5 text-right text-sm">{i + 1}</span>
+                    <span className="min-w-0 flex-1 font-semibold text-gray-900 text-sm truncate">{w.displayName}</span>
+                    <span className="text-[11px] text-gray-400 tabular-nums flex-shrink-0" title="Win chance">
+                      {w.winPct > 0 ? `${fmtPct(w.winPct)} win` : 'cashes 2nd'}
+                    </span>
+                    <span className="font-bold tabular-nums text-sm text-wc-gold-600 w-16 text-right flex-shrink-0">
+                      {fmtMoney(w.ev)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* By champion */}
           {data.byChampion.length > 0 && (
@@ -1745,6 +1791,7 @@ function ScenarioWalk({
             <p className="text-[11px] text-gray-400">
               Path to winning {weighted ? '· live odds' : '· 50/50'}
               {ok && typeof step.winPct === 'number' ? ` · ${fmtPct(step.winPct)} on this path` : ''}
+              {ok && step.expectedPayout > 0 ? ` · ${fmtMoney(step.expectedPayout)} exp.` : ''}
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none px-1" aria-label="Close">×</button>
@@ -1809,11 +1856,16 @@ function ScenarioWalk({
                       <img src={getFlagUrl(meta.flag)} alt={b.team} className="w-6 h-4 object-cover rounded-sm flex-shrink-0" />
                       <span className="font-semibold text-gray-800 text-sm truncate">{b.team}</span>
                       <span className="text-[10px] text-gray-400 tabular-nums flex-shrink-0">{fmtPct(b.share)} likely</span>
-                      <span className="ml-auto flex items-center gap-1.5 flex-shrink-0">
-                        <span className={`text-sm font-bold tabular-nums ${
-                          b.terminal === 'win' ? 'text-wc-green-700' : b.terminal === 'lose' ? 'text-gray-300' : 'text-gray-900'
-                        }`}>
-                          {b.terminal === 'win' ? '✅ win' : b.terminal === 'lose' ? '❌ out' : `${fmtPct(b.winPct)}`}
+                      <span className="ml-auto flex items-center gap-2 flex-shrink-0">
+                        <span className="text-right">
+                          <span className={`block text-sm font-bold tabular-nums ${
+                            b.terminal === 'win' ? 'text-wc-green-700' : b.terminal === 'lose' ? 'text-gray-300' : 'text-gray-900'
+                          }`}>
+                            {b.terminal === 'win' ? '✅ win' : b.terminal === 'lose' ? '❌ out' : `${fmtPct(b.winPct)}`}
+                          </span>
+                          {b.expectedPayout > 0 && (
+                            <span className="block text-[10px] text-wc-gold-600 tabular-nums">{fmtMoney(b.expectedPayout)} exp.</span>
+                          )}
                         </span>
                         {b.terminal === null && <span className="text-gray-300">›</span>}
                       </span>
@@ -1822,7 +1874,7 @@ function ScenarioWalk({
                 })}
               </div>
               <p className="text-[10px] text-gray-400 pt-1">
-                “% likely” is how often this game goes that way{weighted ? ' (per live odds)' : ''}; the bold number is {label.split(' · ')[0]}’s win chance if it does.
+                “% likely” is how often this game goes that way{weighted ? ' (per live odds)' : ''}; the bold number is {label.split(' · ')[0]}’s win chance if it does, and “exp.” their expected payout.
               </p>
             </div>
           ) : null}
