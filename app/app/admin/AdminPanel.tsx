@@ -247,6 +247,26 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
     setKoMsg(null);
   }
 
+  // Advance knockout winners into next-round fixtures (R16 from R32 winners…).
+  const [advanceMsg, setAdvanceMsg] = useState<string | null>(null);
+  async function advanceRounds() {
+    setAdvanceMsg('Advancing…');
+    try {
+      const res = await fetch('/api/admin/knockout/advance', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) { setAdvanceMsg(json?.error ?? 'Failed'); return; }
+      const filled = (json.filled ?? []).length;
+      const kicked = (json.kickoffs ?? []).length;
+      setAdvanceMsg(
+        filled || kicked
+          ? `Filled ${filled} fixture${filled !== 1 ? 's' : ''}, ${kicked} kickoff time${kicked !== 1 ? 's' : ''} ✓`
+          : 'Nothing to advance — all set ✓',
+      );
+    } catch {
+      setAdvanceMsg('Failed');
+    }
+  }
+
   async function saveAllKo() {
     const rows = Array.from({ length: 16 }, (_, slot) => ({ slot, ...koRows[slot] }))
       .filter((r) => r.home && r.away);
@@ -812,6 +832,10 @@ export default function AdminPanel({ matchResults, bracketResults, knockoutMatch
             {savingAll && savingAll.done === savingAll.total && (
               <span className="text-xs text-wc-green-600 font-semibold">All saved ✓</span>
             )}
+            <button onClick={advanceRounds} className="btn-secondary text-xs px-3 py-1.5">
+              Advance winners → next round
+            </button>
+            {advanceMsg && <span className="text-xs text-gray-500 font-semibold">{advanceMsg}</span>}
             <span className="text-[11px] text-gray-400">
               Loads your matchups + times (review, then Save all). The live first game is set to lock.
             </span>

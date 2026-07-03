@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { GROUP_MATCHES } from './worldcup-data';
 import { normalizeTeam, teamKeys } from './espn-teams';
+import { advanceKnockoutFixtures } from './advance-knockout';
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
 const ESPN_HEADERS = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
@@ -151,6 +152,10 @@ export async function syncESPNResults(): Promise<{ synced: number; unmatched: st
       synced++;
     }
   }
+
+  // With today's winners recorded, seed the next round's fixtures so they show
+  // on the scores page without manual admin entry.
+  await advanceKnockoutFixtures().catch(() => null);
 
   return { synced, unmatched };
 }
