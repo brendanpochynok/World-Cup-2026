@@ -3,6 +3,7 @@ import { GROUP_MATCHES } from '@/lib/worldcup-data';
 import { POLYMARKET_TEAM_CODES } from '@/lib/polymarket-codes';
 import { prisma } from '@/lib/prisma';
 import { normalizeTeam, teamKeys } from '@/lib/espn-teams';
+import { advanceKnockoutFixtures } from '@/lib/advance-knockout';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,7 @@ export interface MatchData {
 
 // ── Caches ────────────────────────────────────────────────────────────────────
 let liveCache: { data: unknown; at: number } | null = null;
+let lastAdvanceAt = 0; // throttle for auto-advancing knockout winners
 
 // Past this point after kickoff a group game is over even if ESPN hasn't
 // flipped its state or has dropped the game from the scoreboard (90' +
@@ -150,6 +152,14 @@ export async function GET(request: Request) {
 
   if (liveCache && now - liveCache.at < ttl) {
     return NextResponse.json(liveCache.data);
+  }
+
+  // Advance knockout winners into next-round fixtures (R32 winners → R16 games
+  // etc.) so new rounds appear here without manual admin entry. Throttled — the
+  // work is a no-op once every slot is filled.
+  if (now - lastAdvanceAt > 120_000) {
+    lastAdvanceAt = now;
+    await advanceKnockoutFixtures(now).catch(() => null);
   }
 
   const [dbResults, espnLiveMap, koFixtures, bracketResults] = await Promise.all([

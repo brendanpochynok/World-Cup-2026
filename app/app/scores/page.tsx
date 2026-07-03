@@ -395,16 +395,18 @@ export default function ScoresPage() {
               const d = localDateOf(m);
               (byDate.get(d) ?? byDate.set(d, []).get(d)!).push(m);
             }
-            const dates = Array.from(byDate.keys()).sort();
+            // Unknown kickoff (empty date) groups last, labelled "time TBC".
+            const dates = Array.from(byDate.keys()).sort((a, b) =>
+              a === '' ? 1 : b === '' ? -1 : a.localeCompare(b));
             return (
               <section className="space-y-5">
                 <SectionHeader label="Knockout Stage" count={vis.length} />
                 {dates.map((date) => {
                   const games = byDate.get(date)!.sort((a, b) => (a.kickoffIso ?? '').localeCompare(b.kickoffIso ?? ''));
                   return (
-                    <div key={date} className="space-y-3">
+                    <div key={date || 'tbc'} className="space-y-3">
                       <h3 className="text-xs font-bold text-gray-500">
-                        {games[0].stageLabel} · {formatDateHeading(date)}
+                        {games[0].stageLabel} · {date ? formatDateHeading(date) : 'time TBC'}
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {games.map((m) => (
