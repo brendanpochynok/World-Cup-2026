@@ -1,9 +1,3 @@
 {
-  "buildCommand": "node scripts/prisma-migrate.mjs && next build",
-  "crons": [
-    {
-      "path": "/api/cron/sync-results",
-      "schedule": "*/10 * * * *"
-    }
-  ]
+  "buildCommand": "node scripts/prisma-migrate.mjs && next build"
 }
