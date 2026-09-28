@@ -174,7 +174,7 @@ export async function GET(request: Request) {
 
   // Finished results observed from ESPN that the DB doesn't yet record — we
   // persist these so the game stays "finished" once ESPN drops it from the
-  // scoreboard, without waiting on the 10-minute sync cron.
+  // scoreboard, without waiting on an admin or cron sync.
   const toPersist: { matchId: string; homeGoals: number; awayGoals: number; result: string }[] = [];
 
   const matches: MatchData[] = GROUP_MATCHES.map((m) => {
